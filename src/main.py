@@ -37,6 +37,7 @@ if __name__ == '__main__':
         type=ModelSelection,
         default=ModelSelection.LLAVA,
         choices=list(ModelSelection),
+        metavar=f'{[model.value for model in list(ModelSelection)]}',
         help='The model to extract the embeddings from'
     )
     parser.add_argument(
