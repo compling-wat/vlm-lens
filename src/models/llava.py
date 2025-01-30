@@ -23,6 +23,7 @@ class LlavaModel(ModelBase):
         self.model_name = ModelSelection.LLAVA
         self.model_path = model_path
         self.config = config
+        self.IMG_LM_DIM = 599  # TODO: is there any way to automate this?
 
         # initialize the parent class
         super().__init__()
@@ -36,3 +37,27 @@ class LlavaModel(ModelBase):
                 self.model_path
             )
         )
+
+    def register_subclass_hook(self, vis, hook_fn):
+        """Registers the hook_fn based on whether it's a vision only embedding.
+
+        Args:
+            vis (bool): Determines whether it's a vision only
+            hook_fn (hook fn): The hook function to register
+        """
+        if vis:
+            self.model.vision_tower.vision_model.\
+                encoder.layers[-1].register_forward_hook(hook_fn)
+        else:
+            self.model.language_model.lm_head.register_forward_hook(hook_fn)
+
+    def is_input_image(self, input):
+        """Function that returns whether this input is an image embedding.
+
+        Args:
+            input (tensor): The input tensor provided.
+
+        Returns:
+            bool: Boolean flag
+        """
+        return input[0].shape[1] == self.IMG_LM_DIM
