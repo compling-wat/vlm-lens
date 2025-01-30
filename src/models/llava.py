@@ -10,13 +10,13 @@ from .base import ModelBase, ModelSelection
 class LlavaModel(ModelBase):
     """Llava model implementation."""
 
-    def __init__(self):
+    def __init__(self, model_path: str):
         """Initialization of the llava model.
 
         This makes sure to set the model name and path.
         """
         self.model_name = ModelSelection.LLAVA
-        self.model_path = 'llava-hf/llava-1.5-7b-hf'
+        self.model_path = model_path
 
         # initialize the parent class
         super().__init__()

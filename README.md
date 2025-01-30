@@ -18,10 +18,15 @@ pip install -r requirements.txt
 
 Then, execute the following command:
 ```bash
-python src/main.py --model <model-spec>
+python src/main.py --architecture <architecture> --model-path <model-path> --debug
 ```
+with an optional debug flag to see more detailed outputs.
 
-The supported model flags are currently:
+The supported architecture flags are currently:
 - 'llava'
 - 'qwen'
-- 'qwen-2b'
+
+For example, one can run:
+```base
+python src/main.py --architecture qwen --model-path Qwen/Qwen2-VL-2B-Instruct --debug
+```
