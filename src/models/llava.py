@@ -23,5 +23,6 @@ class LlavaModel(ModelBase):
 
     def load_specific_model(self):
         """Overridden function to populate self.model."""
-        self.model = \
-            LlavaForConditionalGeneration.from_pretrained(self.model_path)
+        self.model = LlavaForConditionalGeneration.from_pretrained(
+            self.model_path
+        )

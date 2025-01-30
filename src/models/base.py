@@ -28,7 +28,9 @@ class ModelBase(ABC):
 
     def load_model(self):
         """Loads the model and sets the processor from the loaded model."""
-        logging.debug(f'Loading model {self.model_name.value}')
+        logging.debug(
+            f'Loading model {self.model_name.value}; {self.model_path}'
+        )
         self.load_specific_model()
         self.processor = AutoProcessor.from_pretrained(self.model_path)
 

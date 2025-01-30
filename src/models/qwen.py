@@ -21,8 +21,9 @@ class QwenModel(ModelBase):
 
     def load_specific_model(self):
         """Overridden function to populate self.model."""
-        self.model = \
-            Qwen2VLForConditionalGeneration.from_pretrained(self.model_path)
+        self.model = Qwen2VLForConditionalGeneration.from_pretrained(
+            self.model_path
+        )
 
 
 class QwenModel_2B(ModelBase):
@@ -39,5 +40,6 @@ class QwenModel_2B(ModelBase):
 
     def load_specific_model(self):
         """Overridden function to populate self.model."""
-        self.model = \
-            Qwen2VLForConditionalGeneration.from_pretrained(self.model_path)
+        self.model = Qwen2VLForConditionalGeneration.from_pretrained(
+            self.model_path
+        )

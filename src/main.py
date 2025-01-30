@@ -7,10 +7,10 @@ import argparse
 import logging
 
 from models import llava, qwen
-from models.base import ModelSelection
+from models.base import ModelBase, ModelSelection
 
 
-def get_model(model_sel: ModelSelection):
+def get_model(model_sel: ModelSelection) -> ModelBase:
     """Returns the model based on the selection enum chosen.
 
     Args:
