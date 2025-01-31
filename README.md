@@ -18,9 +18,11 @@ pip install -r requirements.txt
 
 Then, execute the following command:
 ```bash
-python src/main.py --architecture <architecture> --model-path <model-path> --debug
+python src/main.py --architecture <architecture> --model-path <model-path> --debug --config <config-file-path>
 ```
 with an optional debug flag to see more detailed outputs.
+
+Note that the config file should be in yaml format, and that any arguments you want to send to the huggingface API should be under the `model` key. See `configs/qwen_2b.yaml` as an example.
 
 The supported architecture flags are currently:
 - 'llava'
@@ -29,4 +31,8 @@ The supported architecture flags are currently:
 For example, one can run:
 ```base
 python src/main.py --architecture qwen --model-path Qwen/Qwen2-VL-2B-Instruct --debug
+```
+or:
+```base
+python src/main.py --config configs/qwen_2b.yaml --debug
 ```
