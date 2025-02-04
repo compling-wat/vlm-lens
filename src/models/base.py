@@ -23,12 +23,12 @@ class ModelBase(ABC):
         Args:
             config (Config): Parsed config.
         """
-        assert self.model_path is not None
+        self.model_path = config.model_path
         self.config = config
 
         # load the specific model
         logging.debug(
-            f'Loading model {self.model_name.value}; {self.model_path}'
+            f'Loading model {self.config.architecture.value}; {self.model_path}'
         )
         self._load_specific_model()
 
@@ -100,6 +100,6 @@ class ModelBase(ABC):
             self.vis_image_states,
             os.path.join(
                 self.config.output_dir,
-                f'visual_tensor_{self.model_name}.pt'
+                f'visual_tensor_{self.config.architecture}.pt'
             )
         )

@@ -5,24 +5,18 @@ File for providing the Qwen model implementation.
 from transformers import Qwen2VLForConditionalGeneration
 
 from .base import ModelBase
-from .config import Config, ModelSelection
+from .config import Config
 
 
 class QwenModel(ModelBase):
     """Qwen model implementation."""
 
-    def __init__(self, model_path: str, config: Config):
+    def __init__(self, config: Config):
         """Initialization of the qwen model.
 
-        This makes sure to set the model name, path and config.
-
         Args:
-            model_path (str): The path to the specific model
             config (Config): Parsed config
         """
-        # TODO: Clean this up by moving model_name to the super class
-        self.model_name = ModelSelection.QWEN
-        self.model_path = model_path
         self.IMG_LM_DIM = 129  # TODO: is there any way to automate this?
 
         # initialize the parent class

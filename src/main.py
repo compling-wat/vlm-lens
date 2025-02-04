@@ -32,9 +32,9 @@ def get_model(
     """
     match model_arch:
         case ModelSelection.LLAVA:
-            return llava.LlavaModel(model_path, config)
+            return llava.LlavaModel(config)
         case ModelSelection.QWEN:
-            return qwen.QwenModel(model_path, config)
+            return qwen.QwenModel(config)
 
 
 def load_image_data(config: Config, model: ModelBase) -> torch.Tensor:
