@@ -51,12 +51,6 @@ class Config():
             action='store_true',
             help='Print out debug statements'
         )
-        parser.add_argument(
-            '-v',
-            '--vis',
-            action='store_true',
-            help='Sets the saved embeddings to visual only'
-        )
         # TODO: Add in a check to make sure that the input directory exists
         parser.add_argument(
             '-i',
