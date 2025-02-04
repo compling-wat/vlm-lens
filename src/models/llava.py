@@ -5,23 +5,18 @@ File for providing the Llava model implementation.
 from transformers import LlavaForConditionalGeneration
 
 from .base import ModelBase
-from .config import Config, ModelSelection
+from .config import Config
 
 
 class LlavaModel(ModelBase):
     """Llava model implementation."""
 
-    def __init__(self, model_path: str, config: Config):
+    def __init__(self, config: Config):
         """Initialization of the llava model.
 
-        This makes sure to set the model name, path and config.
-
         Args:
-            model_path (str): The path to the specific model
             config (Config): Parsed config
         """
-        self.model_name = ModelSelection.LLAVA
-        self.model_path = model_path
         self.IMG_LM_DIM = 599  # TODO: is there any way to automate this?
 
         # initialize the parent class
