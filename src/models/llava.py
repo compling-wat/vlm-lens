@@ -37,18 +37,14 @@ class LlavaModel(ModelBase):
             )
         )
 
-    def register_subclass_hook(self, vis, hook_fn):
-        """Registers the hook_fn based on whether it's a vision only embedding.
+    def register_subclass_hook(self, hook_fn):
+        """Registers the hook_fn.
 
         Args:
-            vis (bool): Determines whether it's a vision only
             hook_fn (hook fn): The hook function to register
         """
-        if vis:
-            self.model.vision_tower.vision_model.\
-                encoder.layers[-1].register_forward_hook(hook_fn)
-        else:
-            self.model.language_model.lm_head.register_forward_hook(hook_fn)
+        self.model.vision_tower.vision_model.\
+            encoder.layers[-1].register_forward_hook(hook_fn)
 
     def is_input_image(self, input):
         """Function that returns whether this input is an image embedding.
