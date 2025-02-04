@@ -28,7 +28,7 @@ class QwenModel(ModelBase):
         # initialize the parent class
         super().__init__(config)
 
-    def register_subclass_hook(self, hook_fn):
+    def _register_subclass_hook(self, hook_fn):
         """Registers the hook_fn.
 
         Args:
@@ -36,7 +36,7 @@ class QwenModel(ModelBase):
         """
         self.model.visual.blocks[-1].register_forward_hook(hook_fn)
 
-    def is_input_image(self, input):
+    def _is_input_image(self, input):
         """Function that returns whether this input is an image embedding.
 
         Args:
@@ -47,7 +47,7 @@ class QwenModel(ModelBase):
         """
         return input[0].shape[1] == self.IMG_LM_DIM
 
-    def load_specific_model(self):
+    def _load_specific_model(self):
         """Overridden function to populate self.model."""
         self.model = Qwen2VLForConditionalGeneration.from_pretrained(
             self.model_path, **self.config.model

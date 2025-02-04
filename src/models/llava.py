@@ -27,7 +27,7 @@ class LlavaModel(ModelBase):
         # initialize the parent class
         super().__init__(config)
 
-    def load_specific_model(self):
+    def _load_specific_model(self):
         """Overridden function to populate self.model."""
         self.model = LlavaForConditionalGeneration.from_pretrained(
             self.model_path, **self.config.model
@@ -37,7 +37,7 @@ class LlavaModel(ModelBase):
             )
         )
 
-    def register_subclass_hook(self, hook_fn):
+    def _register_subclass_hook(self, hook_fn):
         """Registers the hook_fn.
 
         Args:
@@ -46,7 +46,7 @@ class LlavaModel(ModelBase):
         self.model.vision_tower.vision_model.\
             encoder.layers[-1].register_forward_hook(hook_fn)
 
-    def is_input_image(self, input):
+    def _is_input_image(self, input):
         """Function that returns whether this input is an image embedding.
 
         Args:
