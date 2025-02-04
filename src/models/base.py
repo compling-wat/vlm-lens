@@ -25,23 +25,27 @@ class ModelBase(ABC):
         """
         assert self.model_path is not None
         self.config = config
-        self.load_model()
-        self.register_hook()
 
-    def load_model(self):
-        """Loads the model and sets the processor from the loaded model."""
+        # load the specific model
         logging.debug(
             f'Loading model {self.model_name.value}; {self.model_path}'
         )
-        self.load_specific_model()
+        self._load_specific_model()
+
+        # set the processor based on the model
         self.processor = AutoProcessor.from_pretrained(self.model_path)
 
+        # generate and register the forward hook
+        logging.debug('Generating hook function')
+        self.hook = self._generate_state_hook()
+        self._register_subclass_hook(self.hook)
+
     @abstractmethod
-    def load_specific_model(self):
+    def _load_specific_model(self):
         """Abstract method that loads the specific model."""
         pass
 
-    def generate_state_hook(self):
+    def _generate_state_hook(self):
         """Generates the state hook depending on the embedding type.
 
         Returns:
@@ -61,14 +65,8 @@ class ModelBase(ABC):
 
         return generate_vis_state_hook
 
-    def register_hook(self):
-        """Registers the hook depending on the embedding setting."""
-        logging.debug('Generating hook function')
-        self.hook = self.generate_state_hook()
-        self.register_subclass_hook(self.hook)
-
     @abstractmethod
-    def register_subclass_hook(self, hook_fn):
+    def _register_subclass_hook(self, hook_fn):
         """Abstract method that registers the given hook_fn to some parameters.
 
         Args:
@@ -77,7 +75,7 @@ class ModelBase(ABC):
         pass
 
     @abstractmethod
-    def is_input_image(self, input):
+    def _is_input_image(self, input):
         """A function that determines whether the input is an image embedding.
 
         Args:
