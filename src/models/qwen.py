@@ -2,12 +2,10 @@
 
 File for providing the Qwen model implementation.
 """
-from abc import ABC
-
 from transformers import Qwen2VLForConditionalGeneration
 
-from .base import ModelBase, ModelSelection
-from .config import Config
+from .base import ModelBase
+from .config import Config, ModelSelection
 
 
 class QwenModel(ModelBase):
@@ -22,13 +20,13 @@ class QwenModel(ModelBase):
             model_path (str): The path to the specific model
             config (Config): Parsed config
         """
+        # TODO: Clean this up by moving model_name to the super class
         self.model_name = ModelSelection.QWEN
         self.model_path = model_path
-        self.config = config
         self.IMG_LM_DIM = 129  # TODO: is there any way to automate this?
 
         # initialize the parent class
-        super().__init__()
+        super().__init__(config)
 
     def register_subclass_hook(self, vis, hook_fn):
         """Registers the hook_fn based on whether it's a vision only embedding.
@@ -52,8 +50,6 @@ class QwenModel(ModelBase):
             bool: Boolean flag
         """
         return input[0].shape[1] == self.IMG_LM_DIM
-
-
 
     def load_specific_model(self):
         """Overridden function to populate self.model."""

@@ -4,8 +4,8 @@ File for providing the Llava model implementation.
 """
 from transformers import LlavaForConditionalGeneration
 
-from .base import ModelBase, ModelSelection
-from .config import Config
+from .base import ModelBase
+from .config import Config, ModelSelection
 
 
 class LlavaModel(ModelBase):
@@ -22,11 +22,10 @@ class LlavaModel(ModelBase):
         """
         self.model_name = ModelSelection.LLAVA
         self.model_path = model_path
-        self.config = config
         self.IMG_LM_DIM = 599  # TODO: is there any way to automate this?
 
         # initialize the parent class
-        super().__init__()
+        super().__init__(config)
 
     def load_specific_model(self):
         """Overridden function to populate self.model."""

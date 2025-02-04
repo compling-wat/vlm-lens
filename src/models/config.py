@@ -4,10 +4,15 @@ This module provides a config class to be used for both the parser as well as
 for providing the model specific classes a way to access the parsed arguments.
 """
 import argparse
+from enum import Enum
 
 import yaml
 
-from models.base import ModelSelection
+
+class ModelSelection(str, Enum):
+    """Enum that contains all possible model choices."""
+    LLAVA = 'llava'
+    QWEN = 'qwen'
 
 
 class Config():
@@ -45,6 +50,26 @@ class Config():
             default=None,
             action='store_true',
             help='Print out debug statements'
+        )
+        parser.add_argument(
+            '-v',
+            '--vis',
+            action='store_true',
+            help='Sets the saved embeddings to visual only'
+        )
+        # TODO: Add in a check to make sure that the input directory exists
+        parser.add_argument(
+            '-i',
+            '--input-dir',
+            type=str,
+            help='The specified input directory to read data from'
+        )
+        # TODO: Add in a check to make sure that the output directory exists
+        parser.add_argument(
+            '-o',
+            '--output-dir',
+            type=str,
+            help='The specified output directory to save the tensors to'
         )
 
         args = parser.parse_args()

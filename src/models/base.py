@@ -5,25 +5,28 @@ abstract base class for models.
 """
 
 import logging
+import os
 from abc import ABC, abstractmethod
-from enum import Enum
 
+import torch
 from transformers import AutoProcessor
 
-
-class ModelSelection(str, Enum):
-    """Enum that contains all possible model choices."""
-    LLAVA = 'llava'
-    QWEN = 'qwen'
+from .config import Config
 
 
 class ModelBase(ABC):
     """Provides an abstract base class for everything to implement."""
 
-    def __init__(self):
-        """Initialization of the model base class."""
+    def __init__(self, config: Config):
+        """Initialization of the model base class.
+
+        Args:
+            config (Config): Parsed config.
+        """
         assert self.model_path is not None
+        self.config = config
         self.load_model()
+        self.register_hook()
 
     def load_model(self):
         """Loads the model and sets the processor from the loaded model."""
@@ -32,6 +35,11 @@ class ModelBase(ABC):
         )
         self.load_specific_model()
         self.processor = AutoProcessor.from_pretrained(self.model_path)
+
+    @abstractmethod
+    def load_specific_model(self):
+        """Abstract method that loads the specific model."""
+        pass
 
     def generate_state_hook(self, vis):
         """Generates the state hook depending on the embedding type.
@@ -71,19 +79,15 @@ class ModelBase(ABC):
 
         return generate_vis_state_hook if vis else generate_img_vis_state_hook
 
-    def register_hook(self, vis):
+    def register_hook(self):
         """Registers the hook depending on the embedding setting.
 
         Args:
             vis (bool): Set to true in the image only embedding setting.
         """
         logging.debug('Generating hook function')
-        self.register_subclass_hook(vis, self.generate_state_hook(vis))
-
-    @abstractmethod
-    def load_specific_model(self):
-        """Abstract method that loads the specific model."""
-        pass
+        self.hook = self.generate_state_hook(self.config.vis)
+        self.register_subclass_hook(self.config.vis, self.hook)
 
     @abstractmethod
     def register_subclass_hook(self, vis, hook_fn):
@@ -103,3 +107,36 @@ class ModelBase(ABC):
             input (tensor): Tensor describing the input
         """
         pass
+
+    def forward(self, data: torch.Tensor):
+        """Given some data, performs a single forward pass.
+
+        Args:
+            data (torch.Tensor): The input data tensor
+        """
+        logging.debug('Starting forward pass')
+        if self.config.vis:
+            with torch.no_grad():
+                _ = self.model(**data)
+        else:
+            assert False
+
+        logging.debug('Completed forward pass...')
+
+    def save_states(self):
+        """Saves the states to pt files."""
+        torch.save(
+            self.vis_image_states,
+            os.path.join(
+                self.config.output_dir,
+                f'visual_tensor_{self.model_name}.pt'
+            )
+        )
+        if not self.config.vis:
+            torch.save(
+                self.txt_image_states,
+                os.path.join(
+                    self.config.output_dir,
+                    f'text_tensor_{self.model_name}.pt'
+                )
+            )
