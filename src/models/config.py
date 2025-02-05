@@ -42,6 +42,7 @@ class Config():
         parser.add_argument(
             '-d',
             '--debug',
+            default=None,
             action='store_true',
             help='Print out debug statements'
         )
