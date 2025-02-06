@@ -1,0 +1,2 @@
+architecture: qwen
+model_path: Qwen/Qwen2-VL-7B-Instruct

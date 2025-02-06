@@ -1,0 +1,5 @@
+architecture: qwen
+model_path: Qwen/Qwen2-VL-2B-Instruct
+model:
+  - torch_dtype: auto
+  - device_map: auto

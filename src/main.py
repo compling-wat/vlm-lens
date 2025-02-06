@@ -3,14 +3,18 @@
 This module here is the entrypoint to the VLM Competence toolkit.
 """
 
-import argparse
 import logging
 
 from models import llava, qwen
 from models.base import ModelBase, ModelSelection
+from models.config import Config
 
 
-def get_model(model_arch: ModelSelection, model_path: str) -> ModelBase:
+def get_model(
+    model_arch: ModelSelection,
+    model_path: str,
+    config: Config
+) -> ModelBase:
     """Returns the model based on the selection enum chosen.
 
     Args:
@@ -24,41 +28,20 @@ def get_model(model_arch: ModelSelection, model_path: str) -> ModelBase:
     """
     match model_arch:
         case ModelSelection.LLAVA:
-            return llava.LlavaModel(model_path)
+            return llava.LlavaModel(model_path, config)
         case ModelSelection.QWEN:
-            return qwen.QwenModel(model_path)
+            return qwen.QwenModel(model_path, config)
 
 
 if __name__ == '__main__':
-    # Initiate parser and parse arguments
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        '-a',
-        '--architecture',
-        type=ModelSelection,
-        default=ModelSelection.LLAVA,
-        choices=list(ModelSelection),
-        metavar=f'{[model.value for model in list(ModelSelection)]}',
-        help='The model architecture family to extract the embeddings from'
-    )
-    parser.add_argument(
-        '-m',
-        '--model-path',
-        type=str,
-        required=True,
-        help='The specific model path to extract the embeddings from'
-    )
-    parser.add_argument(
-        '-d',
-        '--debug',
-        action='store_true',
-        help='Print out debug statements'
-    )
-
-    args = parser.parse_args()
-    if args.debug:
+    config = Config()
+    if config.debug:
         logging.basicConfig(level=logging.DEBUG)
     else:
         logging.basicConfig(level=logging.INFO)
 
-    logging.debug(get_model(args.architecture, args.model_path))
+    logging.debug(
+        f'Config is set to '
+        f'{[(key, value) for key, value in config.__dict__.items()]}'
+    )
+    logging.debug(get_model(config.architecture, config.model_path, config))
