@@ -17,8 +17,6 @@ class LlavaModel(ModelBase):
         Args:
             config (Config): Parsed config
         """
-        self.IMG_LM_DIM = 599  # TODO: is there any way to automate this?
-
         # initialize the parent class
         super().__init__(config)
 
@@ -38,16 +36,4 @@ class LlavaModel(ModelBase):
         Args:
             hook_fn (hook fn): The hook function to register
         """
-        self.model.vision_tower.vision_model.\
-            encoder.layers[-1].register_forward_hook(hook_fn)
-
-    def _is_input_image(self, input):
-        """Function that returns whether this input is an image embedding.
-
-        Args:
-            input (tensor): The input tensor provided.
-
-        Returns:
-            bool: Boolean flag
-        """
-        return input[0].shape[1] == self.IMG_LM_DIM
+        self.model.language_model.lm_head.register_forward_hook(hook_fn)

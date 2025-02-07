@@ -17,29 +17,8 @@ class QwenModel(ModelBase):
         Args:
             config (Config): Parsed config
         """
-        self.IMG_LM_DIM = 129  # TODO: is there any way to automate this?
-
         # initialize the parent class
         super().__init__(config)
-
-    def _register_subclass_hook(self, hook_fn):
-        """Registers the hook_fn.
-
-        Args:
-            hook_fn (hook fn): The hook function to register
-        """
-        self.model.visual.blocks[-1].register_forward_hook(hook_fn)
-
-    def _is_input_image(self, input):
-        """Function that returns whether this input is an image embedding.
-
-        Args:
-            input (tensor): The input tensor provided.
-
-        Returns:
-            bool: Boolean flag
-        """
-        return input[0].shape[1] == self.IMG_LM_DIM
 
     def _load_specific_model(self):
         """Overridden function to populate self.model."""
@@ -50,3 +29,11 @@ class QwenModel(ModelBase):
                 self.model_path
             )
         )
+
+    def _register_subclass_hook(self, hook_fn):
+        """Registers the hook_fn.
+
+        Args:
+            hook_fn (hook fn): The hook function to register
+        """
+        self.model.lm_head.register_forward_hook(hook_fn)

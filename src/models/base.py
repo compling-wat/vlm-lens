@@ -74,15 +74,6 @@ class ModelBase(ABC):
         """
         pass
 
-    @abstractmethod
-    def _is_input_image(self, input):
-        """A function that determines whether the input is an image embedding.
-
-        Args:
-            input (tensor): Tensor describing the input
-        """
-        pass
-
     def forward(self, data: torch.Tensor):
         """Given some data, performs a single forward pass.
 
