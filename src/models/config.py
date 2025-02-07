@@ -72,6 +72,7 @@ class Config():
         # other special ones here (such as the model args)
         config_keys = list(args.__dict__.keys())
         config_keys.append('model')
+        config_keys.append('prompt')
 
         # first read the config file and set the current attributes to it
         # then parse through the other arguments as that's what we want use to

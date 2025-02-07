@@ -57,7 +57,6 @@ def load_image_data(config: Config, model: ModelBase) -> torch.Tensor:
     ]
 
     logging.debug('Generating image prompt embeddings')
-    # TODO: remove the self.config.vis -- handle this elsewhere...
     img_data = imgs
     img_msgs = [{
         'role': 'user',
@@ -67,7 +66,7 @@ def load_image_data(config: Config, model: ModelBase) -> torch.Tensor:
             },
             {
                 'type': 'text',
-                'text': 'Describe the color in this image in one word.'
+                'text': config.prompt
             },
         ],
     }]

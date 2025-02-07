@@ -96,6 +96,9 @@ class ModelBase(ABC):
 
     def save_states(self):
         """Saves the states to pt files."""
+        assert hasattr(self, 'vis_image_states'), (
+            'Error in registering hook, vis_image_states not found'
+        )
         torch.save(
             self.vis_image_states,
             os.path.join(
