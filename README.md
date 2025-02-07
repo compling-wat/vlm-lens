@@ -18,7 +18,7 @@ pip install -r requirements.txt
 
 Then, execute the following command:
 ```bash
-python src/main.py --architecture <architecture> --model-path <model-path> --debug --config <config-file-path>
+python src/main.py --architecture <architecture> --model-path <model-path> --debug --config <config-file-path> --input-dir <input-dir> --output-dir <output-dir>
 ```
 with an optional debug flag to see more detailed outputs.
 

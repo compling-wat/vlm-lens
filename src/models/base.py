@@ -5,42 +5,51 @@ abstract base class for models.
 """
 
 import logging
+import os
 from abc import ABC, abstractmethod
-from enum import Enum
 
+import torch
 from transformers import AutoProcessor
 
-
-class ModelSelection(str, Enum):
-    """Enum that contains all possible model choices."""
-    LLAVA = 'llava'
-    QWEN = 'qwen'
+from .config import Config
 
 
 class ModelBase(ABC):
     """Provides an abstract base class for everything to implement."""
 
-    def __init__(self):
-        """Initialization of the model base class."""
-        assert self.model_path is not None
-        self.load_model()
-
-    def load_model(self):
-        """Loads the model and sets the processor from the loaded model."""
-        logging.debug(
-            f'Loading model {self.model_name.value}; {self.model_path}'
-        )
-        self.load_specific_model()
-        self.processor = AutoProcessor.from_pretrained(self.model_path)
-
-    def generate_state_hook(self, vis):
-        """Generates the state hook depending on the embedding type.
+    def __init__(self, config: Config):
+        """Initialization of the model base class.
 
         Args:
-            vis (bool): Set to true if we want only image embeddings
+            config (Config): Parsed config.
+        """
+        self.model_path = config.model_path
+        self.config = config
+
+        # load the specific model
+        logging.debug(
+            f'Loading model {self.config.architecture.value}; {self.model_path}'
+        )
+        self._load_specific_model()
+
+        # set the processor based on the model
+        self.processor = AutoProcessor.from_pretrained(self.model_path)
+
+        # generate and register the forward hook
+        logging.debug('Generating hook function')
+        self.hook = self._generate_state_hook()
+        self._register_subclass_hook(self.hook)
+
+    @abstractmethod
+    def _load_specific_model(self):
+        """Abstract method that loads the specific model."""
+        pass
+
+    def _generate_state_hook(self):
+        """Generates the state hook depending on the embedding type.
 
         Returns:
-            hook function: The hook function to return depending on the vis flag
+            hook function: The hook function to return.
         """
         def generate_vis_state_hook(module, input, output):
             """Hook handle function that returns only the image hidden states.
@@ -54,52 +63,37 @@ class ModelBase(ABC):
             """
             self.vis_image_states = output
 
-        def generate_img_vis_state_hook(module, input, output):
-            """Hook handle function that returns both image and text states.
-
-            This hook here is to be used in the LM head.
-
-            Args:
-                module: The module
-                input: The input
-                output: The image embeddings
-            """
-            if self.is_input_image(input):
-                self.vis_image_states = output
-            else:
-                self.txt_hidden_states = output
-
-        return generate_vis_state_hook if vis else generate_img_vis_state_hook
-
-    def register_hook(self, vis):
-        """Registers the hook depending on the embedding setting.
-
-        Args:
-            vis (bool): Set to true in the image only embedding setting.
-        """
-        logging.debug('Generating hook function')
-        self.register_subclass_hook(vis, self.generate_state_hook(vis))
+        return generate_vis_state_hook
 
     @abstractmethod
-    def load_specific_model(self):
-        """Abstract method that loads the specific model."""
-        pass
-
-    @abstractmethod
-    def register_subclass_hook(self, vis, hook_fn):
+    def _register_subclass_hook(self, hook_fn):
         """Abstract method that registers the given hook_fn to some parameters.
 
         Args:
-            vis (bool): Boolean set to true if image only embedding.
             hook_fn (hook function): The hook function to register.
         """
         pass
 
-    @abstractmethod
-    def is_input_image(self, input):
-        """A function that determines whether the input is an image embedding.
+    def forward(self, data: torch.Tensor):
+        """Given some data, performs a single forward pass.
 
         Args:
-            input (tensor): Tensor describing the input
+            data (torch.Tensor): The input data tensor
         """
-        pass
+        logging.debug('Starting forward pass')
+        with torch.no_grad():
+            _ = self.model(**data)
+        logging.debug('Completed forward pass...')
+
+    def save_states(self):
+        """Saves the states to pt files."""
+        assert hasattr(self, 'vis_image_states'), (
+            'Error in registering hook, vis_image_states not found'
+        )
+        torch.save(
+            self.vis_image_states,
+            os.path.join(
+                self.config.output_dir,
+                f'visual_tensor_{self.config.architecture}.pt'
+            )
+        )
