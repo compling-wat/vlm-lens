@@ -4,30 +4,23 @@ File for providing the Llava model implementation.
 """
 from transformers import LlavaForConditionalGeneration
 
-from .base import ModelBase, ModelSelection
+from .base import ModelBase
 from .config import Config
 
 
 class LlavaModel(ModelBase):
     """Llava model implementation."""
 
-    def __init__(self, model_path: str, config: Config):
+    def __init__(self, config: Config):
         """Initialization of the llava model.
 
-        This makes sure to set the model name, path and config.
-
         Args:
-            model_path (str): The path to the specific model
             config (Config): Parsed config
         """
-        self.model_name = ModelSelection.LLAVA
-        self.model_path = model_path
-        self.config = config
-
         # initialize the parent class
-        super().__init__()
+        super().__init__(config)
 
-    def load_specific_model(self):
+    def _load_specific_model(self):
         """Overridden function to populate self.model."""
         self.model = LlavaForConditionalGeneration.from_pretrained(
             self.model_path, **self.config.model
@@ -36,3 +29,11 @@ class LlavaModel(ModelBase):
                 self.model_path
             )
         )
+
+    def _register_subclass_hook(self, hook_fn):
+        """Registers the hook_fn.
+
+        Args:
+            hook_fn (hook fn): The hook function to register
+        """
+        self.model.language_model.lm_head.register_forward_hook(hook_fn)
