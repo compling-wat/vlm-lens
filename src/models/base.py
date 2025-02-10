@@ -6,6 +6,7 @@ abstract base class for models.
 
 import logging
 import os
+import warnings
 from abc import ABC, abstractmethod
 
 import torch
@@ -32,13 +33,14 @@ class ModelBase(ABC):
         )
         self._load_specific_model()
 
+        # now set up the modules to register the hook to
+        self._register_module_hooks()
+
         # set the processor based on the model
         self.processor = AutoProcessor.from_pretrained(self.model_path)
 
         # generate and register the forward hook
         logging.debug('Generating hook function')
-        self.hook = self._generate_state_hook()
-        self._register_subclass_hook(self.hook)
 
     @abstractmethod
     def _load_specific_model(self):
@@ -65,14 +67,24 @@ class ModelBase(ABC):
 
         return generate_vis_state_hook
 
-    @abstractmethod
-    def _register_subclass_hook(self, hook_fn):
-        """Abstract method that registers the given hook_fn to some parameters.
+    def _register_module_hooks(self):
+        """Register the generated hook function to the modules in the config."""
+        self.hook = self._generate_state_hook()
 
-        Args:
-            hook_fn (hook function): The hook function to register.
-        """
-        pass
+        # create a flag to warn the user if there were no hooks registered
+        registered_module = False
+
+        for name, module in self.model.named_modules():
+            if self.config.matches_module(name):
+                registered_module = True
+                module.register_forward_hook(self.hook)
+                logging.debug(f'Registered hook to {name}')
+
+        if not registered_module:
+            warnings.warn(
+                "No hooks were registered. Double-check the model's modules",
+                UserWarning
+            )
 
     def forward(self, data: torch.Tensor):
         """Given some data, performs a single forward pass.

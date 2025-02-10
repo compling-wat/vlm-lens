@@ -29,11 +29,3 @@ class LlavaModel(ModelBase):
                 self.model_path
             )
         )
-
-    def _register_subclass_hook(self, hook_fn):
-        """Registers the hook_fn.
-
-        Args:
-            hook_fn (hook fn): The hook function to register
-        """
-        self.model.language_model.lm_head.register_forward_hook(hook_fn)
