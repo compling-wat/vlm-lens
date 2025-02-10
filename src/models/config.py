@@ -126,6 +126,6 @@ class Config():
             regexes.
         """
         for module in self.modules:
-            if module.match(module_name):
+            if module.fullmatch(module_name):
                 return True
         return False

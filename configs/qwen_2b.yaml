@@ -7,3 +7,4 @@ input_dir: ./data/
 prompt: "Describe the color in this image in one word."
 modules:
   - lm_head
+  - visual.blocks.31

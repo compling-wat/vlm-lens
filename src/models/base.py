@@ -47,29 +47,33 @@ class ModelBase(ABC):
         """Abstract method that loads the specific model."""
         pass
 
-    def _generate_state_hook(self):
+    def _generate_state_hook(self, name: str):
         """Generates the state hook depending on the embedding type.
+
+        Args:
+            name (str): The module name.
 
         Returns:
             hook function: The hook function to return.
         """
-        def generate_vis_state_hook(module, input, output):
-            """Hook handle function that returns only the image hidden states.
-
-            This is to be used for the vision encoder.
+        def generate_states_hook(module, input, output):
+            """Hook handle function that saves the embedding output to a tensor.
 
             Args:
-                module: The module
-                input: The input
-                output: The image embeddings
+                module: The module that save its hook on.
+                input: The input used.
+                output: The embeddings to save.
             """
-            self.vis_image_states = output
+            # for each module, we'll save its output into
+            self.states[name] = output
 
-        return generate_vis_state_hook
+        return generate_states_hook
 
     def _register_module_hooks(self):
         """Register the generated hook function to the modules in the config."""
-        self.hook = self._generate_state_hook()
+        # set the states to a dictionary such that we can write to it
+        # and later on save from all these states
+        self.states = {}
 
         # create a flag to warn the user if there were no hooks registered
         registered_module = False
@@ -77,7 +81,7 @@ class ModelBase(ABC):
         for name, module in self.model.named_modules():
             if self.config.matches_module(name):
                 registered_module = True
-                module.register_forward_hook(self.hook)
+                module.register_forward_hook(self._generate_state_hook(name))
                 logging.debug(f'Registered hook to {name}')
 
         if not registered_module:
@@ -99,13 +103,14 @@ class ModelBase(ABC):
 
     def save_states(self):
         """Saves the states to pt files."""
-        assert hasattr(self, 'vis_image_states'), (
-            'Error in registering hook, vis_image_states not found'
-        )
-        torch.save(
-            self.vis_image_states,
-            os.path.join(
-                self.config.output_dir,
-                f'visual_tensor_{self.config.architecture}.pt'
+        if len(self.states.items()) == 0:
+            warnings.warn('No embedding states were saved')
+
+        for name, state in self.states.items():
+            torch.save(
+                state,
+                os.path.join(
+                    self.config.output_dir,
+                    f'state_{name}_{self.config.architecture}.pt'
+                )
             )
-        )
