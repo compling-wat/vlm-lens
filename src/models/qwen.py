@@ -29,6 +29,27 @@ class QwenModel(ModelBase):
                 self.model_path
             )
         )
-    def run(self):
-        self.forward(self.load_input_data())
-        self.save_states()
+
+    def classify_input_ids(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+        """Abstract method to be implemented by each subclass.
+
+        Args:
+            inputs          : image and text inputs.
+
+        Returns:
+            input_ids       : image and text input ids.
+        """
+        # load models
+        self.image_processor = AutoImageProcessor.from_pretrained(self.model_path)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_path)
+
+        # decode input ids
+        input_ids = {}
+        if inputs['img']:
+            image_inputs = self.image_processor(inputs['img'], return_tensors='pt')
+            input_ids['img'] = image_inputs['pixel_values']
+        if inputs['txt']:
+            text_inputs = self.tokenizer(inputs['txt'], return_tensors='pt')
+            input_ids['txt'] = text_inputs['input_ids']
+
+        return input_ids
