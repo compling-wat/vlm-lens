@@ -57,9 +57,9 @@ class LlavaModel(ModelBase):
         input_ids = {}
         if inputs['img']:
             image_inputs = self.image_processor(inputs['img'], return_tensors='pt')
-            input_ids['image_input_ids'] = image_inputs['pixel_values']
+            input_ids['img'] = image_inputs['pixel_values']
         if inputs['txt']:
             text_inputs = self.tokenizer(inputs['txt'], return_tensors='pt')
-            input_ids['text_input_ids'] = text_inputs['input_ids']
+            input_ids['txt'] = text_inputs['input_ids']
 
         return input_ids
