@@ -37,3 +37,8 @@ class ModelBase(ABC):
     def load_specific_model(self):
         """Abstract method to be implemented by each subclass."""
         pass
+
+    @abstractmethod
+    def classify_input_ids(self):
+        """Abstract method to be implemented by each subclass."""
+        pass
