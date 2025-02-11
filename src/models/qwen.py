@@ -41,7 +41,7 @@ class QwenModel(ModelBase):
         )
 
     def classify_input_ids(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
-        """Abstract method to be implemented by each subclass.
+        """Separate image and text inputs and convert them to input ids.
 
         Args:
             inputs          : image and text inputs.
