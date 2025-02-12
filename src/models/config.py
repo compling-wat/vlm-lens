@@ -112,8 +112,10 @@ class Config():
                 model_mapping = {**model_mapping, **mapping}
             self.model = model_mapping
 
-        if hasattr(self, 'modules'):
-            self.modules = [re.compile(module) for module in self.modules]
+        assert hasattr(self, 'modules') and self.modules is not None, (
+            'Must declare at least one module.'
+        )
+        self.modules = [re.compile(module) for module in self.modules]
 
     def matches_module(self, module_name: str) -> bool:
         """Returns whether the given module name matches one of the regexes.

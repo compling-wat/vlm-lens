@@ -6,7 +6,6 @@ abstract base class for models.
 
 import logging
 import os
-import warnings
 from abc import ABC, abstractmethod
 
 import torch
@@ -85,9 +84,8 @@ class ModelBase(ABC):
                 logging.debug(f'Registered hook to {name}')
 
         if not registered_module:
-            warnings.warn(
-                "No hooks were registered. Double-check the model's modules",
-                UserWarning
+            raise RuntimeError(
+                'No hooks were registered. Double-check the configured modules.'
             )
 
     def forward(self, data: torch.Tensor):
@@ -104,7 +102,7 @@ class ModelBase(ABC):
     def save_states(self):
         """Saves the states to pt files."""
         if len(self.states.items()) == 0:
-            warnings.warn('No embedding states were saved')
+            raise RuntimeError('No embedding states were saved')
 
         for name, state in self.states.items():
             torch.save(
