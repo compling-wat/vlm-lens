@@ -44,7 +44,7 @@ if __name__ == '__main__':
         f'{[(key, value) for key, value in config.__dict__.items()]}'
     )
     model = get_model(config.architecture, config)
-    model.forward(model.load_image_data(config))
+    model.forward(model.load_input_data(config))
     model.save_states()
 
     # TODO: Look at setting the model to eval

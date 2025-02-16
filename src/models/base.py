@@ -7,6 +7,7 @@ abstract base class for models.
 import logging
 import os
 from abc import ABC, abstractmethod
+from typing import Dict
 
 import torch
 from PIL import Image
@@ -114,8 +115,8 @@ class ModelBase(ABC):
                 )
             )
 
-    def load_image_data(self, config: Config) -> torch.Tensor:
-        """From a configuration, loads the input image data.
+    def load_input_data(self, config: Config) -> Dict[str, torch.Tensor]:
+        """From a configuration, loads the input image and text data.
 
         Args:
             config (Config): The configuration given with image input data
@@ -126,38 +127,63 @@ class ModelBase(ABC):
             torch.Tensor: The data as a torch tensor.
         """
         logging.debug('Loading data...')
-        imgs = [
-            Image.open(
-                os.path.join(config.input_dir, img)
-            ).convert('RGB')
-            for img in os.listdir(config.input_dir)
-        ]
 
-        logging.debug('Generating image prompt embeddings')
-        img_data = imgs
-        img_msgs = [{
-            'role': 'user',
-            'content': [
-                {
-                    'type': 'image'
-                },
-                {
-                    'type': 'text',
-                    'text': config.prompt
-                },
-            ],
-        }]
+        # build flags
+        img_flag = False
+        txt_flag = False
+        if hasattr(config, 'input_dir'):
+            img_flag = True
+        if hasattr(config, 'prompt'):
+            txt_flag = True
 
-        img_prompt = self.processor.apply_chat_template(
-            img_msgs,
-            add_generation_prompt=True
-        )
-        img_inputs = self.processor(
-            images=img_data,
-            text=[img_prompt for _ in range(len(img_data))],
-            return_tensors='pt'
-        )
+        # check if there is no input data
+        if not img_flag and not txt_flag:
+            raise RuntimeError('No input data was provided')
 
-        # TODO: to turn into text + image with "<xxx>" labels
+        # load data
+        if img_flag:
+            imgs = [
+                Image.open(
+                    os.path.join(config.input_dir, img)
+                ).convert('RGB')
+                for img in os.listdir(config.input_dir)
+            ]
+            img_data = imgs
+        if txt_flag:
+            img_msgs = [{
+                'role': 'user',
+                'content': [
+                    {
+                        'type': 'image'
+                    },
+                    {
+                        'type': 'text',
+                        'text': config.prompt
+                    },
+                ],
+            }]
+            img_prompt = self.processor.apply_chat_template(
+                img_msgs,
+                add_generation_prompt=True
+            )
 
-        return img_inputs
+        # build input ids
+        logging.debug('Generating embeddings')
+        if img_flag and txt_flag:
+            inputs = self.processor(
+                images=img_data,
+                text=[img_prompt for _ in range(len(img_data))],
+                return_tensors='pt'
+            )
+        elif img_flag:
+            inputs = self.processor(
+                images=img_data,
+                text=['' for _ in range(len(img_data))],
+                return_tensors='pt'
+                )
+        elif txt_flag:
+            inputs = self.processor(
+                text=img_prompt,
+                return_tensors='pt'
+                )
+        return inputs
