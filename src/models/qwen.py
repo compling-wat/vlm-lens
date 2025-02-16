@@ -7,30 +7,23 @@ from typing import Any, Dict
 from transformers import (AutoImageProcessor, AutoTokenizer,
                           Qwen2VLForConditionalGeneration)
 
-from .base import ModelBase, ModelSelection
+from .base import ModelBase
 from .config import Config
 
 
 class QwenModel(ModelBase):
     """Qwen model implementation."""
 
-    def __init__(self, model_path: str, config: Config):
+    def __init__(self, config: Config):
         """Initialization of the qwen model.
 
-        This makes sure to set the model name, path and config.
-
         Args:
-            model_path (str): The path to the specific model
             config (Config): Parsed config
         """
-        self.model_name = ModelSelection.QWEN
-        self.model_path = model_path
-        self.config = config
-
         # initialize the parent class
-        super().__init__()
+        super().__init__(config)
 
-    def load_specific_model(self):
+    def _load_specific_model(self):
         """Overridden function to populate self.model."""
         self.model = Qwen2VLForConditionalGeneration.from_pretrained(
             self.model_path, **self.config.model

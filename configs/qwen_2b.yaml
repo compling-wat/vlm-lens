@@ -2,4 +2,9 @@ architecture: qwen
 model_path: Qwen/Qwen2-VL-2B-Instruct
 model:
   - torch_dtype: auto
-  - device_map: auto
+output_dir: ./output_dir/
+input_dir: ./data/
+prompt: "Describe the color in this image in one word."
+modules:
+  - lm_head
+  - visual.blocks.31

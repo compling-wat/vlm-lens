@@ -18,7 +18,7 @@ pip install -r requirements.txt
 
 Then, execute the following command:
 ```bash
-python src/main.py --architecture <architecture> --model-path <model-path> --debug --config <config-file-path>
+python src/main.py --architecture <architecture> --model-path <model-path> --debug --config <config-file-path> --input-dir <input-dir> --output-dir <output-dir>
 ```
 with an optional debug flag to see more detailed outputs.
 
@@ -35,4 +35,13 @@ python src/main.py --architecture qwen --model-path Qwen/Qwen2-VL-2B-Instruct --
 or:
 ```base
 python src/main.py --config configs/qwen_2b.yaml --debug
+```
+
+### Matching Layers
+To automatically set up which layers to find/use, one should use the Unix style strings, where you can use `*` to denote wildcards.
+
+For example, if one wanted to match with all the attention layer's query projection layer for Qwen, simply add the following lines to the .yaml file:
+```
+modules:
+  - model.layers.*.self_attn.q_proj
 ```

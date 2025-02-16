@@ -6,13 +6,12 @@ This module here is the entrypoint to the VLM Competence toolkit.
 import logging
 
 from models import llava, qwen
-from models.base import ModelBase, ModelSelection
-from models.config import Config
+from models.base import ModelBase
+from models.config import Config, ModelSelection
 
 
 def get_model(
     model_arch: ModelSelection,
-    model_path: str,
     config: Config
 ) -> ModelBase:
     """Returns the model based on the selection enum chosen.
@@ -28,9 +27,9 @@ def get_model(
     """
     match model_arch:
         case ModelSelection.LLAVA:
-            return llava.LlavaModel(model_path, config)
+            return llava.LlavaModel(config)
         case ModelSelection.QWEN:
-            return qwen.QwenModel(model_path, config)
+            return qwen.QwenModel(config)
 
 
 if __name__ == '__main__':
@@ -44,4 +43,9 @@ if __name__ == '__main__':
         f'Config is set to '
         f'{[(key, value) for key, value in config.__dict__.items()]}'
     )
-    logging.debug(get_model(config.architecture, config.model_path, config))
+    model = get_model(config.architecture, config)
+    model.forward(model.load_image_data(config))
+    model.save_states()
+
+    # TODO: Look at setting the model to eval
+    # make sure that the train part doesn't introduce stochasticity

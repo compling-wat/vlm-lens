@@ -4,10 +4,16 @@ This module provides a config class to be used for both the parser as well as
 for providing the model specific classes a way to access the parsed arguments.
 """
 import argparse
+from enum import Enum
 
+import regex as re
 import yaml
 
-from models.base import ModelSelection
+
+class ModelSelection(str, Enum):
+    """Enum that contains all possible model choices."""
+    LLAVA = 'llava'
+    QWEN = 'qwen'
 
 
 class Config():
@@ -42,8 +48,23 @@ class Config():
         parser.add_argument(
             '-d',
             '--debug',
+            default=None,
             action='store_true',
             help='Print out debug statements'
+        )
+        # TODO: Add in a check to make sure that the input directory exists
+        parser.add_argument(
+            '-i',
+            '--input-dir',
+            type=str,
+            help='The specified input directory to read data from'
+        )
+        # TODO: Add in a check to make sure that the output directory exists
+        parser.add_argument(
+            '-o',
+            '--output-dir',
+            type=str,
+            help='The specified output directory to save the tensors to'
         )
 
         args = parser.parse_args()
@@ -52,6 +73,8 @@ class Config():
         # other special ones here (such as the model args)
         config_keys = list(args.__dict__.keys())
         config_keys.append('model')
+        config_keys.append('prompt')
+        config_keys.append('modules')
 
         # first read the config file and set the current attributes to it
         # then parse through the other arguments as that's what we want use to
@@ -88,3 +111,23 @@ class Config():
             for mapping in self.model:
                 model_mapping = {**model_mapping, **mapping}
             self.model = model_mapping
+
+        assert hasattr(self, 'modules') and self.modules is not None, (
+            'Must declare at least one module.'
+        )
+        self.modules = [re.compile(module) for module in self.modules]
+
+    def matches_module(self, module_name: str) -> bool:
+        """Returns whether the given module name matches one of the regexes.
+
+        Args:
+            module_name (str): The module name to match.
+
+        Returns:
+            bool: Whether the given module name matches the config's module
+            regexes.
+        """
+        for module in self.modules:
+            if module.fullmatch(module_name):
+                return True
+        return False
