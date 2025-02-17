@@ -16,7 +16,6 @@ from models.config import Config, ModelSelection
 
 def get_model(
     model_arch: ModelSelection,
-    model_path: str,
     config: Config
 ) -> ModelBase:
     """Returns the model based on the selection enum chosen.
@@ -95,7 +94,7 @@ if __name__ == '__main__':
         f'Config is set to '
         f'{[(key, value) for key, value in config.__dict__.items()]}'
     )
-    model = get_model(config.architecture, config.model_path, config)
+    model = get_model(config.architecture, config)
     model.forward(load_image_data(config, model))
     model.save_states()
 

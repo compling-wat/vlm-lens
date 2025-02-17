@@ -36,3 +36,12 @@ or:
 ```base
 python src/main.py --config configs/qwen_2b.yaml --debug
 ```
+
+### Matching Layers
+To automatically set up which layers to find/use, one should use the Unix style strings, where you can use `*` to denote wildcards.
+
+For example, if one wanted to match with all the attention layer's query projection layer for Qwen, simply add the following lines to the .yaml file:
+```
+modules:
+  - model.layers.*.self_attn.q_proj
+```
