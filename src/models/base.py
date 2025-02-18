@@ -141,6 +141,23 @@ class ModelBase(ABC):
             raise RuntimeError('No input data was provided')
 
         # load data
+        # for each input always apply the chat template
+        img_msgs = [{
+            'role': 'user',
+            'content': [
+                {
+                    'type': 'image'
+                },
+                {
+                    'type': 'text',
+                    'text': config.prompt if hasattr(config, 'prompt') else ''
+                },
+            ],
+        }]
+        img_prompt = self.processor.apply_chat_template(
+            img_msgs,
+            add_generation_prompt=True
+        )
         if img_flag:
             imgs = [
                 Image.open(
@@ -149,38 +166,15 @@ class ModelBase(ABC):
                 for img in os.listdir(config.input_dir)
             ]
             img_data = imgs
-        if txt_flag:
-            img_msgs = [{
-                'role': 'user',
-                'content': [
-                    {
-                        'type': 'image'
-                    },
-                    {
-                        'type': 'text',
-                        'text': config.prompt
-                    },
-                ],
-            }]
-            img_prompt = self.processor.apply_chat_template(
-                img_msgs,
-                add_generation_prompt=True
-            )
 
         # build input ids
         logging.debug('Generating embeddings')
-        if img_flag and txt_flag:
+        if img_flag:
             inputs = self.processor(
                 images=img_data,
                 text=[img_prompt for _ in range(len(img_data))],
                 return_tensors='pt'
             )
-        elif img_flag:
-            inputs = self.processor(
-                images=img_data,
-                text=['' for _ in range(len(img_data))],
-                return_tensors='pt'
-                )
         elif txt_flag:
             inputs = self.processor(
                 text=img_prompt,
