@@ -6,8 +6,8 @@ This module here is the entrypoint to the VLM Competence toolkit.
 import logging
 import os
 
-import torch
 from PIL import Image
+from transformers.feature_extraction_utils import BatchFeature
 
 from models import llava, qwen
 from models.base import ModelBase
@@ -36,7 +36,7 @@ def get_model(
             return qwen.QwenModel(config)
 
 
-def load_image_data(config: Config, model: ModelBase) -> torch.Tensor:
+def load_image_data(config: Config, model: ModelBase) -> BatchFeature:
     """From a configuration, loads the input image data.
 
     Args:
@@ -45,7 +45,7 @@ def load_image_data(config: Config, model: ModelBase) -> torch.Tensor:
         model (ModelBase): The model to use for generating the processor
 
     Returns:
-        torch.Tensor: The data as a torch tensor
+        data (BatchFeature): The input data dictionary
     """
     logging.debug('Loading data...')
     imgs = [
