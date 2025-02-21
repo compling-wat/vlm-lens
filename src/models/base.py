@@ -37,9 +37,6 @@ class ModelBase(ABC):
         # now set up the modules to register the hook to
         self._register_module_hooks()
 
-        # set the processor based on the model
-        self.processor = AutoProcessor.from_pretrained(self.model_path)
-
         # generate and register the forward hook
         logging.debug('Generating hook function')
 
@@ -142,6 +139,7 @@ class ModelBase(ABC):
 
         # load data
         # for each input always apply the chat template
+        self.processor = AutoProcessor.from_pretrained(self.model_path)
         img_msgs = [{
             'role': 'user',
             'content': [
