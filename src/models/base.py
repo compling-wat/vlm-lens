@@ -126,19 +126,14 @@ class ModelBase(ABC):
         logging.debug('Loading data...')
 
         # build flags
-        img_flag = False
-        txt_flag = False
-        if hasattr(config, 'input_dir'):
-            img_flag = True
-        if hasattr(config, 'prompt'):
-            txt_flag = True
+        img_flag = hasattr(config, 'input_dir')
+        txt_flag = hasattr(config, 'prompt')
 
         # check if there is no input data
         if not img_flag and not txt_flag:
             raise RuntimeError('No input data was provided')
 
-        # load data
-        # for each input always apply the chat template
+        # build chat template
         self.processor = AutoProcessor.from_pretrained(self.model_path)
         img_msgs = [{
             'role': 'user',
@@ -156,21 +151,18 @@ class ModelBase(ABC):
             img_msgs,
             add_generation_prompt=True
         )
-        if img_flag:
-            imgs = [
-                Image.open(
-                    os.path.join(config.input_dir, img)
-                ).convert('RGB')
-                for img in os.listdir(config.input_dir)
-            ]
-            img_data = imgs
 
         # build input ids
         logging.debug('Generating embeddings')
         if img_flag:
             inputs = self.processor(
-                images=img_data,
-                text=[img_prompt for _ in range(len(img_data))],
+                images=[
+                    Image.open(
+                        os.path.join(config.input_dir, img)
+                        ).convert('RGB')
+                    for img in os.listdir(config.input_dir)
+                    ],
+                text=[img_prompt for _ in os.listdir(config.input_dir)],
                 return_tensors='pt'
             )
         elif txt_flag:
