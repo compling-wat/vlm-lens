@@ -163,7 +163,7 @@ class ModelBase(ABC):
                 images=images,
                 text=[img_prompt for _ in os.listdir(config.input_dir)],
                 return_tensors='pt'
-            )
+                )
         elif txt_flag:
             inputs = self.processor(
                 text=img_prompt,
