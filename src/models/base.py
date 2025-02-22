@@ -155,13 +155,12 @@ class ModelBase(ABC):
         # build input ids
         logging.debug('Generating embeddings')
         if img_flag:
+            images = [
+                Image.open(os.path.join(config.input_dir, img)).convert('RGB')
+                for img in os.listdir(config.input_dir)
+                ]
             inputs = self.processor(
-                images=[
-                    Image.open(
-                        os.path.join(config.input_dir, img)
-                        ).convert('RGB')
-                    for img in os.listdir(config.input_dir)
-                    ],
+                images=images,
                 text=[img_prompt for _ in os.listdir(config.input_dir)],
                 return_tensors='pt'
             )
