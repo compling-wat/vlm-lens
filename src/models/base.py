@@ -10,6 +10,7 @@ from abc import ABC, abstractmethod
 
 import torch
 from transformers import AutoProcessor
+from transformers.feature_extraction_utils import BatchFeature
 
 from .config import Config
 
@@ -88,11 +89,11 @@ class ModelBase(ABC):
                 'No hooks were registered. Double-check the configured modules.'
             )
 
-    def forward(self, data: torch.Tensor):
+    def forward(self, data: BatchFeature):
         """Given some data, performs a single forward pass.
 
         Args:
-            data (torch.Tensor): The input data tensor
+            data (BatchFeature): The input data dictionary
         """
         logging.debug('Starting forward pass')
         with torch.no_grad():
