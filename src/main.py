@@ -97,6 +97,3 @@ if __name__ == '__main__':
     model = get_model(config.architecture, config)
     model.forward(load_image_data(config, model))
     model.save_states()
-
-    # TODO: Look at setting the model to eval
-    # make sure that the train part doesn't introduce stochasticity

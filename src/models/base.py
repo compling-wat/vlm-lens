@@ -96,6 +96,7 @@ class ModelBase(ABC):
             data (BatchFeature): The input data dictionary
         """
         logging.debug('Starting forward pass')
+        self.model.eval()
         with torch.no_grad():
             _ = self.model(**data)
         logging.debug('Completed forward pass...')
