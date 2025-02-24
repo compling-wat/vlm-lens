@@ -66,7 +66,9 @@ class ModelBase(ABC):
             os.makedirs(directory_path)
 
         with open(file_path, 'w') as output_file:
-            output_file.writelines([f'{name}\n' for name, _ in self.model.named_modules()])
+            output_file.writelines(
+                [f'{name}\n' for name, _ in self.model.named_modules()]
+            )
 
     @abstractmethod
     def _load_specific_model(self):
