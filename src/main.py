@@ -2,7 +2,6 @@
 
 This module here is the entrypoint to the VLM Competence toolkit.
 """
-
 import logging
 
 from models import llava, qwen

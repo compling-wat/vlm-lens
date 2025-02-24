@@ -3,15 +3,14 @@
 Provides the common classes used such as the ModelSelection enum as well as the
 abstract base class for models.
 """
-
 import logging
 import os
 from abc import ABC, abstractmethod
-from typing import Dict
 
 import torch
 from PIL import Image
 from transformers import AutoProcessor
+from transformers.feature_extraction_utils import BatchFeature
 
 from .config import Config
 
@@ -87,11 +86,11 @@ class ModelBase(ABC):
                 'No hooks were registered. Double-check the configured modules.'
             )
 
-    def forward(self, data: torch.Tensor):
+    def forward(self, data: BatchFeature):
         """Given some data, performs a single forward pass.
 
         Args:
-            data (torch.Tensor): The input data tensor
+            data (BatchFeature): The input data dictionary
         """
         logging.debug('Starting forward pass')
         with torch.no_grad():
@@ -112,7 +111,7 @@ class ModelBase(ABC):
                 )
             )
 
-    def load_input_data(self, config: Config) -> Dict[str, torch.Tensor]:
+    def load_input_data(self, config: Config) -> BatchFeature:
         """From a configuration, loads the input image and text data.
 
         Args:
