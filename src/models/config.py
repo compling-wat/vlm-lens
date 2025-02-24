@@ -113,15 +113,15 @@ class Config():
             )
             self.architecture = ModelSelection(self.architecture)
 
-        # do an early return if we don't need the modules
-        if self.log_named_modules:
-            return
-
         if hasattr(self, 'model'):
             model_mapping = {}
             for mapping in self.model:
                 model_mapping = {**model_mapping, **mapping}
             self.model = model_mapping
+
+        # do an early return if we don't need the modules
+        if self.log_named_modules:
+            return
 
         assert hasattr(self, 'modules') and self.modules is not None, (
             'Must declare at least one module.'
