@@ -6,10 +6,10 @@ abstract base class for models.
 
 import logging
 import os
-from abc import ABC, abstractmethod
+from abc import ABC
 
 import torch
-from transformers import AutoProcessor
+from transformers import AutoModelForImageTextToText, AutoProcessor
 from transformers.feature_extraction_utils import BatchFeature
 
 from .config import Config
@@ -42,10 +42,15 @@ class ModelBase(ABC):
         # generate and register the forward hook
         logging.debug('Generating hook function')
 
-    @abstractmethod
     def _load_specific_model(self):
-        """Abstract method that loads the specific model."""
-        pass
+        """Method that loads the specific model, which can be overwritten."""
+        self.model = AutoModelForImageTextToText.from_pretrained(
+            self.model_path, **self.config.model
+        ) if hasattr(self.config, 'model') else (
+            AutoModelForImageTextToText.from_pretrained(
+                self.model_path
+            )
+        )
 
     def _generate_state_hook(self, name: str):
         """Generates the state hook depending on the embedding type.

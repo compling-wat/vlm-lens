@@ -9,7 +9,6 @@ import os
 from PIL import Image
 from transformers.feature_extraction_utils import BatchFeature
 
-from models import llava, qwen
 from models.base import ModelBase
 from models.config import Config, ModelSelection
 
@@ -30,10 +29,8 @@ def get_model(
         base.ModelBase: A model of type ModelBase which implements the runtime
     """
     match model_arch:
-        case ModelSelection.LLAVA:
-            return llava.LlavaModel(config)
-        case ModelSelection.QWEN:
-            return qwen.QwenModel(config)
+        case ModelSelection.LLAVA | ModelSelection.QWEN:
+            return ModelBase(config)
 
 
 def load_image_data(config: Config, model: ModelBase) -> BatchFeature:
