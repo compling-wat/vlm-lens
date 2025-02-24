@@ -99,6 +99,12 @@ class Config():
             if value is not None:
                 setattr(self, key, value)
 
+        # we set the debug flag to False if it doesn't exist
+        # And to whatever we would normally set it to otherwise
+        self.debug = (
+            hasattr(self, 'debug') and self.debug
+        )
+
         # require that the architecture and the model path to exist
         assert hasattr(self, 'architecture') and hasattr(self, 'model_path'), (
             'Fields `architecture` and `model_path` in yaml config must exist, '
@@ -120,6 +126,9 @@ class Config():
             self.model = model_mapping
 
         # do an early return if we don't need the modules
+        self.log_named_modules = (
+            hasattr(self, 'log_named_modules') and self.log_named_modules
+        )
         if self.log_named_modules:
             return
 
