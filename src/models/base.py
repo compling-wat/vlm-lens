@@ -27,6 +27,11 @@ class ModelBase(ABC):
         self.model_path = config.model_path
         self.config = config
 
+        # log the modules -- note that this causes an exit
+        if self.config.log_named_modules:
+            self._log_named_modules()
+            exit(0)
+
         # load the specific model
         logging.debug(
             f'Loading model {self.config.architecture.value}; {self.model_path}'
@@ -41,6 +46,27 @@ class ModelBase(ABC):
 
         # generate and register the forward hook
         logging.debug('Generating hook function')
+
+    def _log_named_modules(self):
+        """Logs the named modules based on the loaded model."""
+        file_path = 'logs/' + self.model_path + '.txt'
+        directory_path = os.path.dirname(file_path)
+
+        # if the path exists to the file, don't load the model again
+        if os.path.isfile(file_path):
+            logging.debug(f'Named modules are cached in {file_path}')
+            return
+
+        # in which case, we first load the model, then output its modules
+        self._load_specific_model()
+
+        # otherwise, we log the output to that file, and creating directories
+        # as needed
+        if not os.path.exists(directory_path):
+            os.makedirs(directory_path)
+
+        with open(file_path, 'w') as output_file:
+            output_file.writelines([f'{name}\n' for name, _ in self.model.named_modules()])
 
     @abstractmethod
     def _load_specific_model(self):

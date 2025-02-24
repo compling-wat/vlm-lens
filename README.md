@@ -45,3 +45,10 @@ For example, if one wanted to match with all the attention layer's query project
 modules:
   - model.layers.*.self_attn.q_proj
 ```
+
+#### Printing out Named Modules
+Unfortunately there is no way to find which layers to potentially match to without loading the model. This can take quite a bit of system time figuring out.
+
+Instead, we offer some cached results under `logs/` for each model, which were generated through including the `-l` or `--log_named_modules` flag.
+
+When running this flag, it is not necessary to set modules or anything besides the architecture and HuggingFace model path.

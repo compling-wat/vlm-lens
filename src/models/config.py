@@ -52,6 +52,13 @@ class Config():
             action='store_true',
             help='Print out debug statements'
         )
+        parser.add_argument(
+            '-l',
+            '--log_named_modules',
+            default=None,
+            action='store_true',
+            help='Logs the named modules for the specified model'
+        )
         # TODO: Add in a check to make sure that the input directory exists
         parser.add_argument(
             '-i',
@@ -105,6 +112,10 @@ class Config():
                 f'use one of {model_sel}'
             )
             self.architecture = ModelSelection(self.architecture)
+
+        # do an early return if we don't need the modules
+        if self.log_named_modules:
+            return
 
         if hasattr(self, 'model'):
             model_mapping = {}
