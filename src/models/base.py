@@ -134,38 +134,38 @@ class ModelBase(ABC):
 
         # build chat template
         self.processor = AutoProcessor.from_pretrained(self.model_path)
-        img_msgs = [{
+        input_msgs = [{
             'role': 'user',
-            'content': [
-                {
-                    'type': 'image'
-                },
-                {
-                    'type': 'text',
-                    'text': config.prompt if hasattr(config, 'prompt') else ''
-                },
-            ],
+            'content': []
         }]
-        img_prompt = self.processor.apply_chat_template(
-            img_msgs,
+        if img_flag:
+            input_msgs[0]['content'].append({
+                'type': 'image'
+            })
+        if txt_flag:
+            input_msgs[0]['content'].append({
+                'type': 'text',
+                'text': config.prompt
+            })
+
+        input_prompt = self.processor.apply_chat_template(
+            input_msgs,
             add_generation_prompt=True
         )
 
         # build input ids
         logging.debug('Generating embeddings')
         if img_flag:
-            images = [
-                Image.open(os.path.join(config.input_dir, img)).convert('RGB')
-                for img in os.listdir(config.input_dir)
-                ]
             inputs = self.processor(
-                images=images,
-                text=[img_prompt for _ in os.listdir(config.input_dir)],
+                images=[
+                    Image.open(os.path.join(config.input_dir, img)).convert('RGB') for img in os.listdir(config.input_dir)
+                ],
+                text=[input_prompt for _ in os.listdir(config.input_dir)],
                 return_tensors='pt'
-                )
+            )
         elif txt_flag:
             inputs = self.processor(
-                text=img_prompt,
+                text=input_prompt,
                 return_tensors='pt'
-                )
+            )
         return inputs
