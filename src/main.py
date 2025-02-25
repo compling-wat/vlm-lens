@@ -43,7 +43,10 @@ if __name__ == '__main__':
         f'{[(key, value) for key, value in config.__dict__.items()]}'
     )
     model = get_model(config.architecture, config)
-    model.forward(model.load_input_data(config))
+    model.forward(model.load_input_data({
+        'input_dir': config.input_dir if hasattr(config, 'input_dir') else None,
+        'prompt': config.prompt if hasattr(config, 'prompt') else None
+    }))
     model.save_states()
 
     # TODO: Look at setting the model to eval

@@ -6,6 +6,7 @@ abstract base class for models.
 import logging
 import os
 from abc import ABC, abstractmethod
+from typing import Any, Dict, List
 
 import torch
 from PIL import Image
@@ -111,61 +112,90 @@ class ModelBase(ABC):
                 )
             )
 
-    def load_input_data(self, config: Config) -> BatchFeature:
+    def _init_processor(self) -> None:
+        """Initialize the processor by loading from the model path."""
+        self.processor = AutoProcessor.from_pretrained(self.model_path)
+
+    def _generate_prompt(self,
+                         input_msgs: Dict[str, Any],
+                         add_generation_prompt: bool = True
+                         ) -> str:
+        """Generates the prompt from the input messages.
+
+        Args:
+            input_msgs (Dict[str, Any]): The input messages to generate the prompt from.
+            add_generation_prompt (bool): Whether to add the generation prompt to the prompt.
+
+        Returns:
+            str: The generated prompt with the input text and the image labels.
+        """
+        logging.debug('Loading data...')
+
+        # build the input dict for the chat template
+        input_msgs_formatted = [{
+            'role': 'user',
+            'content': []
+        }]
+        if input_msgs['input_dir']:
+            input_msgs_formatted[0]['content'].append({
+                'type': 'image'
+            })
+        if input_msgs['prompt']:
+            input_msgs_formatted[0]['content'].append({
+                'type': 'text',
+                'text': input_msgs['prompt']
+            })
+
+        # apply the chat template to get the prompt
+        return self.processor.apply_chat_template(
+            input_msgs_formatted,
+            add_generation_prompt=add_generation_prompt
+        )
+
+    def _call_processor(self,
+                        prompt: str,
+                        input_dir: List[str] = None,
+                        ) -> BatchFeature:
+        """Call the processor to generate the embeddings."""
+        logging.debug('Generating embeddings...')
+
+        # image-only or image and text
+        if input_dir:
+            inputs = self.processor(
+                images=[
+                    Image.open(os.path.join(input_dir, img)).convert('RGB') for img in os.listdir(input_dir)
+                ],
+                text=[prompt for _ in os.listdir(input_dir)],
+                return_tensors='pt'
+            )
+        # text-only
+        else:
+            inputs = self.processor(
+                text=prompt,
+                return_tensors='pt'
+            )
+        return inputs
+
+    def load_input_data(self, input_msgs: Dict[str, Any]) -> BatchFeature:
         """From a configuration, loads the input image and text data.
 
         Args:
-            config (Config): The configuration given with image input data
-            information.
+            input_msgs (Dict[str, Any]): The configuration given with image input data information.
             model (ModelBase): The model to use for generating the processor.
 
         Returns:
             torch.Tensor: The data as a torch tensor.
         """
-        logging.debug('Loading data...')
-
-        # build flags
-        img_flag = hasattr(config, 'input_dir')
-        txt_flag = hasattr(config, 'prompt')
-
         # check if there is no input data
-        if not img_flag and not txt_flag:
+        if input_msgs['input_dir'] is None and input_msgs['prompt'] is None:
             raise RuntimeError('No input data was provided')
 
-        # build chat template
-        self.processor = AutoProcessor.from_pretrained(self.model_path)
-        input_msgs = [{
-            'role': 'user',
-            'content': []
-        }]
-        if img_flag:
-            input_msgs[0]['content'].append({
-                'type': 'image'
-            })
-        if txt_flag:
-            input_msgs[0]['content'].append({
-                'type': 'text',
-                'text': config.prompt
-            })
+        # load the processor
+        self._init_processor()
 
-        input_prompt = self.processor.apply_chat_template(
-            input_msgs,
-            add_generation_prompt=True
-        )
-
-        # build input ids
-        logging.debug('Generating embeddings')
-        if img_flag:
-            inputs = self.processor(
-                images=[
-                    Image.open(os.path.join(config.input_dir, img)).convert('RGB') for img in os.listdir(config.input_dir)
-                ],
-                text=[input_prompt for _ in os.listdir(config.input_dir)],
-                return_tensors='pt'
-            )
-        elif txt_flag:
-            inputs = self.processor(
-                text=input_prompt,
-                return_tensors='pt'
+        # build the input batch features
+        inputs = self._call_processor(
+            prompt=self._generate_prompt(input_msgs=input_msgs),
+            input_dir=input_msgs['input_dir']
             )
         return inputs
