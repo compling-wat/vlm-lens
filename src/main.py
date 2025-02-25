@@ -29,11 +29,10 @@ def get_model(
     Returns:
         base.ModelBase: A model of type ModelBase which implements the runtime
     """
-    match model_arch:
-        case ModelSelection.LLAVA:
-            return llava.LlavaModel(config)
-        case ModelSelection.QWEN:
-            return qwen.QwenModel(config)
+    if model_arch == ModelSelection.LLAVA:
+        return llava.LlavaModel(config)
+    elif model_arch == ModelSelection.QWEN:
+        return qwen.QwenModel(config)
 
 
 def load_image_data(config: Config, model: ModelBase) -> torch.Tensor:
@@ -98,5 +97,3 @@ if __name__ == '__main__':
     model.forward(load_image_data(config, model))
     model.save_states()
 
-    # TODO: Look at setting the model to eval
-    # make sure that the train part doesn't introduce stochasticity
