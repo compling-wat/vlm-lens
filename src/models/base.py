@@ -113,14 +113,14 @@ class ModelBase(ABC):
             )
 
     def _init_processor(self) -> None:
-        """Initialize the processor by loading from the model path."""
+        """Initialize the self.processor by loading from the path."""
         self.processor = AutoProcessor.from_pretrained(self.model_path)
 
     def _generate_prompt(self,
                          input_msgs: Dict[str, Any],
                          add_generation_prompt: bool = True
                          ) -> str:
-        """Generates the prompt from the input messages.
+        """Generates the prompt string from the input messages.
 
         Args:
             input_msgs (Dict[str, Any]): The input messages to generate the prompt from.
@@ -156,7 +156,15 @@ class ModelBase(ABC):
                         prompt: str,
                         input_dir: List[str] = None,
                         ) -> BatchFeature:
-        """Call the processor to generate the embeddings."""
+        """Call the processor with the prompt string and input images to generate the embeddings.
+
+        Args:
+            prompt (str): The prompt string to use.
+            input_dir (List[str]): The list of image paths to use.
+
+        Returns:
+            BatchFeature: The batch feature object with the input data.
+        """
         logging.debug('Generating embeddings...')
 
         # image-only or image and text
@@ -181,10 +189,9 @@ class ModelBase(ABC):
 
         Args:
             input_msgs (Dict[str, Any]): The configuration given with image input data information.
-            model (ModelBase): The model to use for generating the processor.
 
         Returns:
-            torch.Tensor: The data as a torch tensor.
+            BatchFeature: The input data as either a torch.Tensor or a Dict.
         """
         # check if there is no input data
         if input_msgs['input_dir'] is None and input_msgs['prompt'] is None:
