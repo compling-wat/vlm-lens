@@ -119,10 +119,10 @@ class ModelBase(ABC):
             )
 
     def _generate_processor_args(self, prompt) -> dict:
-        """Generate the processor arguments based on the flags.
+        """Generate the processor arguments to be input into the processor.
 
         Args:
-            prompt (str): The prompt string to generate the arguments with.
+            prompt (str): The generated prompt string with the input text and the image labels.
 
         Returns:
             dict: The processor arguments.
@@ -138,10 +138,10 @@ class ModelBase(ABC):
         return processor_args
 
     def _generate_prompt(self, add_generation_prompt: bool = True) -> str:
-        """Generates the prompt string from the input messages.
+        """Generates the prompt string with the input messages.
 
         Args:
-            add_generation_prompt (bool): Whether to add the generation prompt to the prompt. TODO: move `add_generation_prompt` to the config.
+            add_generation_prompt (bool): Whether to add a start token of a bot response. TODO: move `add_generation_prompt` to the config.
 
         Returns:
             str: The generated prompt with the input text and the image labels.
