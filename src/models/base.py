@@ -120,6 +120,7 @@ class ModelBase(ABC):
 
     def _generate_prompt(self,
                          add_generation_prompt: bool = True
+                         # TODO: move `add_generation_prompt` to the config
                          ) -> str:
         """Generates the prompt string from the input messages.
 
