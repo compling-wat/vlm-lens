@@ -3,12 +3,12 @@
 Provides the common classes used such as the ModelSelection enum as well as the
 abstract base class for models.
 """
-
 import logging
 import os
 from abc import ABC, abstractmethod
 
 import torch
+from PIL import Image
 from transformers import AutoProcessor
 from transformers.feature_extraction_utils import BatchFeature
 
@@ -33,11 +33,11 @@ class ModelBase(ABC):
         )
         self._load_specific_model()
 
+        # load the processor
+        self._init_processor()
+
         # now set up the modules to register the hook to
         self._register_module_hooks()
-
-        # set the processor based on the model
-        self.processor = AutoProcessor.from_pretrained(self.model_path)
 
         # generate and register the forward hook
         logging.debug('Generating hook function')
@@ -46,6 +46,10 @@ class ModelBase(ABC):
     def _load_specific_model(self):
         """Abstract method that loads the specific model."""
         pass
+
+    def _init_processor(self) -> None:
+        """Initialize the self.processor by loading from the path."""
+        self.processor = AutoProcessor.from_pretrained(self.model_path)
 
     def _generate_state_hook(self, name: str):
         """Generates the state hook depending on the embedding type.
@@ -114,3 +118,91 @@ class ModelBase(ABC):
                     f'state_{name}_{self.config.architecture}.pt'
                 )
             )
+
+    def _generate_processor_args(self, prompt) -> dict:
+        """Generate the processor arguments to be input into the processor.
+
+        Args:
+            prompt (str): The generated prompt string with the input text and the image labels.
+
+        Returns:
+            dict: The processor arguments.
+        """
+        processor_args = {
+            'text': [prompt for _ in os.listdir(self.config.input_dir)] if hasattr(self.config, 'input_dir') else prompt,
+            'return_tensors': 'pt'
+        }
+        if hasattr(self.config, 'input_dir'):
+            processor_args['images'] = [
+                Image.open(os.path.join(self.config.input_dir, img)).convert('RGB') for img in os.listdir(self.config.input_dir)
+            ]
+        return processor_args
+
+    def _generate_prompt(self, add_generation_prompt: bool = True) -> str:
+        """Generates the prompt string with the input messages.
+
+        Args:
+            add_generation_prompt (bool): Whether to add a start token of a bot response. TODO: move `add_generation_prompt` to the config.
+
+        Returns:
+            str: The generated prompt with the input text and the image labels.
+        """
+        logging.debug('Loading data...')
+
+        # build the input dict for the chat template
+        input_msgs_formatted = [{
+            'role': 'user',
+            'content': []
+        }]
+
+        # add the image if it exists
+        if hasattr(self.config, 'input_dir'):
+            input_msgs_formatted[0]['content'].append({
+                'type': 'image'
+            })
+
+        # add the prompt if it exists
+        if hasattr(self.config, 'prompt'):
+            input_msgs_formatted[0]['content'].append({
+                'type': 'text',
+                'text': self.config.prompt
+            })
+
+        # apply the chat template to get the prompt
+        return self.processor.apply_chat_template(
+            input_msgs_formatted,
+            add_generation_prompt=add_generation_prompt
+        )
+
+    def _call_processor(self) -> BatchFeature:
+        """Call the processor with the prompt string and input images to generate the embeddings.
+
+        Returns:
+            BatchFeature: The batch feature object with the input data.
+        """
+        logging.debug('Generating embeddings...')
+
+        # format the prompt
+        prompt_formatted = self._generate_prompt()
+
+        # generate the inputs
+        inputs = self.processor(**self._generate_processor_args(
+            prompt=prompt_formatted
+        ))
+
+        return inputs
+
+    def load_input_data(self) -> BatchFeature:
+        """From a configuration, loads the input image and text data.
+
+        Returns:
+            BatchFeature: The input data as either a torch.Tensor or a Dict.
+        """
+        # check if there is no input data
+        if not hasattr(self.config, 'input_dir') and not hasattr(self.config, 'prompt'):
+            raise RuntimeError('No input data was provided')
+
+        # build the input batch features
+        inputs = self._call_processor()
+
+        return inputs
