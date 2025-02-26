@@ -118,6 +118,25 @@ class ModelBase(ABC):
                 )
             )
 
+    def _generate_processor_args(self, prompt) -> dict:
+        """Generate the processor arguments based on the flags.
+
+        Args:
+            prompt (str): The prompt string to generate the arguments with.
+
+        Returns:
+            dict: The processor arguments.
+        """
+        processor_args = {
+            'text': [prompt for _ in os.listdir(self.config.input_dir)] if hasattr(self.config, 'input_dir') else prompt,
+            'return_tensors': 'pt'
+            }
+        if hasattr(self.config, 'input_dir'):
+            processor_args['images'] = [
+                Image.open(os.path.join(self.config.input_dir, img)).convert('RGB') for img in os.listdir(self.config.input_dir)
+                ]
+        return processor_args
+
     def _generate_prompt(self,
                          add_generation_prompt: bool = True
                          # TODO: move `add_generation_prompt` to the config
@@ -136,24 +155,26 @@ class ModelBase(ABC):
         input_msgs_formatted = [{
             'role': 'user',
             'content': []
-        }]
+            }]
+
         # add the image if it exists
         if hasattr(self.config, 'input_dir'):
             input_msgs_formatted[0]['content'].append({
                 'type': 'image'
-            })
+                })
+
         # add the prompt if it exists
         if hasattr(self.config, 'prompt'):
             input_msgs_formatted[0]['content'].append({
                 'type': 'text',
                 'text': self.config.prompt
-            })
+                })
 
         # apply the chat template to get the prompt
         return self.processor.apply_chat_template(
             input_msgs_formatted,
             add_generation_prompt=add_generation_prompt
-        )
+            )
 
     def _call_processor(self) -> BatchFeature:
         """Call the processor with the prompt string and input images to generate the embeddings.
@@ -163,23 +184,14 @@ class ModelBase(ABC):
         """
         logging.debug('Generating embeddings...')
 
+        # format the prompt
         prompt_formatted = self._generate_prompt()
 
-        # image-only or image and text
-        if hasattr(self.config, 'input_dir'):
-            inputs = self.processor(
-                images=[
-                    Image.open(os.path.join(self.config.input_dir, img)).convert('RGB') for img in os.listdir(self.config.input_dir)
-                ],
-                text=[prompt_formatted for _ in os.listdir(self.config.input_dir)],
-                return_tensors='pt'
-            )
-        # text-only
-        else:
-            inputs = self.processor(
-                text=prompt_formatted,
-                return_tensors='pt'
-            )
+        # generate the inputs
+        inputs = self.processor(**self._generate_processor_args(
+            prompt=prompt_formatted
+            ))
+
         return inputs
 
     def load_input_data(self) -> BatchFeature:
