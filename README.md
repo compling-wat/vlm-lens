@@ -22,8 +22,6 @@ python src/main.py --architecture <architecture> --model-path <model-path> --deb
 ```
 with an optional debug flag to see more detailed outputs.
 
-By default, the input and output directories are set to `./data/` and `./output_dir/` respectively.
-
 Note that the config file should be in yaml format, and that any arguments you want to send to the huggingface API should be under the `model` key. See `configs/qwen_2b.yaml` as an example.
 
 The supported architecture flags are currently:

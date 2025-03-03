@@ -157,12 +157,17 @@ class ModelBase(ABC):
             dict: The processor arguments.
         """
         processor_args = {
-            'text': [prompt for _ in os.listdir(self.config.input_dir)] if hasattr(self.config, 'input_dir') else prompt,
+            'text': (
+                [prompt for _ in self.config.image_paths]
+                if self.config.has_images() else
+                prompt
+            ),
             'return_tensors': 'pt'
         }
-        if hasattr(self.config, 'input_dir'):
+        if self.config.has_images():
             processor_args['images'] = [
-                Image.open(os.path.join(self.config.input_dir, img)).convert('RGB') for img in os.listdir(self.config.input_dir)
+                Image.open(img_path).convert('RGB')
+                for img_path in self.config.image_paths
             ]
         return processor_args
 
@@ -184,7 +189,7 @@ class ModelBase(ABC):
         }]
 
         # add the image if it exists
-        if hasattr(self.config, 'input_dir'):
+        if self.config.has_images():
             input_msgs_formatted[0]['content'].append({
                 'type': 'image'
             })
@@ -226,10 +231,6 @@ class ModelBase(ABC):
         Returns:
             BatchFeature: The input data as either a torch.Tensor or a Dict.
         """
-        # check if there is no input data
-        if not hasattr(self.config, 'input_dir') and not hasattr(self.config, 'prompt'):
-            raise RuntimeError('No input data was provided')
-
         # build the input batch features
         inputs = self._call_processor()
 

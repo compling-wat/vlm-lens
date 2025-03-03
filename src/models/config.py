@@ -5,6 +5,7 @@ for providing the model specific classes a way to access the parsed arguments.
 """
 import argparse
 import logging
+import os
 from enum import Enum
 
 import regex as re
@@ -64,7 +65,6 @@ class Config():
         parser.add_argument(
             '-i',
             '--input-dir',
-            default='./data/',
             type=str,
             help='The specified input directory to read data from'
         )
@@ -72,7 +72,6 @@ class Config():
         parser.add_argument(
             '-o',
             '--output-dir',
-            default='./output_dir/',
             type=str,
             help='The specified output directory to save the tensors to'
         )
@@ -141,6 +140,37 @@ class Config():
             'Must declare at least one module.'
         )
         self.modules = [re.compile(module) for module in self.modules]
+
+        self.image_paths = []
+        if hasattr(self, 'input_dir'):
+            # now we take a look through all the images in the input directory
+            # and add those paths to image_paths
+            image_exts = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff']
+            self.image_paths = [
+                os.path.join(self.input_dir, img_path)
+                for img_path in filter(
+                    lambda file_path:
+                        os.path.splitext(file_path)[1].lower() in image_exts,
+                    os.listdir(self.input_dir)
+                )
+            ]
+
+        logging.debug(self.image_paths)
+
+        # check if there is no input data
+        if not (self.has_images() or hasattr(self, 'prompt')):
+            raise ValueError(
+                'Input directory was either not provided or empty '
+                'and no prompt was provided'
+            )
+
+    def has_images(self) -> bool:
+        """Returns a boolean for whether or not the input directory has images.
+
+        Returns:
+            bool: Whether or not the input directory has images.
+        """
+        return len(self.image_paths) > 0
 
     def matches_module(self, module_name: str) -> bool:
         """Returns whether the given module name matches one of the regexes.
