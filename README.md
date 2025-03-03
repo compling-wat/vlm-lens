@@ -22,6 +22,8 @@ python src/main.py --architecture <architecture> --model-path <model-path> --deb
 ```
 with an optional debug flag to see more detailed outputs.
 
+Note that the input and output directories default to the `./data` and `./output_dir` respectively.
+
 Note that the config file should be in yaml format, and that any arguments you want to send to the huggingface API should be under the `model` key. See `configs/qwen-2b.yaml` as an example.
 
 The supported architecture flags are currently:
@@ -53,3 +55,18 @@ Unfortunately there is no way to find which layers to potentially match to witho
 Instead, we offer some cached results under `logs/` for each model, which were generated through including the `-l` or `--log_named_modules` flag.
 
 When running this flag, it is not necessary to set modules or anything besides the architecture and HuggingFace model path.
+
+### Prompt Input
+For prompt input, one can either run using a single prompt over the entire input directory, entering a string under `text_input` or enter the following configuration:
+```
+text_prompts:
+  - <prompt_1_name>
+    - prompt: <prompt>
+    - filter: <regex representing which image filenames to match to>
+  - <prompt_2_name>
+    - prompt: <prompt>
+    - filter: <regex representing which image filenames to match to>
+  ...
+```
+
+Note that filter will run within the input directory specified, and if no input directory exists, it defaults to `./data`.

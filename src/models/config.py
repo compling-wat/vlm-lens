@@ -67,6 +67,7 @@ class Config():
             '-i',
             '--input-dir',
             type=str,
+            default='./data',
             help='The specified input directory to read data from'
         )
         # TODO: Add in a check to make sure that the output directory exists
@@ -74,6 +75,7 @@ class Config():
             '-o',
             '--output-dir',
             type=str,
+            default='./output_dir',
             help='The specified output directory to save the tensors to'
         )
 
@@ -83,7 +85,7 @@ class Config():
         # other special ones here (such as the model args)
         config_keys = list(args.__dict__.keys())
         config_keys.append('model')
-        config_keys.append('prompt')
+        config_keys.append('text_input')
         config_keys.append('modules')
 
         # first read the config file and set the current attributes to it
