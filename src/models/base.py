@@ -44,9 +44,6 @@ class ModelBase(ABC):
         # now set up the modules to register the hook to
         self._register_module_hooks()
 
-        # set the processor based on the model
-        self._load_processor()
-
         # generate and register the forward hook
         logging.debug('Generating hook function')
 
@@ -123,10 +120,6 @@ class ModelBase(ABC):
             raise RuntimeError(
                 'No hooks were registered. Double-check the configured modules.'
             )
-
-    def _load_processor(self):
-        """Given the model path set, load the processor."""
-        self.processor = AutoProcessor.from_pretrained(self.model_path)
 
     def forward(self, data: BatchFeature):
         """Given some data, performs a single forward pass.
