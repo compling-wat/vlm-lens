@@ -24,11 +24,10 @@ def get_model(
     Returns:
         base.ModelBase: A model of type ModelBase which implements the runtime
     """
-    match model_arch:
-        case ModelSelection.LLAVA:
-            return llava.LlavaModel(config)
-        case ModelSelection.QWEN:
-            return qwen.QwenModel(config)
+    if model_arch == ModelSelection.LLAVA:
+        return llava.LlavaModel(config)
+    elif model_arch == ModelSelection.QWEN:
+        return qwen.QwenModel(config)
 
 
 if __name__ == '__main__':
