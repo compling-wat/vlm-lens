@@ -1,0 +1,10 @@
+architecture: internlm
+model_path: internlm/internlm-xcomposer2d5-7b
+model:
+  - torch_dtype: auto
+output_dir: ./output_dir/
+input_dir: ./data/
+prompt: "Describe the color in this image in one word."
+modules:
+  - model.layers.31
+  - vit.vision_tower.vision_model.encoder.layers.23
