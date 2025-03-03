@@ -63,6 +63,7 @@ class Config():
         parser.add_argument(
             '-i',
             '--input-dir',
+            default='./data/',
             type=str,
             help='The specified input directory to read data from'
         )
@@ -70,6 +71,7 @@ class Config():
         parser.add_argument(
             '-o',
             '--output-dir',
+            default='./output_dir/',
             type=str,
             help='The specified output directory to save the tensors to'
         )
