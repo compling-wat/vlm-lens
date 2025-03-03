@@ -4,6 +4,7 @@ This module provides a config class to be used for both the parser as well as
 for providing the model specific classes a way to access the parsed arguments.
 """
 import argparse
+import logging
 from enum import Enum
 
 import regex as re
@@ -106,6 +107,8 @@ class Config():
         self.debug = (
             hasattr(self, 'debug') and self.debug
         )
+        if self.debug:
+            logging.basicConfig(level=logging.DEBUG)
 
         # require that the architecture and the model path to exist
         assert hasattr(self, 'architecture') and hasattr(self, 'model_path'), (
