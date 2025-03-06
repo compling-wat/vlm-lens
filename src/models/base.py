@@ -8,7 +8,7 @@ import logging
 import os
 import sqlite3
 from abc import ABC, abstractmethod
-from typing import List, Tuple, TypeAlias
+from typing import List, Tuple
 
 import torch
 from PIL import Image
@@ -17,7 +17,7 @@ from transformers.feature_extraction_utils import BatchFeature
 
 from .config import Config
 
-ModelInput: TypeAlias = Tuple[str, str, BatchFeature]
+ModelInput = Tuple[str, str, BatchFeature]
 
 
 class ModelBase(ABC):
