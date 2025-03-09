@@ -107,7 +107,7 @@ class Config():
             hasattr(self, 'debug') and self.debug
         )
         if self.debug:
-            logging.basicConfig(level=logging.DEBUG)
+            logging.getLogger().setLevel(logging.DEBUG)
 
         # require that the architecture and the model path to exist
         assert hasattr(self, 'architecture') and hasattr(self, 'model_path'), (
@@ -154,8 +154,6 @@ class Config():
                     os.listdir(self.input_dir)
                 )
             ]
-
-        logging.debug(self.image_paths)
 
         # check if there is no input data
         if not (self.has_images() or hasattr(self, 'prompt')):

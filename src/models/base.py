@@ -156,15 +156,16 @@ class ModelBase(ABC):
         Returns:
             dict: The processor arguments.
         """
+        has_images = self.config.has_images()
         processor_args = {
             'text': (
                 [prompt for _ in self.config.image_paths]
-                if self.config.has_images() else
+                if has_images else
                 prompt
             ),
             'return_tensors': 'pt'
         }
-        if self.config.has_images():
+        if has_images:
             processor_args['images'] = [
                 Image.open(img_path).convert('RGB')
                 for img_path in self.config.image_paths

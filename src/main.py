@@ -32,6 +32,7 @@ def get_model(
 
 
 if __name__ == '__main__':
+    logging.getLogger().setLevel(logging.INFO)
     config = Config()
     logging.debug(
         f'Config is set to '
