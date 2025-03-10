@@ -28,6 +28,8 @@ def get_model(
         return llava.LlavaModel(config)
     elif model_arch == ModelSelection.QWEN:
         return qwen.QwenModel(config)
+    elif model_arch == ModelSelection.JANUS:
+        return janus.JanusModel(config)
 
 
 if __name__ == '__main__':
