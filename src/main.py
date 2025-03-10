@@ -30,6 +30,8 @@ def get_model(
         return qwen.QwenModel(config)
     elif model_arch == ModelSelection.CLIP:
         return clip.ClipModel(config)
+    elif model_arch == ModelSelection.JANUS:
+        return janus.JanusModel(config)
 
 
 if __name__ == '__main__':
