@@ -7,6 +7,7 @@ import logging
 from models import llava, qwen
 from models.base import ModelBase
 from models.config import Config, ModelSelection
+from models.janus import janus
 
 
 def get_model(
