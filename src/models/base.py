@@ -234,3 +234,8 @@ class ModelBase(ABC):
         inputs = self._call_processor()
 
         return inputs
+
+    def run(self) -> None:
+        """Get the hidden states from the model and saving them."""
+        self.forward(self.load_input_data())
+        self.save_states()
