@@ -14,6 +14,7 @@ class ModelSelection(str, Enum):
     """Enum that contains all possible model choices."""
     LLAVA = 'llava'
     QWEN = 'qwen'
+    MINICPM = 'minicpm'
 
 
 class Config():

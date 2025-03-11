@@ -4,7 +4,7 @@ This module here is the entrypoint to the VLM Competence toolkit.
 """
 import logging
 
-from models import llava, qwen
+from models import llava, minicpm, qwen
 from models.base import ModelBase
 from models.config import Config, ModelSelection
 
@@ -28,6 +28,8 @@ def get_model(
         return llava.LlavaModel(config)
     elif model_arch == ModelSelection.QWEN:
         return qwen.QwenModel(config)
+    elif model_arch == ModelSelection.MINICPM:
+        return minicpm.MiniCPMModel(config)
 
 
 if __name__ == '__main__':
