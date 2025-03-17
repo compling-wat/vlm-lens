@@ -45,21 +45,13 @@ class JanusModel(ModelBase):
         """Initialize the self.processor by loading from the path."""
         self.processor: VLChatProcessor = VLChatProcessor.from_pretrained(self.model_path)
 
-    def _register_subclass_hook(self, hook_fn):
-        """Registers the hook_fn.
-
-        Args:
-            hook_fn (hook fn): The hook function to register
-        """
-        self.model.language_model.lm_head.register_forward_hook(hook_fn)
-
-    def _forward(self, input):
+    def forward(self, input):
         """Given a list of inputs from the Janus processor, do a forward pass."""
 
-        # # run image encoder to get the image embeddings
+        # run image encoder to get the image embeddings
         inputs_embeds = self.model.prepare_inputs_embeds(**input)
 
-        # # run the model to get the response
+        # run the model to get the response
         self.model.language_model.generate(
             inputs_embeds=inputs_embeds,
             attention_mask=input.attention_mask,
@@ -106,15 +98,12 @@ class JanusModel(ModelBase):
                 },
             ])
 
-        # Create a batch of conversations, one per image
-        
-        #from IPython import embed; embed()'
 
         # Load all images as a batch
         imgs = load_pil_images(conversations)  # Ensure this function handles multiple images
 
         # Process all images and conversations in a single batch call
-        batched_output = self.model.processor(
+        batched_output = self.processor(
             images=imgs,  
             conversations=conversations,  
             return_tensors='pt',  
