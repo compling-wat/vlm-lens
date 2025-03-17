@@ -113,4 +113,8 @@ class JanusModel(ModelBase):
 
 
         return batched_output  # Single output instead of multiple individual ones
+    
+    def run(self):
+        self.forward(self.load_input_data())
+        self.save_states()
         
