@@ -1,41 +1,87 @@
 """Unit tests for the model classes."""
-import logging
+import os
 
 import torch
 
+# NOTE: import your model here
 from main import get_model
-# NOTE: import your model
 from models.config import Config
 
-# input ids are integers
 
-# hidden states are tensors of floats (by torch loading)
+class TestModel:
+    """Tests for testing the validation of the model classes."""
+    def __init__(self, config, check_input_ids=True, check_mixed_input=True):
+        """Main thread to run the tests."""
+        self.config = config
+        self.model = get_model(config.architecture, config)
 
-# input the same data, get the same output
+        if check_input_ids:
+            self.check_input_ids()
 
-# input different data, get different output
+        self.check_hidden_states()
+        self.check_same_input()
+        self.check_different_input()
+        self.check_input_different_size()
+        self.check_input_batch()
 
-# input images of different sizes, get the same output shape
+        if check_mixed_input:
+            self.check_image_only()
+            self.check_text_only()
 
-# input ids dimension in batch = batch size * input ids as single input
+    def check_input_ids(self):
+        """Check if input ids are integers."""
+        inputs = self.model.load_input_data()
+        assert inputs['input_ids'].dtype == torch.int64
 
-# work on image only inputs (optional)
+    def check_hidden_states(self):
+        """Check if hidden states are tensors of floats (by torch loading)."""
+        self.model.run()
+        for filename in os.listdir(self.config.output_dir):
+            hidden_states = torch.load(os.path.join(self.config.output_dir, filename))
+            assert hidden_states.dtype == torch.float32
 
-# work on text only inputs (optional)
+    def check_same_input(self):
+        """Check if the same input data produces the same output."""
+        # load input data and get output
+        input_data1 = self.model.load_input_data()
+        output1 = self.model.forward(input_data1)
+        input_data2 = self.model.load_input_data()
+        output2 = self.model.forward(input_data2)
+
+        # assertions
+        assert torch.equal(input_data1, input_data2)
+        assert torch.equal(output1, output2)
+
+    def check_different_input(self):
+        """Check if different input data produces different output.
+
+        TODO: how to differentiate different inputs?
+        """
+        pass
+
+    def check_input_different_size(self):
+        """Check if input images of different sizes get the same output shape.
+
+        TODO: how to differentiate different inputs?
+        """
+        pass
+
+    def check_input_batch(self):
+        """Check if input ids of different batch sizes get the same output shape.
+
+        TODO: how to differentiate different inputs?
+        """
+        pass
+
+    def check_image_only(self):
+        """Check if the model works on image only inputs."""
+        pass
+
+    def check_text_only(self):
+        """Check if the model works on text only inputs."""
+        pass
 
 
 if __name__ == '__main__':
     config = Config()
-    if config.debug:
-        logging.basicConfig(level=logging.DEBUG)
-    else:
-        logging.basicConfig(level=logging.INFO)
-
-    model = get_model(config.architecture, config)
-    input_data = model.load_input_data()
-    model.forward(input_data)
-    model.save_states()
-    states = torch.load(model.config.output_dir)
-
-    # tests
-    pass
+    TestModel(config, check_input_ids=True, check_mixed_input=True)
