@@ -44,5 +44,4 @@ if __name__ == '__main__':
         f'{[(key, value) for key, value in config.__dict__.items()]}'
     )
     model = get_model(config.architecture, config)
-    model.forward(model.load_input_data())
-    model.save_states()
+    model.run()
