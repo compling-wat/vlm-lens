@@ -143,7 +143,7 @@ class ModelBase(ABC):
                 state,
                 os.path.join(
                     self.config.output_dir,
-                    f'state_{name}_{self.config.architecture}.pt'
+                    f"state-{name.replace('.', '_')}-{self.config.architecture.value}.pt"
                 )
             )
 
