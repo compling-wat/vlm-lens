@@ -4,10 +4,9 @@ This module here is the entrypoint to the VLM Competence toolkit.
 """
 import logging
 
-from models import clip, llava, qwen
+from models import clip, llava, qwen, janus
 from models.base import ModelBase
 from models.config import Config, ModelSelection
-from models.janus import janus
 
 
 def get_model(

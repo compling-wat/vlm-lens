@@ -29,3 +29,6 @@ class QwenModel(ModelBase):
                 self.model_path
             )
         )
+    def run(self):
+        self.forward(self.load_input_data())
+        self.save_states()
