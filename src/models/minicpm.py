@@ -7,7 +7,7 @@ import os
 
 import torch
 from PIL import Image
-from transformers import AutoModel, AutoTokenizer
+from transformers import AutoModel, AutoProcessor, AutoTokenizer
 
 from .base import ModelBase
 from .config import Config, ModelSelection
@@ -44,6 +44,13 @@ class MiniCPMModel(ModelBase):
                 torch_dtype=torch.bfloat16
             )
         )
+
+    def _init_processor(self) -> None:
+        """Initialize the self.processor by loading from the path."""
+        self.processor = AutoProcessor.from_pretrained(
+            self.model_path,
+            trust_remote_code=True
+            )
 
     def run(self):
         """Runs the model."""
