@@ -33,15 +33,12 @@ def get_model(
 
 
 if __name__ == '__main__':
+    logging.getLogger().setLevel(logging.INFO)
     config = Config()
-    if config.debug:
-        logging.basicConfig(level=logging.DEBUG)
-    else:
-        logging.basicConfig(level=logging.INFO)
-
     logging.debug(
         f'Config is set to '
         f'{[(key, value) for key, value in config.__dict__.items()]}'
     )
+
     model = get_model(config.architecture, config)
     model.run()
