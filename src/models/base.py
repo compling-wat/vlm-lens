@@ -129,6 +129,10 @@ class ModelBase(ABC):
         """
         logging.debug('Starting forward pass')
         self.model.eval()
+
+        # then ensure that the data is correct
+        data.to(self.config.device)
+
         with torch.no_grad():
             _ = self.model(**data)
         logging.debug('Completed forward pass...')
@@ -244,5 +248,9 @@ class ModelBase(ABC):
 
     def run(self) -> None:
         """Get the hidden states from the model and saving them."""
+        # first convert to gpu state
+        self.model.to(self.config.device)
+
+        # then run everything else
         self.forward(self.load_input_data())
         self.save_states()

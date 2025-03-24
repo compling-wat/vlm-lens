@@ -53,3 +53,9 @@ Unfortunately there is no way to find which layers to potentially match to witho
 Instead, we offer some cached results under `logs/` for each model, which were generated through including the `-l` or `--log_named_modules` flag.
 
 When running this flag, it is not necessary to set modules or anything besides the architecture and HuggingFace model path.
+
+### Using a Cache
+To use a specific cache, one should set the `HF_HOME` environment variable as so:
+```
+HF_HOME=./cache/ python src/main.py --config configs/clip-base.yaml --debug
+```
