@@ -70,12 +70,15 @@ class Config():
             type=str,
             help='The specified input directory to read data from'
         )
-        # TODO: Add in a check to make sure that the output directory exists
         parser.add_argument(
             '-o',
-            '--output-dir',
+            '--output-db',
             type=str,
-            help='The specified output directory to save the tensors to'
+            default='embeddings.db',
+            help=(
+                'The specified output database to save the tensors to, '
+                'defaults to embedding.db'
+            )
         )
 
         parser.add_argument(
@@ -177,6 +180,8 @@ class Config():
             raise ValueError('No GPU found for this machine')
 
         self.device = torch.device(self.device)
+
+        self.DB_TABLE_NAME = 'tensors'
 
     def has_images(self) -> bool:
         """Returns a boolean for whether or not the input directory has images.

@@ -5,6 +5,8 @@ abstract base class for models.
 """
 import logging
 import os
+import pickle
+import sqlite3
 from abc import ABC, abstractmethod
 
 import torch
@@ -137,22 +139,58 @@ class ModelBase(ABC):
             _ = self.model(**data)
         logging.debug('Completed forward pass...')
 
+    def _initialize_db(self):
+        """Initializes a database based on config."""
+        # Connect to the database, creating it if it doesn't exist
+        connection = sqlite3.connect(self.config.output_db)
+        logging.debug(f'Database created at {self.config.output_db}')
+
+        cursor = connection.cursor()
+
+        # Create a table
+        cursor.execute(
+            f"""
+                CREATE TABLE IF NOT EXISTS {self.config.DB_TABLE_NAME} (
+                    id INTEGER PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    architecture TEXT NOT NULL,
+                    layer TEXT NOT NULL,
+                    tensor BLOB NOT NULL
+                );
+            """
+        )
+        connection.commit()
+        return connection
+
     def save_states(self):
         """Saves the states to pt files."""
         if len(self.states.items()) == 0:
             raise RuntimeError('No embedding states were saved')
 
-        if not os.path.exists(self.config.output_dir):
-            os.makedirs(self.config.output_dir)
+        connection = self._initialize_db()
 
-        for name, state in self.states.items():
-            torch.save(
-                state,
-                os.path.join(
-                    self.config.output_dir,
-                    f"state-{name.replace('.', '_')}-{self.config.architecture.value}.pt"
+        for layer, state in self.states.items():
+            cursor = connection.cursor()
+
+            # Convert the tensor to a binary blob
+            tensor_blob = pickle.dumps(state)
+
+            # Insert the tensor into the table
+            cursor.execute(f"""
+                    INSERT INTO {self.config.DB_TABLE_NAME}
+                    (name, architecture, layer, tensor)
+                    VALUES (?, ?, ?, ?);
+                """, (
+                    self.model_path,
+                    self.config.architecture.value,
+                    layer,
+                    tensor_blob
                 )
             )
+
+            connection.commit()
+
+        connection.close()
 
     def _generate_processor_args(self, prompt) -> dict:
         """Generate the processor arguments to be input into the processor.
