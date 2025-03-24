@@ -138,6 +138,9 @@ class ModelBase(ABC):
         if len(self.states.items()) == 0:
             raise RuntimeError('No embedding states were saved')
 
+        if not os.path.exists(self.config.output_dir):
+            os.makedirs(self.config.output_dir)
+
         for name, state in self.states.items():
             torch.save(
                 state,
