@@ -176,7 +176,9 @@ class ModelBase(ABC):
         """Generates the prompt string with the input messages.
 
         Args:
-            add_generation_prompt (bool): Whether to add a start token of a bot response. TODO: move `add_generation_prompt` to the config.
+            add_generation_prompt (bool): Whether to add a start token of a bot
+                response.
+            TODO: move `add_generation_prompt` to the config.
 
         Returns:
             str: The generated prompt with the input text and the image labels.
@@ -209,7 +211,7 @@ class ModelBase(ABC):
         )
 
     def _call_processor(self) -> BatchFeature:
-        """Call the processor with the prompt string and input images to generate the embeddings.
+        """Call the processor with prompt and input images to generate embeddings.
 
         Returns:
             BatchFeature: The batch feature object with the input data.
