@@ -6,6 +6,7 @@ abstract base class for models.
 import logging
 import os
 from abc import ABC, abstractmethod
+from typing import List, Tuple
 
 import torch
 from PIL import Image
@@ -140,49 +141,71 @@ class ModelBase(ABC):
             _ = self.model(**data)
         logging.debug('Completed forward pass...')
 
-    def save_states(self):
-        """Saves the states to pt files."""
+    def save_states(self, filter_name: str):
+        """Saves the states to pt files.
+
+        Args:
+            filter_name (str): The filter name used.
+        """
         if len(self.states.items()) == 0:
             raise RuntimeError('No embedding states were saved')
 
         for name, state in self.states.items():
+            filename = (
+                f'filter_{filter_name}_{name}_'
+                f'{self.config.architecture}.pt'
+            )
             torch.save(
                 state,
                 os.path.join(
                     self.config.output_dir,
-                    f"state-{name.replace('.', '_')}-{self.config.architecture.value}.pt"
+                    filename
                 )
             )
+            logging.debug(f'Finished writing to {filename}')
 
-    def _generate_processor_args(self, prompt) -> dict:
+    def _generate_processor_args(self, img_filter: dict) -> dict:
         """Generate the processor arguments to be input into the processor.
 
         Args:
-            prompt (str): The generated prompt string with the input text and the image labels.
+            img_filter (dict): The image filter that specifies the image and
+                text inputs.
 
         Returns:
             dict: The processor arguments.
         """
-        has_images = self.config.has_images()
+        prompt = self._generate_prompt(img_filter)
+        has_images = 'images_path' in img_filter.keys()
+
         processor_args = {
-            'text': (
-                [prompt for _ in self.config.image_paths]
-                if has_images else
-                prompt
-            ),
             'return_tensors': 'pt'
         }
+
+        # only add text if prompt exists
+        if prompt:
+            processor_args['text'] = (
+                [prompt for _ in img_filter['images_path']]
+                if has_images else prompt
+            )
+
+        # only add images if it exists
         if has_images:
             processor_args['images'] = [
                 Image.open(img_path).convert('RGB')
-                for img_path in self.config.image_paths
+                for img_path in img_filter['images_path']
             ]
         return processor_args
 
-    def _generate_prompt(self, add_generation_prompt: bool = True) -> str:
+    def _generate_prompt(
+        self,
+        img_filter: dict,
+        add_generation_prompt: bool = True
+    ) -> str:
         """Generates the prompt string with the input messages.
 
         Args:
+            img_filter (dict): The image filter that specifies the image and
+                text inputs.
             add_generation_prompt (bool): Whether to add a start token of a bot
                 response.
             TODO: move `add_generation_prompt` to the config.
@@ -199,16 +222,16 @@ class ModelBase(ABC):
         }]
 
         # add the image if it exists
-        if self.config.has_images():
+        if len(img_filter['images_path']) > 0:
             input_msgs_formatted[0]['content'].append({
                 'type': 'image'
             })
 
         # add the prompt if it exists
-        if hasattr(self.config, 'prompt'):
+        if 'prompt' in img_filter.keys():
             input_msgs_formatted[0]['content'].append({
                 'type': 'text',
-                'text': self.config.prompt
+                'text': img_filter['prompt']
             })
 
         # apply the chat template to get the prompt
@@ -217,36 +240,38 @@ class ModelBase(ABC):
             add_generation_prompt=add_generation_prompt
         )
 
-    def _call_processor(self) -> BatchFeature:
+    def _call_processor(self, img_filter: dict) -> BatchFeature:
         """Call the processor with prompt and input images to generate embeddings.
+
+        Args:
+            img_filter (dict): The image filter that specifies the image and
+                text inputs.
 
         Returns:
             BatchFeature: The batch feature object with the input data.
         """
         logging.debug('Generating embeddings...')
 
-        # format the prompt
-        prompt_formatted = self._generate_prompt()
-
         # generate the inputs
-        inputs = self.processor(**self._generate_processor_args(
-            prompt=prompt_formatted
+        return self.processor(**self._generate_processor_args(
+            img_filter=img_filter
         ))
 
-        return inputs
-
-    def load_input_data(self) -> BatchFeature:
+    def load_input_data(self) -> List[Tuple[str, BatchFeature]]:
         """From a configuration, loads the input image and text data.
 
         Returns:
-            BatchFeature: The input data as either a torch.Tensor or a Dict.
+            List[Tuple[str, BatchFeature]]: The list of input data as either
+                a torch.Tensor or a Dict alongside with its filter name.
         """
-        # build the input batch features
-        inputs = self._call_processor()
-
-        return inputs
+        return [
+            (img_filter['name'], self._call_processor(img_filter))
+            for img_filter in self.config.filters
+        ]
 
     def run(self) -> None:
         """Get the hidden states from the model and saving them."""
-        self.forward(self.load_input_data())
-        self.save_states()
+        batch_features = self.load_input_data()
+        for filter_name, batch_feature in batch_features:
+            self.forward(batch_feature)
+            self.save_states(filter_name)

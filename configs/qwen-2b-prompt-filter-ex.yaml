@@ -4,14 +4,14 @@ model:
   - torch_dtype: auto
 output_dir: ./output_dir/
 input_dir: ./data/
-text_input:
+prompt: "Describe the color in this image."
+text_prompts:
   - description_prompt:
-    - prompt: "Describe the color in this image."
     - filter: black.*
   - one_word_prompt:
     - prompt: "Describe the color in this image in one word."
-    - filter: red.*
-
+    - filter: red_in_red.*
+    - input_dir: ./data/red/
 modules:
   - lm_head
   - visual.blocks.31

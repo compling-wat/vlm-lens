@@ -57,16 +57,43 @@ Instead, we offer some cached results under `logs/` for each model, which were g
 When running this flag, it is not necessary to set modules or anything besides the architecture and HuggingFace model path.
 
 ### Prompt Input
-For prompt input, one can either run using a single prompt over the entire input directory, entering a string under `text_input` or enter the following configuration:
+For prompt input, one can either run using a single prompt over the entire input directory, entering a string under `prompt` or enter the following configuration:
 ```
 text_prompts:
   - <prompt_1_name>
     - prompt: <prompt>
     - filter: <regex representing which image filenames to match to>
-  - <prompt_2_name>
-    - prompt: <prompt>
-    - filter: <regex representing which image filenames to match to>
+    - input_dir: <input directory to filter over>
   ...
 ```
 
-Note that filter will run within the input directory specified, and if no input directory exists, it defaults to `./data`.
+Note that filter will run within the input directory specified, and if no input directory exists, it defaults to the high level input directory. If no prompt exists, it defaults to the high level input prompt and if no filter exists, it matches across all images.
+
+If `text_prompts` is not specified, then it simply runs the prompt over the input directory for all images.
+
+So for example,
+```
+prompt: "Describe the image."
+input_dir: ./data
+text_prompts:
+  - filter_1:
+    - prompt: "Describe this image in two words."
+  - filter_2:
+    - filter: red.*
+    - input_dir: ./data_2
+  - filter_3:
+    - input_dir: ./data_3
+```
+will result in filter_1 being applied to the entirety of the input directory with the prompt "Describe the image in two words.". Then, the filter_2 with the prompt "Describe the image." will be applied over all `./data_2/red.*` files. Finally, filter_3 will be applied over all of `./data_3` with the prompt "Describe the image".
+
+Note that if you would wish to test out multiple text prompts, one can do:
+```
+text_prompts:
+  - filter_1:
+    - prompt: "Describe this image in one word."
+  - filter_2:
+    - prompt: "Describe this image in two words."
+  - filter_3:
+    - prompt: "Describe this image in three words."
+```
+without specifying the default input directory.

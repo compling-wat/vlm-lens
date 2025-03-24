@@ -7,6 +7,7 @@ import argparse
 import logging
 import os
 from enum import Enum
+from typing import List
 
 import regex as re
 import yaml
@@ -85,7 +86,8 @@ class Config():
         # other special ones here (such as the model args)
         config_keys = list(args.__dict__.keys())
         config_keys.append('model')
-        config_keys.append('text_input')
+        config_keys.append('prompt')
+        config_keys.append('text_prompts')
         config_keys.append('modules')
 
         # first read the config file and set the current attributes to it
@@ -144,34 +146,165 @@ class Config():
         )
         self.modules = [re.compile(module) for module in self.modules]
 
-        self.image_paths = []
-        if hasattr(self, 'input_dir'):
-            # now we take a look through all the images in the input directory
-            # and add those paths to image_paths
-            image_exts = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff']
-            self.image_paths = [
-                os.path.join(self.input_dir, img_path)
-                for img_path in filter(
-                    lambda file_path:
-                        os.path.splitext(file_path)[1].lower() in image_exts,
-                    os.listdir(self.input_dir)
+        self.filters = self._build_filters()
+        logging.debug(f'Filters are {self.filters}')
+
+    def _build_filters(self) -> List[dict]:
+        """Creates a list of filters to be set and used later during inference.
+
+        Returns:
+            List[dict]: The list of filters.
+        """
+        # set the defaults that we'll use in all cases
+        default_prompt = self.prompt if hasattr(self, 'prompt') else None
+        default_input_dir = (
+            self.input_dir if hasattr(self, 'input_dir') else None
+        )
+        default_img_filter = '.*'
+
+        # if there is no text_prompts specified, simply return the single
+        # default filter
+        if not hasattr(self, 'text_prompts'):
+            return [
+                self._build_single_filter(
+                    name='default',
+                    prompt=default_prompt,
+                    input_dir=default_input_dir,
+                    img_filter=default_img_filter
                 )
             ]
 
-        # check if there is no input data
-        if not (self.has_images() or hasattr(self, 'prompt')):
-            raise ValueError(
-                'Input directory was either not provided or empty '
-                'and no prompt was provided'
+        # now we will populate a list of possible filters, which will be
+        # dictionaries with the fields of: filter_name, prompt and image_paths
+        filters = []
+
+        # first, let's preprocess text_prompts to collapse everything
+        # into a single dictionary
+        collapsed_dict = self._collapse_list_to_dict(self.text_prompts)
+        logging.debug(f'Text prompts: {collapsed_dict}')
+
+        for name, filter_dict in collapsed_dict.items():
+            filter_dict = self._collapse_list_to_dict(filter_dict)
+            filters.append(
+                self._build_single_filter(
+                    name=name,
+                    prompt=(
+                        filter_dict['prompt']
+                        if 'prompt' in filter_dict.keys() else
+                        default_prompt
+                    ),
+                    input_dir=(
+                        filter_dict['input_dir']
+                        if 'input_dir' in filter_dict.keys() else
+                        default_input_dir
+                    ),
+                    img_filter=(
+                        filter_dict['filter']
+                        if 'filter' in filter_dict.keys() else
+                        default_img_filter
+                    )
+                )
             )
 
-    def has_images(self) -> bool:
-        """Returns a boolean for whether or not the input directory has images.
+        return filters
+
+    def _collapse_list_to_dict(self, list_of_dicts: List[dict]) -> dict:
+        """Takes a list of dictionaries and collapses them to a single dict.
+
+        Args:
+            list_of_dicts (List[dict]): List of dictionaries to collapse.
 
         Returns:
-            bool: Whether or not the input directory has images.
+            dict: Single collapsed dictionary.
         """
-        return len(self.image_paths) > 0
+        collapsed_dict = {}
+        for dict in list_of_dicts:
+            collapsed_dict.update(dict)
+        return collapsed_dict
+
+    def _build_single_filter(
+        self,
+        name: str,
+        prompt: str,
+        input_dir: str,
+        img_filter: str
+    ) -> dict:
+        """Builds a single filter based on input.
+
+        Args:
+            name (str): The name of the filter.
+            prompt (str): The prompt string to use.
+            input_dir (str): The input images directory.
+            img_filter (str): The filters to pattern match to.
+
+        Returns:
+            dict: The single filter dictionary.
+        """
+        if not input_dir and not prompt:
+            raise ValueError(
+                f'The {name} filter specified has no input directory nor '
+                'prompt specified'
+            )
+
+        # text-only input case
+        if not input_dir:
+            return {
+                'name': name,
+                'prompt': prompt
+            }
+
+        # now we know that the input directory is specified
+        # so we take a look through all the images in the input directory
+        # and add those paths to image_paths
+        image_paths = []
+
+        # defined variables to be used within matches_img_filter
+        image_exts = [
+            '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff'
+        ]
+        img_filter_regex = re.compile(img_filter)
+
+        def matches_img_filter(file_path: str) -> bool:
+            """Returns whether the file path matches the given regex filter.
+
+            Args:
+                file_path (str): The image filename.
+
+            Returns:
+                bool: Whether the file path matches the given regex
+            """
+            filename, ext = os.path.splitext(file_path)
+            return (
+                img_filter_regex.fullmatch(filename) and
+                ext.lower() in image_exts
+            )
+
+        image_paths = [
+            os.path.join(input_dir, img_path)
+            for img_path in filter(
+                lambda file_path: matches_img_filter(file_path),
+                os.listdir(input_dir)
+            )
+        ]
+
+        logging.debug(f'{name} filter has {image_paths} as its image paths')
+
+        if len(image_paths) <= 0:
+            raise ValueError(
+                f'Image directory {input_dir} matched no files with '
+                f'pattern {img_filter}'
+            )
+
+        # finally, build the final dictionary
+        filter_out = {
+            'name': name,
+            'images_path': image_paths
+        }
+
+        if prompt:
+            filter_out['prompt'] = prompt
+
+        return filter_out
 
     def matches_module(self, module_name: str) -> bool:
         """Returns whether the given module name matches one of the regexes.

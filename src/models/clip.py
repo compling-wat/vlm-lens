@@ -2,9 +2,7 @@
 
 File for providing the Clip model implementation.
 """
-import os
 
-from PIL import Image
 from transformers import CLIPModel, CLIPProcessor
 
 from .base import ModelBase
@@ -37,22 +35,17 @@ class ClipModel(ModelBase):
         """Overriden function to populate self.processor."""
         self.processor = CLIPProcessor.from_pretrained(self.model_path)
 
-    def load_input_data(self, config):
-        """From a configuration, loads the input image and text data.
+    def _generate_prompt(
+        self,
+        img_filter: dict
+    ) -> str:
+        """Generates the CLIP model prompt which will not use the chat template.
 
         Args:
-            config (Config): The configuration given with image input data
-            information.
-            model (ModelBase): The model to use for generating the processor.
+            img_filter (dict): The image filter that specifies the image and
+                text inputs.
 
         Returns:
             torch.Tensor: The data as a torch tensor.
         """
-        return self.processor(
-            images=[
-                Image.open(os.path.join(config.input_dir, img)).convert('RGB')
-                for img in os.listdir(config.input_dir)
-            ],
-            text=[config.prompt for _ in os.listdir(config.input_dir)],
-            return_tensors='pt'
-        )
+        return img_filter['prompt'] if 'prompt' in img_filter else None

@@ -1,0 +1,20 @@
+architecture: clip
+model_path: openai/clip-vit-base-patch32
+model:
+  - torch_dtype: auto
+output_dir: ./output_dir/
+prompt: "Default prompt."
+text_prompts:
+  - default_filter_test:
+    - prompt: "Describe this color in one word."
+    - input_dir: ./data/
+  - no_input_dir:
+    - prompt: "This should be text only."
+  - no_input_dir_with_filter:
+    - prompt: "This should be text only, but with filter, should do nothing."
+  - reg_prompt:
+    - input_dir: ./data/red/
+    - filter: red.*
+modules:
+  - visual_projection
+  - text_projection
