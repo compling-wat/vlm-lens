@@ -2,33 +2,32 @@
 
 File for providing the Janus model implementation.
 """
-import sys
 import os
-import torch
 
-from transformers import AutoModelForCausalLM
+import torch
 from janus.models import MultiModalityCausalLM, VLChatProcessor
 from janus.utils.io import load_pil_images
+from transformers import AutoModelForCausalLM
 
 from .base import ModelBase
 from .config import Config
+
 
 class JanusModel(ModelBase):
     """Janus model implementation."""
 
     def __init__(self, config: Config):
-        """Initialization of the Janus model.
+        """Initialize the Janus model.
 
         Args:
-            config (Config): Parsed config
+            config (Config): Parsed config.
         """
-        # initialize the parent class
         super().__init__(config)
 
     def _load_specific_model(self):
-        """Overridden function to populate self.model."""
+        """Populate self.model with the specified Janus model."""
         self.model: MultiModalityCausalLM = AutoModelForCausalLM.from_pretrained(
-            self.model_path, 
+            self.model_path,
             trust_remote_code=True,
             **self.config.model
         ) if hasattr(self.config, 'model') else (
@@ -38,20 +37,16 @@ class JanusModel(ModelBase):
             )
         )
 
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.model.to(device)
 
     def _init_processor(self) -> None:
-        """Initialize the self.processor by loading from the path."""
+        """Initialize the Janus processor."""
         self.processor: VLChatProcessor = VLChatProcessor.from_pretrained(self.model_path)
 
     def forward(self, input):
-        """Given a list of inputs from the Janus processor, do a forward pass."""
-
-        # run image encoder to get the image embeddings
+        """Perform a forward pass with the given input."""
         inputs_embeds = self.model.prepare_inputs_embeds(**input)
-
-        # run the model to get the response
         self.model.language_model.generate(
             inputs_embeds=inputs_embeds,
             attention_mask=input.attention_mask,
@@ -63,58 +58,47 @@ class JanusModel(ModelBase):
             use_cache=True,
         )
 
-    def _call_processor(self):
-        """Call the processor with the prompt string and input images to generate the embeddings."""
-
-        self.processor: VLChatProcessor = VLChatProcessor.from_pretrained(self.model_path)
-        
-
     def load_input_data(self):
-        """
-            Load multiple image inputs and prompts for Janus in a batch, 
-            returning the processor outputs as a single batch dictionary.
-        """
+        """Load and preprocess batch input data from images and prompts."""
+        is_pro = 'pro' in self.model_path.lower()
 
-        # Getting paths for all images under the input_dir
         img_paths = [
-            os.path.join(self.config.input_dir, img) 
+            os.path.join(self.config.input_dir, img)
             for img in os.listdir(self.config.input_dir)
         ]
 
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+        user_tag = '<|User|>' if is_pro else 'User'
+        assistant_tag = '<|Assistant|>' if is_pro else 'Assistant'
 
         conversations = []
-
         for img_path in img_paths:
-            conversations.extend([  
+            conversations.extend([
                 {
-                    "role": "User",
-                    "content": f"<image_placeholder>\n{self.config.prompt}",
-                    "images": [img_path]
+                    'role': user_tag,
+                    'content': f'<image_placeholder>\n{self.config.prompt}',
+                    'images': [img_path]
                 },
                 {
-                    "role": "Assistant",
-                    "content": ""
+                    'role': assistant_tag,
+                    'content': ''
                 },
             ])
 
+        imgs = load_pil_images(conversations)
 
-        # Load all images as a batch
-        imgs = load_pil_images(conversations)  # Ensure this function handles multiple images
-
-        # Process all images and conversations in a single batch call
         batched_output = self.processor(
-            images=imgs,  
-            conversations=conversations,  
-            return_tensors='pt',  
-            padding=True,  
-            force_batchify=True  # Ensure batch processing
+            images=imgs,
+            conversations=conversations,
+            return_tensors='pt',
+            padding=True,
+            force_batchify=True
         ).to(device)
 
+        return batched_output
 
-        return batched_output  # Single output instead of multiple individual ones
-    
     def run(self):
+        """Run the model and save the output states."""
         self.forward(self.load_input_data())
         self.save_states()
-        
