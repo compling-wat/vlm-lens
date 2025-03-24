@@ -3,7 +3,7 @@
 File for providing the Clip model implementation.
 """
 
-from transformers import CLIPModel, CLIPProcessor
+from transformers import CLIPModel
 
 from .base import ModelBase
 from .config import Config
@@ -30,10 +30,6 @@ class ClipModel(ModelBase):
                 self.model_path
             )
         )
-
-    def _load_processor(self):
-        """Overriden function to populate self.processor."""
-        self.processor = CLIPProcessor.from_pretrained(self.model_path)
 
     def _generate_prompt(self) -> str:
         """Generates the CLIP model prompt which will not use the chat template.
