@@ -12,10 +12,20 @@ class TestModel:
     """Tests for testing the validation of the model classes."""
     def __init__(self, config, check_input_ids=True, check_mixed_input=True):
         """Main thread to run the tests."""
+        # configs
         self.config = config
         self.model = get_model(config.architecture, config)
 
-        if check_input_ids:
+        # flags
+        self._check_input_ids = check_input_ids
+        self._check_mixed_input = check_mixed_input
+
+        # run all tests
+        self.run_all()
+
+    def run_all(self):
+        """Run all tests."""
+        if self._check_input_ids:
             self.check_input_ids()
 
         self.check_hidden_states()
@@ -24,9 +34,18 @@ class TestModel:
         self.check_input_different_size()
         self.check_input_batch()
 
-        if check_mixed_input:
+        if self._check_mixed_input:
             self.check_image_only()
             self.check_text_only()
+
+    def _load_embeddings(self, path_embeddings: str) -> None:
+        """Load the embeddings from a given path."""
+        embeddings = torch.load(path_embeddings)
+        return embeddings
+
+    def _load_embeddings_db(self, path_embeddings: str) -> None:
+        """Load the embeddings from a given database path."""
+        pass
 
     def check_input_ids(self):
         """Check if input ids are integers."""
@@ -53,24 +72,15 @@ class TestModel:
         assert torch.equal(output1, output2)
 
     def check_different_input(self):
-        """Check if different input data produces different output.
-
-        TODO: how to differentiate different inputs?
-        """
+        """Check if different input data produces different output."""
         pass
 
     def check_input_different_size(self):
-        """Check if input images of different sizes get the same output shape.
-
-        TODO: how to differentiate different inputs?
-        """
+        """Check if input images of different sizes get the same output shape."""
         pass
 
     def check_input_batch(self):
-        """Check if input ids of different batch sizes get the same output shape.
-
-        TODO: how to differentiate different inputs?
-        """
+        """Check if input ids of different batch sizes get the same output shape."""
         pass
 
     def check_image_only(self):
