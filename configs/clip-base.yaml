@@ -3,7 +3,7 @@ model_path: openai/clip-vit-base-patch32
 model:
   - torch_dtype: auto
 output_dir: ./output_dir/
-# input_dir: ./data/
+input_dir: ./data/
 prompt: "Describe the color in this image in one word."
 modules:
   - visual_projection
