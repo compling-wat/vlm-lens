@@ -9,6 +9,7 @@ import os
 from enum import Enum
 
 import regex as re
+import torch
 import yaml
 
 
@@ -16,6 +17,7 @@ class ModelSelection(str, Enum):
     """Enum that contains all possible model choices."""
     LLAVA = 'llava'
     QWEN = 'qwen'
+    CLIP = 'clip'
 
 
 class Config():
@@ -74,6 +76,13 @@ class Config():
             '--output-dir',
             type=str,
             help='The specified output directory to save the tensors to'
+        )
+
+        parser.add_argument(
+            '--device',
+            type=str,
+            default='cpu',
+            help='Specify the device to send tensors and the model to'
         )
 
         args = parser.parse_args()
@@ -161,6 +170,13 @@ class Config():
                 'Input directory was either not provided or empty '
                 'and no prompt was provided'
             )
+
+        # now sets the specific device, first does a check to make sure that if
+        # the user wants to use cuda that it is available
+        if 'cuda' in self.device and not torch.cuda.is_available():
+            raise ValueError('No GPU found for this machine')
+
+        self.device = torch.device(self.device)
 
     def has_images(self) -> bool:
         """Returns a boolean for whether or not the input directory has images.

@@ -129,6 +129,10 @@ class ModelBase(ABC):
         """
         logging.debug('Starting forward pass')
         self.model.eval()
+
+        # then ensure that the data is correct
+        data.to(self.config.device)
+
         with torch.no_grad():
             _ = self.model(**data)
         logging.debug('Completed forward pass...')
@@ -137,6 +141,9 @@ class ModelBase(ABC):
         """Saves the states to pt files."""
         if len(self.states.items()) == 0:
             raise RuntimeError('No embedding states were saved')
+
+        if not os.path.exists(self.config.output_dir):
+            os.makedirs(self.config.output_dir)
 
         for name, state in self.states.items():
             torch.save(
@@ -176,7 +183,9 @@ class ModelBase(ABC):
         """Generates the prompt string with the input messages.
 
         Args:
-            add_generation_prompt (bool): Whether to add a start token of a bot response. TODO: move `add_generation_prompt` to the config.
+            add_generation_prompt (bool): Whether to add a start token of a bot
+                response.
+            TODO: move `add_generation_prompt` to the config.
 
         Returns:
             str: The generated prompt with the input text and the image labels.
@@ -209,7 +218,7 @@ class ModelBase(ABC):
         )
 
     def _call_processor(self) -> BatchFeature:
-        """Call the processor with the prompt string and input images to generate the embeddings.
+        """Call the processor with prompt and input images to generate embeddings.
 
         Returns:
             BatchFeature: The batch feature object with the input data.
@@ -239,5 +248,9 @@ class ModelBase(ABC):
 
     def run(self) -> None:
         """Get the hidden states from the model and saving them."""
+        # first convert to gpu state
+        self.model.to(self.config.device)
+
+        # then run everything else
         self.forward(self.load_input_data())
         self.save_states()

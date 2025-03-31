@@ -22,11 +22,12 @@ python src/main.py --architecture <architecture> --model-path <model-path> --deb
 ```
 with an optional debug flag to see more detailed outputs.
 
-Note that the config file should be in yaml format, and that any arguments you want to send to the huggingface API should be under the `model` key. See `configs/qwen_2b.yaml` as an example.
+Note that the config file should be in yaml format, and that any arguments you want to send to the huggingface API should be under the `model` key. See `configs/qwen-2b.yaml` as an example.
 
 The supported architecture flags are currently:
 - 'llava'
 - 'qwen'
+- 'clip'
 
 For example, one can run:
 ```base
@@ -52,3 +53,9 @@ Unfortunately there is no way to find which layers to potentially match to witho
 Instead, we offer some cached results under `logs/` for each model, which were generated through including the `-l` or `--log_named_modules` flag.
 
 When running this flag, it is not necessary to set modules or anything besides the architecture and HuggingFace model path.
+
+### Using a Cache
+To use a specific cache, one should set the `HF_HOME` environment variable as so:
+```
+HF_HOME=./cache/ python src/main.py --config configs/clip-base.yaml --debug
+```
