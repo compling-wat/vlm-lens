@@ -168,7 +168,6 @@ class ModelBase(ABC):
         # for each module, register the state hook, which will save the output
         # state from the module to a sql database, according to above
         for name, module in self.model.named_modules():
-            
             if self.config.matches_module(name):
                 hooks.append(module.register_forward_hook(
                     self._generate_state_hook(name, image_path, prompt)
