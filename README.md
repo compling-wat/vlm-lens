@@ -63,6 +63,12 @@ HF_HOME=./cache/ python src/main.py --config configs/clip-base.yaml --debug
 ### Output Database
 Specified by the `-o` and `--output-db` flags, this specifies the specific output database we want. From this, in SQL we have a single table under the name `tensors` with the following columns:
 ```
-Name, Architecture, Layer, Tensor
+Name, Architecture, Timestamp, Image Path, Layer, Tensor
 ```
-where name represents the model path from HuggingFace, the architecture is the supported flags above, the layer is the matched layer from `model.named_modules()` and tensor is the embedding saved.
+where each column is:
+1. `Name` represents the model path from HuggingFace.
+2. `Architecture` is the supported flags above.
+3. `Timestamp` is the specific time that the model was ran.
+4. `Image path` is the absolute path to the image.
+5. `Layer` is the matched layer from `model.named_modules()`
+6. `Tensor` is the embedding saved.
