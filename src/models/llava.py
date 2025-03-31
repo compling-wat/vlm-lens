@@ -29,8 +29,3 @@ class LlavaModel(ModelBase):
                 self.model_path
             )
         )
-
-    def run(self):
-        """Run the model and save output states."""
-        self.forward(self.load_input_data())
-        self.save_states()

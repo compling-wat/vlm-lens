@@ -4,7 +4,6 @@ File for providing the Janus model implementation.
 """
 import os
 
-import torch
 from janus.models import MultiModalityCausalLM, VLChatProcessor
 from janus.utils.io import load_pil_images
 from transformers import AutoModelForCausalLM
@@ -37,8 +36,9 @@ class JanusModel(ModelBase):
             )
         )
 
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.model.to(device)
+        self.is_pro = 'pro' in self.model_path.lower()
+
+        self.model.to(self.config.device)
 
     def _init_processor(self) -> None:
         """Initialize the Janus processor."""
@@ -60,17 +60,13 @@ class JanusModel(ModelBase):
 
     def load_input_data(self):
         """Load and preprocess batch input data from images and prompts."""
-        is_pro = 'pro' in self.model_path.lower()
-
         img_paths = [
             os.path.join(self.config.input_dir, img)
             for img in os.listdir(self.config.input_dir)
         ]
 
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-        user_tag = '<|User|>' if is_pro else 'User'
-        assistant_tag = '<|Assistant|>' if is_pro else 'Assistant'
+        user_tag = '<|User|>' if self.is_pro else 'User'
+        assistant_tag = '<|Assistant|>' if self.is_pro else 'Assistant'
 
         conversations = []
         for img_path in img_paths:
@@ -94,11 +90,6 @@ class JanusModel(ModelBase):
             return_tensors='pt',
             padding=True,
             force_batchify=True
-        ).to(device)
+        ).to(self.config.device)
 
         return batched_output
-
-    def run(self):
-        """Run the model and save the output states."""
-        self.forward(self.load_input_data())
-        self.save_states()
