@@ -49,6 +49,9 @@ class ModelBase(ABC):
         # generate and register the forward hook
         logging.debug('Generating hook function')
 
+        # finally let's initialize a database
+        self._initialize_db()
+
     def _log_named_modules(self):
         """Logs the named modules based on the loaded model."""
         file_path = 'logs/' + self.model_path + '.txt'
@@ -93,25 +96,43 @@ class ModelBase(ABC):
         def generate_states_hook(module, input, output):
             """Hook handle function that saves the embedding output to a tensor.
 
+            This tensor will be saved within a SQL database, according to the
+            connection that was initialized previously.
+
             Args:
                 module: The module that save its hook on.
                 input: The input used.
                 output: The embeddings to save.
             """
-            # for each module, we'll save its output into
-            self.states[name] = output
+            cursor = self.connection.cursor()
+
+            # Convert the tensor to a binary blob
+            tensor_blob = pickle.dumps(output)
+
+            # Insert the tensor into the table
+            cursor.execute(f"""
+                    INSERT INTO {self.config.DB_TABLE_NAME}
+                    (name, architecture, layer, tensor)
+                    VALUES (?, ?, ?, ?);
+                """, (
+                    self.model_path,
+                    self.config.architecture.value,
+                    name,
+                    tensor_blob
+                )
+            )
+
+            self.connection.commit()
 
         return generate_states_hook
 
     def _register_module_hooks(self):
         """Register the generated hook function to the modules in the config."""
-        # set the states to a dictionary such that we can write to it
-        # and later on save from all these states
-        self.states = {}
-
         # create a flag to warn the user if there were no hooks registered
         registered_module = False
 
+        # for each module, register the state hook, which will save the output
+        # state from the module to a sql database, according to above
         for name, module in self.model.named_modules():
             if self.config.matches_module(name):
                 registered_module = True
@@ -142,11 +163,12 @@ class ModelBase(ABC):
     def _initialize_db(self):
         """Initializes a database based on config."""
         # Connect to the database, creating it if it doesn't exist
-        connection = sqlite3.connect(self.config.output_db)
+        self.connection = sqlite3.connect(self.config.output_db)
         logging.debug(f'Database created at {self.config.output_db}')
 
-        cursor = connection.cursor()
+        cursor = self.connection.cursor()
 
+        # TODO: Add a column for the input path, the prompt and the timestamp as well!
         # Create a table
         cursor.execute(
             f"""
@@ -159,38 +181,11 @@ class ModelBase(ABC):
                 );
             """
         )
-        connection.commit()
-        return connection
+        self.connection.commit()
 
-    def save_states(self):
-        """Saves the states to pt files."""
-        if len(self.states.items()) == 0:
-            raise RuntimeError('No embedding states were saved')
-
-        connection = self._initialize_db()
-
-        for layer, state in self.states.items():
-            cursor = connection.cursor()
-
-            # Convert the tensor to a binary blob
-            tensor_blob = pickle.dumps(state)
-
-            # Insert the tensor into the table
-            cursor.execute(f"""
-                    INSERT INTO {self.config.DB_TABLE_NAME}
-                    (name, architecture, layer, tensor)
-                    VALUES (?, ?, ?, ?);
-                """, (
-                    self.model_path,
-                    self.config.architecture.value,
-                    layer,
-                    tensor_blob
-                )
-            )
-
-            connection.commit()
-
-        connection.close()
+    def _cleanup(self):
+        """Cleanups the database by closing the connection."""
+        self.connection.close()
 
     def _generate_processor_args(self, prompt) -> dict:
         """Generate the processor arguments to be input into the processor.
@@ -281,7 +276,6 @@ class ModelBase(ABC):
         """
         # build the input batch features
         inputs = self._call_processor()
-
         return inputs
 
     def run(self) -> None:
@@ -291,4 +285,6 @@ class ModelBase(ABC):
 
         # then run everything else
         self.forward(self.load_input_data())
-        self.save_states()
+
+        # finally clean up, closing database connection, etc.
+        self._cleanup()
