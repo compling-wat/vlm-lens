@@ -15,13 +15,15 @@ import torch
 
 def retrieve_tensors(
     config,
-    layer: str
+    layer: str,
+    query_img_path: List[str]
 ) -> List[Tuple[str, torch.Tensor]]:
     """Retrieve a PyTorch tensor based on its inputs and config.
 
     Args:
         config (Config): The path to the configuration itself.
         layer (str): The name of the layer itself.
+        query_img_path (str): Image path to query for.
 
     Returns:
         List[Tuple[str, torch.Tensor]]:
@@ -32,7 +34,7 @@ def retrieve_tensors(
 
     # Build the query
     query = f"""
-        SELECT layer, tensor FROM {config.DB_TABLE_NAME}
+        SELECT layer, tensor, timestamp, image_path, prompt FROM {config.DB_TABLE_NAME}
     """
     conditions = []
     params = []
@@ -40,6 +42,8 @@ def retrieve_tensors(
     args = {
         'name': config.model_path,
         'architecture': config.architecture.value,
+        'prompt': config.prompt,
+        'image_path': query_img_path,
         'layer': layer
     }
 
@@ -67,9 +71,9 @@ def retrieve_tensors(
     # Convert the binary blobs back to tensors
     tensors = []
     for result in results:
-        layer = result[0]
-        tensor = pickle.loads(result[1])
-        tensors.append((layer, tensor))
+        layer, tensor, timestamp, image_path, prompt = result
+        tensor = pickle.loads(tensor)
+        tensors.append((layer, tensor, timestamp, image_path, prompt))
 
     return tensors
 
@@ -139,11 +143,17 @@ if __name__ == '__main__':
     unique_layers = get_unique_layers(config)
     print(f'Unique layers: {unique_layers}')
 
-    for layer in unique_layers:
-        tensors = retrieve_tensors(config, layer)
-        for layer, tensor in tensors:
-            print(
-                f'Name: {config.model_path}, '
-                f'Architecture: {config.architecture.value}, '
-                f'Layer: {layer}, Tensor Norm: {torch.norm(tensor)}'
-            )
+    for query_img_path in config.image_paths:
+        query_img_path = os.path.abspath(query_img_path)
+        print(f'~~Tensors for {query_img_path}~~')
+        for layer in unique_layers:
+            tensors = retrieve_tensors(config, layer, query_img_path)
+            for layer, tensor, timestamp, image_path, prompt in tensors:
+                print(
+                    f'Name: {config.model_path}, '
+                    f'Architecture: {config.architecture.value}, '
+                    f'Layer: {layer}, Tensor Norm: {torch.norm(tensor)}, '
+                    f'Timestamp: {timestamp}, Image path: {image_path}, '
+                    f'Prompt: {prompt}'
+                )
+        print()
