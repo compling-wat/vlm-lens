@@ -8,6 +8,7 @@ import os
 import pickle
 import sqlite3
 from abc import ABC, abstractmethod
+from typing import List, Tuple, TypeAlias
 
 import torch
 from PIL import Image
@@ -15,6 +16,8 @@ from transformers import AutoProcessor
 from transformers.feature_extraction_utils import BatchFeature
 
 from .config import Config
+
+ModelInput: TypeAlias = Tuple[str, str, BatchFeature]
 
 
 class ModelBase(ABC):
@@ -42,9 +45,6 @@ class ModelBase(ABC):
 
         # load the processor
         self._init_processor()
-
-        # now set up the modules to register the hook to
-        self._register_module_hooks()
 
         # generate and register the forward hook
         logging.debug('Generating hook function')
@@ -84,15 +84,25 @@ class ModelBase(ABC):
         """Initialize the self.processor by loading from the path."""
         self.processor = AutoProcessor.from_pretrained(self.model_path)
 
-    def _generate_state_hook(self, name: str):
+    def _generate_state_hook(self, name: str, image_path: str, prompt: str):
         """Generates the state hook depending on the embedding type.
 
         Args:
             name (str): The module name.
+            image_path (str): The path to the image used for the specific pass.
+            prompt (str): The prompt used for the specific pass.
 
         Returns:
             hook function: The hook function to return.
         """
+        # first, let's modify image path to be an absolute path
+        if image_path is not None:
+            image_path = os.path.abspath(image_path)
+
+            # this image path should already exist, error out if someone isn't
+            # properly providing an image path
+            assert os.path.exists(image_path)
+
         def generate_states_hook(module, input, output):
             """Hook handle function that saves the embedding output to a tensor.
 
@@ -112,11 +122,13 @@ class ModelBase(ABC):
             # Insert the tensor into the table
             cursor.execute(f"""
                     INSERT INTO {self.config.DB_TABLE_NAME}
-                    (name, architecture, layer, tensor)
-                    VALUES (?, ?, ?, ?);
+                    (name, architecture, image_path, prompt, layer, tensor)
+                    VALUES (?, ?, ?, ?, ?, ?);
                 """, (
                     self.model_path,
                     self.config.architecture.value,
+                    image_path if image_path is not None else 'No image prompt',
+                    prompt,
                     name,
                     tensor_blob
                 )
@@ -126,32 +138,64 @@ class ModelBase(ABC):
 
         return generate_states_hook
 
-    def _register_module_hooks(self):
-        """Register the generated hook function to the modules in the config."""
-        # create a flag to warn the user if there were no hooks registered
-        registered_module = False
+    def _register_module_hooks(
+        self,
+        image_path: str,
+        prompt: str
+    ) -> List[torch.utils.hooks.RemovableHandle]:
+        """Register the generated hook function to the modules in the config.
+
+        At the same time, we need to add in the image path itself and the prompt
+        which will be used for the database input.
+
+        Args:
+            image_path (str): The path to the image used for the specific pass.
+            prompt (str): The prompt used for the specific pass.
+
+        Raises:
+            RuntimeError: Calls a runtime error if no hooks were registered
+
+        Returns:
+            List[torch.utils.hooks.RemovableHandle]: A list of handles that one
+                can remove after the forward pass.
+        """
+        logging.debug(
+            f'Registering module hook for {image_path} using prompt "{prompt}"'
+        )
+
+        # a list of hooks to remove after the forward pass
+        hooks = []
 
         # for each module, register the state hook, which will save the output
         # state from the module to a sql database, according to above
         for name, module in self.model.named_modules():
             if self.config.matches_module(name):
-                registered_module = True
-                module.register_forward_hook(self._generate_state_hook(name))
+                hooks.append(module.register_forward_hook(
+                    self._generate_state_hook(name, image_path, prompt)
+                ))
                 logging.debug(f'Registered hook to {name}')
 
-        if not registered_module:
+        if len(hooks) == 0:
             raise RuntimeError(
                 'No hooks were registered. Double-check the configured modules.'
             )
 
-    def forward(self, data: BatchFeature):
-        """Given some data, performs a single forward pass.
+        return hooks
+
+    def forward(self, input: ModelInput):
+        """Given some input, performs a single forward pass.
 
         Args:
-            data (BatchFeature): The input data dictionary
+            input (ModelInput): The tuple of the image path, prompt and
+                input data dictionary.
         """
         logging.debug('Starting forward pass')
         self.model.eval()
+
+        image_path, prompt, data = input
+
+        # now set up the modules to register the hook to
+        hooks = self._register_module_hooks(image_path, prompt)
 
         # then ensure that the data is correct
         data.to(self.config.device)
@@ -159,6 +203,10 @@ class ModelBase(ABC):
         with torch.no_grad():
             _ = self.model(**data)
         logging.debug('Completed forward pass...')
+
+        for hook in hooks:
+            hook.remove()
+        logging.debug('Unregistered all hooks..')
 
     def _initialize_db(self):
         """Initializes a database based on config."""
@@ -168,7 +216,6 @@ class ModelBase(ABC):
 
         cursor = self.connection.cursor()
 
-        # TODO: Add a column for the input path, the prompt and the timestamp as well!
         # Create a table
         cursor.execute(
             f"""
@@ -176,6 +223,9 @@ class ModelBase(ABC):
                     id INTEGER PRIMARY KEY,
                     name TEXT NOT NULL,
                     architecture TEXT NOT NULL,
+                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    image_path TEXT NOT NULL,
+                    prompt TEXT NOT NULL,
                     layer TEXT NOT NULL,
                     tensor BLOB NOT NULL
                 );
@@ -187,30 +237,35 @@ class ModelBase(ABC):
         """Cleanups the database by closing the connection."""
         self.connection.close()
 
-    def _generate_processor_args(self, prompt) -> dict:
+    def _generate_processor_args(self, prompt) -> Tuple[str, str, dict]:
         """Generate the processor arguments to be input into the processor.
 
         Args:
-            prompt (str): The generated prompt string with the input text and the image labels.
+            prompt (str): The generated prompt string with the input text and
+                the image labels.
 
         Returns:
-            dict: The processor arguments.
+            Tuple[str, str, dict]: Tuples of the image path, its prompt and
+                the corresponding processor arguments.
         """
-        has_images = self.config.has_images()
-        processor_args = {
-            'text': (
-                [prompt for _ in self.config.image_paths]
-                if has_images else
-                prompt
-            ),
-            'return_tensors': 'pt'
-        }
-        if has_images:
-            processor_args['images'] = [
-                Image.open(img_path).convert('RGB')
-                for img_path in self.config.image_paths
-            ]
-        return processor_args
+        if not self.config.has_images():
+            return [(None, prompt, {
+                'text': prompt,
+                'return_tensors': 'pt'
+            })]
+
+        return [
+            (
+                img_path,
+                prompt,
+                {
+                    'text': prompt,
+                    'images': [Image.open(img_path).convert('RGB')],
+                    'return_tensors': 'pt'
+                }
+            )
+            for img_path in self.config.image_paths
+        ]
 
     def _generate_prompt(self, add_generation_prompt: bool = True) -> str:
         """Generates the prompt string with the input messages.
@@ -250,33 +305,25 @@ class ModelBase(ABC):
             add_generation_prompt=add_generation_prompt
         )
 
-    def _call_processor(self) -> BatchFeature:
-        """Call the processor with prompt and input images to generate embeddings.
-
-        Returns:
-            BatchFeature: The batch feature object with the input data.
-        """
-        logging.debug('Generating embeddings...')
-
-        # format the prompt
-        prompt_formatted = self._generate_prompt()
-
-        # generate the inputs
-        inputs = self.processor(**self._generate_processor_args(
-            prompt=prompt_formatted
-        ))
-
-        return inputs
-
-    def load_input_data(self) -> BatchFeature:
+    def load_input_data(self) -> List[ModelInput]:
         """From a configuration, loads the input image and text data.
 
+        For each prompt and input image, create a separate batch feature that
+        will be ran separately and saved separately within the database.
+
         Returns:
-            BatchFeature: The input data as either a torch.Tensor or a Dict.
+            List[ModelInput]: List of input data, this input data is made of
+                a tuple of strings (first an image path, then a prompt) and
+                a batch feature which is either a torch.Tensor or a dictionary.
         """
-        # build the input batch features
-        inputs = self._call_processor()
-        return inputs
+        # by default use the processor, which may not exist for each model
+        logging.debug('Generating embeddings through its processor...')
+        return [
+            (image_path, prompt, self.processor(**args))
+            for image_path, prompt, args in self._generate_processor_args(
+                prompt=self._generate_prompt()  # format the prompt to use
+            )
+        ]
 
     def run(self) -> None:
         """Get the hidden states from the model and saving them."""
@@ -284,7 +331,8 @@ class ModelBase(ABC):
         self.model.to(self.config.device)
 
         # then run everything else
-        self.forward(self.load_input_data())
+        for input in self.load_input_data():
+            self.forward(input)
 
         # finally clean up, closing database connection, etc.
         self._cleanup()
