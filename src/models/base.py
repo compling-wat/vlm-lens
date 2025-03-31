@@ -182,7 +182,7 @@ class ModelBase(ABC):
 
         return hooks
 
-    def forward(self, input: ModelInput):
+    def _forward(self, input: ModelInput):
         """Given some input, performs a single forward pass.
 
         Args:
@@ -305,7 +305,7 @@ class ModelBase(ABC):
             add_generation_prompt=add_generation_prompt
         )
 
-    def load_input_data(self) -> List[ModelInput]:
+    def _load_input_data(self) -> List[ModelInput]:
         """From a configuration, loads the input image and text data.
 
         For each prompt and input image, create a separate batch feature that
@@ -331,8 +331,8 @@ class ModelBase(ABC):
         self.model.to(self.config.device)
 
         # then run everything else
-        for input in self.load_input_data():
-            self.forward(input)
+        for input in self._load_input_data():
+            self._forward(input)
 
         # finally clean up, closing database connection, etc.
         self._cleanup()
