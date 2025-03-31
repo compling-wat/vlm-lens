@@ -143,8 +143,18 @@ if __name__ == '__main__':
     unique_layers = get_unique_layers(config)
     print(f'Unique layers: {unique_layers}')
 
-    for query_img_path in config.image_paths:
-        query_img_path = os.path.abspath(query_img_path)
+    image_paths = (
+        [config.NO_IMG_PROMPT]
+        if len(config.image_paths) == 0 else
+        config.image_paths
+    )
+
+    for query_img_path in image_paths:
+        query_img_path = (
+            os.path.abspath(query_img_path)
+            if query_img_path != config.NO_IMG_PROMPT else
+            query_img_path
+        )
         print(f'~~Tensors for {query_img_path}~~')
         for layer in unique_layers:
             tensors = retrieve_tensors(config, layer, query_img_path)

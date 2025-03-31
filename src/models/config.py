@@ -182,6 +182,7 @@ class Config():
         self.device = torch.device(self.device)
 
         self.DB_TABLE_NAME = 'tensors'
+        self.NO_IMG_PROMPT = 'No image prompt'
 
     def has_images(self) -> bool:
         """Returns a boolean for whether or not the input directory has images.

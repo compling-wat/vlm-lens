@@ -96,7 +96,7 @@ class ModelBase(ABC):
             hook function: The hook function to return.
         """
         # first, let's modify image path to be an absolute path
-        if image_path is not None:
+        if image_path != self.config.NO_IMG_PROMPT:
             image_path = os.path.abspath(image_path)
 
             # this image path should already exist, error out if someone isn't
@@ -127,7 +127,7 @@ class ModelBase(ABC):
                 """, (
                     self.model_path,
                     self.config.architecture.value,
-                    image_path if image_path is not None else 'No image prompt',
+                    image_path,
                     prompt,
                     name,
                     tensor_blob
@@ -135,6 +135,11 @@ class ModelBase(ABC):
             )
 
             self.connection.commit()
+
+            logging.debug(
+                f'Ran hook and saved tensor for {image_path} using prompt '
+                f'{prompt} on layer {name}.'
+            )
 
         return generate_states_hook
 
@@ -249,15 +254,19 @@ class ModelBase(ABC):
                 the corresponding processor arguments.
         """
         if not self.config.has_images():
-            return [(None, prompt, {
-                'text': prompt,
-                'return_tensors': 'pt'
-            })]
+            return [(
+                self.config.NO_IMG_PROMPT,
+                self.config.prompt,
+                {
+                    'text': prompt,
+                    'return_tensors': 'pt'
+                }
+            )]
 
         return [
             (
                 img_path,
-                prompt,
+                self.config.prompt,
                 {
                     'text': prompt,
                     'images': [Image.open(img_path).convert('RGB')],
