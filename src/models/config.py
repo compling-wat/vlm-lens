@@ -74,7 +74,6 @@ class Config():
             '-o',
             '--output-db',
             type=str,
-            default='embeddings.db',
             help=(
                 'The specified output database to save the tensors to, '
                 'defaults to embedding.db'
@@ -183,6 +182,10 @@ class Config():
 
         self.DB_TABLE_NAME = 'tensors'
         self.NO_IMG_PROMPT = 'No image prompt'
+
+        # if there is no output database set, use embeddings.db as the default
+        if not hasattr(self, 'output_db'):
+            self.output_db = 'embeddings.db'
 
     def has_images(self) -> bool:
         """Returns a boolean for whether or not the input directory has images.

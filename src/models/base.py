@@ -46,9 +46,6 @@ class ModelBase(ABC):
         # load the processor
         self._init_processor()
 
-        # generate and register the forward hook
-        logging.debug('Generating hook function')
-
         # finally let's initialize a database
         self._initialize_db()
 
@@ -205,6 +202,7 @@ class ModelBase(ABC):
         # then ensure that the data is correct
         data.to(self.config.device)
 
+        # TODO: move this section into its own thing...
         with torch.no_grad():
             _ = self.model(**data)
         logging.debug('Completed forward pass...')
