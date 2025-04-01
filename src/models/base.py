@@ -184,7 +184,20 @@ class ModelBase(ABC):
 
         return hooks
 
-    def _forward(self, input: ModelInput):
+    def _forward(self, data: BatchFeature):
+        """Given some input data, performs a single forward pass.
+
+        This function itself can be overriden, while _hook_and_eval
+        should be left in tact.
+
+        Args:
+            data (BatchFeature): The given data tensor.
+        """
+        with torch.no_grad():
+            _ = self.model(**data)
+        logging.debug('Completed forward pass...')
+
+    def _hook_and_eval(self, input: ModelInput):
         """Given some input, performs a single forward pass.
 
         Args:
@@ -201,11 +214,7 @@ class ModelBase(ABC):
 
         # then ensure that the data is correct
         data.to(self.config.device)
-
-        # TODO: move this section into its own thing...
-        with torch.no_grad():
-            _ = self.model(**data)
-        logging.debug('Completed forward pass...')
+        self._forward(data)
 
         for hook in hooks:
             hook.remove()
@@ -339,7 +348,7 @@ class ModelBase(ABC):
 
         # then run everything else
         for input in self._load_input_data():
-            self._forward(input)
+            self._hook_and_eval(input)
 
         # finally clean up, closing database connection, etc.
         self._cleanup()
