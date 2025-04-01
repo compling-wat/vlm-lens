@@ -35,7 +35,7 @@ python src/main.py --architecture qwen --model-path Qwen/Qwen2-VL-2B-Instruct --
 ```
 or:
 ```base
-python src/main.py --config configs/qwen_2b.yaml --debug
+python src/main.py --config configs/qwen-2b.yaml --debug
 ```
 
 ### Matching Layers
