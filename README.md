@@ -18,7 +18,7 @@ pip install -r requirements.txt
 
 Then, execute the following command:
 ```bash
-python src/main.py --architecture <architecture> --model-path <model-path> --debug --config <config-file-path> --input-dir <input-dir> --output-dir <output-dir>
+python src/main.py --architecture <architecture> --model-path <model-path> --debug --config <config-file-path> --input-dir <input-dir> --output-db <output-db>
 ```
 with an optional debug flag to see more detailed outputs.
 
@@ -35,7 +35,7 @@ python src/main.py --architecture qwen --model-path Qwen/Qwen2-VL-2B-Instruct --
 ```
 or:
 ```base
-python src/main.py --config configs/qwen_2b.yaml --debug
+python src/main.py --config configs/qwen-2b.yaml --debug
 ```
 
 ### Matching Layers
@@ -59,3 +59,16 @@ To use a specific cache, one should set the `HF_HOME` environment variable as so
 ```
 HF_HOME=./cache/ python src/main.py --config configs/clip-base.yaml --debug
 ```
+
+### Output Database
+Specified by the `-o` and `--output-db` flags, this specifies the specific output database we want. From this, in SQL we have a single table under the name `tensors` with the following columns:
+```
+Name, Architecture, Timestamp, Image Path, Layer, Tensor
+```
+where each column is:
+1. `Name` represents the model path from HuggingFace.
+2. `Architecture` is the supported flags above.
+3. `Timestamp` is the specific time that the model was ran.
+4. `Image path` is the absolute path to the image.
+5. `Layer` is the matched layer from `model.named_modules()`
+6. `Tensor` is the embedding saved.

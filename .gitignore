@@ -4,6 +4,9 @@ __pycache__/
 *$py.class
 output_dir/
 
+# Any database caches
+*.db
+
 # C extensions
 *.so
 
