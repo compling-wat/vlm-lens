@@ -2,7 +2,7 @@ architecture: qwen
 model_path: Qwen/Qwen2-VL-2B-Instruct
 model:
   - torch_dtype: auto
-output_dir: ./output_dir/
+output_db: qwen.db
 input_dir: ./data/
 prompt: "Describe the color in this image in one word."
 modules:
