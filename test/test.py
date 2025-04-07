@@ -22,7 +22,7 @@ import torch
 class TestHiddenStates:
     """test class for hidden states extraction functionality."""
     def _import(self):
-        """Initialize the test cases."""
+        """An initialization function of the test cases."""
         sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
         self._get_unique_layers = importlib.import_module('scripts.read_tensor').get_unique_layers
@@ -47,13 +47,9 @@ class TestHiddenStates:
             raise ValueError(f'Unknown model architecture: {model_arch}')
 
     def _model_run(self,
-                   config_path: str
+                   config,
                    ) -> List[Tuple[str, Tuple[torch.Tensor], str, str, str]]:
         """Initialize the model and run it."""
-        # get everything from the config
-        sys.argv = ['test/test.py', '-c', config_path, '--debug']
-        config = self.Config()
-
         # mock the model run
         model = self._get_test_model(config.architecture, config)
         model.run()
@@ -93,20 +89,19 @@ class TestHiddenStates:
             if timestamp == latest_timestamp:
                 return layer, tensor, timestamp, image_path, prompt
 
-    def test_input_ids(self, config_path: str) -> None:
-        """."""
-        self._import()
-        pass
-
     def test_hidden_states(self, config_path: str) -> None:
         """Test if hidden states are floats."""
         self._import()
 
-        # TODO: mock a model config for each test
+        # TODO: set image path
+
+        # init config
+        sys.argv = ['test/test.py', '-c', config_path, '--debug']
+        config = self.Config()
 
         # get the model output
         # TODO: to save the model output globaly to save time
-        model_outputs = self._model_run(config_path=config_path)
+        model_outputs = self._model_run(config=config)
 
         # check that input_ids are integers
         for model_output in model_outputs:
@@ -120,4 +115,22 @@ class TestHiddenStates:
         """Check if the same input generates the same outputs."""
         self._import()
 
-        pass
+        image_path = 'test/data/single'
+
+        # get model outputs
+        sys.argv = ['test/test.py', '-c', config_path, '-i', image_path, '--debug']
+        config1 = self.Config()
+        model_outputs1 = self._model_run(config=config1)
+
+        # init config2
+        sys.argv = ['test/test.py', '-c', config_path, '-i', image_path, '--debug']
+        config2 = self.Config()
+        model_outputs2 = self._model_run(config=config2)
+
+        # check that the outputs are the same
+        for model_output1, model_output2 in zip(model_outputs1, model_outputs2):
+            _, tensor1, _, _, _ = model_output1
+            _, tensor2, _, _, _ = model_output2
+
+            assert torch.allclose(tensor1, tensor2), \
+                f'Tensors are not close: {tensor1} and {tensor2}'
