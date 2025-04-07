@@ -46,9 +46,6 @@ class ModelBase(ABC):
         # load the processor
         self._init_processor()
 
-        # finally let's initialize a database
-        self._initialize_db()
-
     def _log_named_modules(self):
         """Logs the named modules based on the loaded model."""
         file_path = 'logs/' + self.model_path + '.txt'
@@ -343,7 +340,10 @@ class ModelBase(ABC):
 
     def run(self) -> None:
         """Get the hidden states from the model and saving them."""
-        # first convert to gpu state
+        # let's first initialize a database connection
+        self._initialize_db()
+
+        # then convert to gpu
         self.model.to(self.config.device)
 
         # then run everything else

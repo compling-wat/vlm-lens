@@ -1,0 +1,11 @@
+filter_one:
+  prompt: "Test prompt for filter one"
+  input_dir: ./data
+  modules:
+    - text_model.encoder.layers.0.self_attn.out_proj
+
+filter_two:
+  prompt: "Test prompt for filter two"
+  input_dir: ./data
+  modules:
+    - vision_model.encoder.layers.11.layer_norm2

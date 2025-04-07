@@ -80,7 +80,6 @@ class Config():
                 'defaults to embedding.db'
             )
         )
-
         parser.add_argument(
             '--device',
             type=str,
@@ -88,7 +87,8 @@ class Config():
             help='Specify the device to send tensors and the model to'
         )
 
-        args = parser.parse_args()
+        # only parse the args that we know, and throw out what we don't know
+        args = parser.parse_known_args()[0]
 
         # the set of potential keys should be defined by the config + any
         # other special ones here (such as the model args)
