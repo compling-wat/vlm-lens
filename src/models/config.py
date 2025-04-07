@@ -151,11 +151,16 @@ class Config():
         assert hasattr(self, 'modules') and self.modules is not None, (
             'Must declare at least one module.'
         )
+        self.default_modules = self.modules
         self.set_modules(self.modules)
 
         self.image_paths = []
-        if hasattr(self, 'input_dir'):
-            self.set_image_paths(self.input_dir)
+        self.default_input_dir = (
+            self.input_dir
+            if hasattr(self, 'input_dir') else
+            None
+        )
+        self.set_image_paths(self.default_input_dir)
 
         # check if there is no input data
         if not (self.has_images() or hasattr(self, 'prompt')):
@@ -163,6 +168,9 @@ class Config():
                 'Input directory was either not provided or empty '
                 'and no prompt was provided'
             )
+
+        # now set the default prompt to be used in filters
+        self.default_prompt = self.prompt
 
         # now sets the specific device, first does a check to make sure that if
         # the user wants to use cuda that it is available
@@ -217,12 +225,14 @@ class Config():
         """
         self.modules = [re.compile(module) for module in to_match_modules]
 
-    def set_image_paths(self, input_dir: str):
+    def set_image_paths(self, input_dir: (str | None)):
         """Sets the images based on the input directory.
 
         Args:
-            input_dir (str): The input directory.
+            input_dir (str | None): The input directory.
         """
+        if input_dir is None:
+            return
         # now we take a look through all the images in the input directory
         # and add those paths to image_paths
         image_exts = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff']

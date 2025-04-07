@@ -32,9 +32,18 @@ if __name__ == '__main__':
     for key, data in filter_config.filter_data.items():
         print(f'Data from filter {key}')
 
-        config.set_image_paths(data['input_dir'])
-        config.set_modules(data['modules'])
-        config.set_prompt(data['prompt'])
+        if 'input_dir' in data.keys():
+            config.set_image_paths(data['input_dir'])
+        else:
+            config.set_image_paths(config.default_input_dir)
+        if 'modules' in data.keys():
+            config.set_modules(data['modules'])
+        else:
+            config.set_modules(config.default_modules)
+        if 'prompt' in data.keys():
+            config.set_prompt(data['prompt'])
+        else:
+            config.set_prompt(config.default_prompt)
 
         image_paths = (
             [config.NO_IMG_PROMPT]

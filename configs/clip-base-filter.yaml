@@ -9,3 +9,6 @@ filter_two:
   input_dir: ./data
   modules:
     - vision_model.encoder.layers.11.layer_norm2
+
+default_filter:
+  unused_key: "Use the defaults"

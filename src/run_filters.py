@@ -45,9 +45,18 @@ def run_filters(base_config: Config, filter_config: FilterConfig):
     # now for each filter, we want to modify the model's config
     for key, data in filter_config.filter_data.items():
         logging.debug(f'Running {key} filter, setting data to {data}')
-        model.config.set_image_paths(data['input_dir'])
-        model.config.set_modules(data['modules'])
-        model.config.set_prompt(data['prompt'])
+        if 'input_dir' in data.keys():
+            model.config.set_image_paths(data['input_dir'])
+        else:
+            model.config.set_image_paths(model.config.default_input_dir)
+        if 'modules' in data.keys():
+            model.config.set_modules(data['modules'])
+        else:
+            model.config.set_modules(model.config.default_modules)
+        if 'prompt' in data.keys():
+            model.config.set_prompt(data['prompt'])
+        else:
+            model.config.set_prompt(model.config.default_prompt)
         model.run()
 
 
