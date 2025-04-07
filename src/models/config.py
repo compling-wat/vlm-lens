@@ -7,6 +7,7 @@ import argparse
 import logging
 import os
 from enum import Enum
+from typing import List
 
 import regex as re
 import torch
@@ -150,21 +151,11 @@ class Config():
         assert hasattr(self, 'modules') and self.modules is not None, (
             'Must declare at least one module.'
         )
-        self.modules = [re.compile(module) for module in self.modules]
+        self.set_modules(self.modules)
 
         self.image_paths = []
         if hasattr(self, 'input_dir'):
-            # now we take a look through all the images in the input directory
-            # and add those paths to image_paths
-            image_exts = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff']
-            self.image_paths = [
-                os.path.join(self.input_dir, img_path)
-                for img_path in filter(
-                    lambda file_path:
-                        os.path.splitext(file_path)[1].lower() in image_exts,
-                    os.listdir(self.input_dir)
-                )
-            ]
+            self.set_image_paths(self.input_dir)
 
         # check if there is no input data
         if not (self.has_images() or hasattr(self, 'prompt')):
@@ -209,3 +200,37 @@ class Config():
             if module.fullmatch(module_name):
                 return True
         return False
+
+    def set_prompt(self, prompt: str):
+        """Sets the prompt for the specific config.
+
+        Args:
+            prompt (str): Prompt to set.
+        """
+        self.prompt = prompt
+
+    def set_modules(self, to_match_modules: List[str]):
+        """Sets the modules for the specific config.
+
+        Args:
+            to_match_modules (List[str]): The module regexes to match.
+        """
+        self.modules = [re.compile(module) for module in to_match_modules]
+
+    def set_image_paths(self, input_dir: str):
+        """Sets the images based on the input directory.
+
+        Args:
+            input_dir (str): The input directory.
+        """
+        # now we take a look through all the images in the input directory
+        # and add those paths to image_paths
+        image_exts = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff']
+        self.image_paths = [
+            os.path.join(input_dir, img_path)
+            for img_path in filter(
+                lambda file_path:
+                    os.path.splitext(file_path)[1].lower() in image_exts,
+                os.listdir(self.input_dir)
+            )
+        ]
