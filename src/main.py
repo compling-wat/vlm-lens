@@ -28,7 +28,7 @@ def get_model(
         return llava.LlavaModel(config)
     elif model_arch == ModelSelection.QWEN:
         return qwen.QwenModel(config)
-    elif ModelSelection.CLIP:
+    elif model_arch == ModelSelection.CLIP:
         return clip.ClipModel(config)
 
 
