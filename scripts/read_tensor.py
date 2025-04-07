@@ -157,12 +157,15 @@ if __name__ == '__main__':
         )
         print(f'~~Tensors for {query_img_path}~~')
         for layer in unique_layers:
+            if not config.matches_module(layer):
+                continue
             tensors = retrieve_tensors(config, layer, query_img_path)
             for layer, tensor, timestamp, image_path, prompt in tensors:
                 print(
                     f'Name: {config.model_path}, '
                     f'Architecture: {config.architecture.value}, '
-                    f'Layer: {layer}, Tensor Norm: {torch.norm(tensor)}, '
+                    f'Layer: {layer}, '
+                    f'Tensor Norm: {torch.norm(tensor)}, '
                     f'Timestamp: {timestamp}, Image path: {image_path}, '
                     f'Prompt: {prompt}'
                 )
