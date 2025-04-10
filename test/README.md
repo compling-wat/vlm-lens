@@ -49,7 +49,7 @@ pytest -s test/test.py
 run a subset of tests
 
 ```bash
-pytest -s test/test.py -k '<test_name>'
+pytest test/test.py -k '<test_name>'
 ```
 
 e.g.,
