@@ -1,0 +1,12 @@
+architecture: minicpm
+model_path: openbmb/MiniCPM-V-2_6
+model:
+  - trust_remote_code: True
+  - attn_implementation: 'sdpa'
+  - torch_dtype: torch.bfloat16
+output_db: minicpm.db
+input_dir: ./data/
+prompt: "Describe the color in this image in one word."
+modules:
+  - llm.lm_head
+  - vpm.encoder.layers.26
