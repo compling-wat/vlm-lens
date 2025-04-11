@@ -9,6 +9,7 @@ import os
 from enum import Enum
 
 import regex as re
+import torch
 import yaml
 
 
@@ -17,6 +18,7 @@ class ModelSelection(str, Enum):
     LLAVA = 'llava'
     QWEN = 'qwen'
     MINICPM = 'minicpm'
+    CLIP = 'clip'
 
 
 class Config():
@@ -69,12 +71,21 @@ class Config():
             type=str,
             help='The specified input directory to read data from'
         )
-        # TODO: Add in a check to make sure that the output directory exists
         parser.add_argument(
             '-o',
-            '--output-dir',
+            '--output-db',
             type=str,
-            help='The specified output directory to save the tensors to'
+            help=(
+                'The specified output database to save the tensors to, '
+                'defaults to embedding.db'
+            )
+        )
+
+        parser.add_argument(
+            '--device',
+            type=str,
+            default='cpu',
+            help='Specify the device to send tensors and the model to'
         )
 
         args = parser.parse_args()
@@ -162,6 +173,20 @@ class Config():
                 'Input directory was either not provided or empty '
                 'and no prompt was provided'
             )
+
+        # now sets the specific device, first does a check to make sure that if
+        # the user wants to use cuda that it is available
+        if 'cuda' in self.device and not torch.cuda.is_available():
+            raise ValueError('No GPU found for this machine')
+
+        self.device = torch.device(self.device)
+
+        self.DB_TABLE_NAME = 'tensors'
+        self.NO_IMG_PROMPT = 'No image prompt'
+
+        # if there is no output database set, use embeddings.db as the default
+        if not hasattr(self, 'output_db'):
+            self.output_db = 'embeddings.db'
 
     def has_images(self) -> bool:
         """Returns a boolean for whether or not the input directory has images.

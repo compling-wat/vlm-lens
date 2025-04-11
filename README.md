@@ -18,15 +18,16 @@ pip install -r requirements.txt
 
 Then, execute the following command:
 ```bash
-python src/main.py --architecture <architecture> --model-path <model-path> --debug --config <config-file-path> --input-dir <input-dir> --output-dir <output-dir>
+python src/main.py --architecture <architecture> --model-path <model-path> --debug --config <config-file-path> --input-dir <input-dir> --output-db <output-db>
 ```
 with an optional debug flag to see more detailed outputs.
 
-Note that the config file should be in yaml format, and that any arguments you want to send to the huggingface API should be under the `model` key. See `configs/qwen_2b.yaml` as an example.
+Note that the config file should be in yaml format, and that any arguments you want to send to the huggingface API should be under the `model` key. See `configs/qwen-2b.yaml` as an example.
 
 The supported architecture flags are currently:
 - 'llava'
 - 'qwen'
+- 'clip'
 
 For example, one can run:
 ```base
@@ -34,7 +35,7 @@ python src/main.py --architecture qwen --model-path Qwen/Qwen2-VL-2B-Instruct --
 ```
 or:
 ```base
-python src/main.py --config configs/qwen_2b.yaml --debug
+python src/main.py --config configs/qwen-2b.yaml --debug
 ```
 
 ### Matching Layers
@@ -52,3 +53,22 @@ Unfortunately there is no way to find which layers to potentially match to witho
 Instead, we offer some cached results under `logs/` for each model, which were generated through including the `-l` or `--log_named_modules` flag.
 
 When running this flag, it is not necessary to set modules or anything besides the architecture and HuggingFace model path.
+
+### Using a Cache
+To use a specific cache, one should set the `HF_HOME` environment variable as so:
+```
+HF_HOME=./cache/ python src/main.py --config configs/clip-base.yaml --debug
+```
+
+### Output Database
+Specified by the `-o` and `--output-db` flags, this specifies the specific output database we want. From this, in SQL we have a single table under the name `tensors` with the following columns:
+```
+Name, Architecture, Timestamp, Image Path, Layer, Tensor
+```
+where each column is:
+1. `Name` represents the model path from HuggingFace.
+2. `Architecture` is the supported flags above.
+3. `Timestamp` is the specific time that the model was ran.
+4. `Image path` is the absolute path to the image.
+5. `Layer` is the matched layer from `model.named_modules()`
+6. `Tensor` is the embedding saved.
