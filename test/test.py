@@ -252,6 +252,11 @@ class TestHiddenStates:
             _, tensor1, _, _, _ = model_output[0]
             _, tensor2, _, _, _ = model_output[1]
 
+            if isinstance(tensor1, Tuple):
+                tensor1 = tensor1[0]
+            if isinstance(tensor2, Tuple):
+                tensor2 = tensor2[0]
+
             assert not torch.allclose(tensor1, tensor2), \
                 f'Tensors are close: {tensor1} and {tensor2}'
 
