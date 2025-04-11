@@ -1,59 +1,67 @@
 # Test for new model classes
 
+This test folder covers the suggested tests.
 
 ## Model class checking list
 
 Before submitting a model, better to check if the following items are done.
-
 
 Features
 
 - [ ] requirement file: remember to push into the requirement PR
 - [ ] model config yaml
 - [ ] model architecture file
-- [ ] generate input ids (if needed)
-- [ ] forward (if needed)
+- [ ] the `run()` function
 
-Suggested Tests
-- [ ] input_ids are vectors of integers
+Suggested Tests (by running `pytest`)
 - [ ] hidden_states are vectors of floats
 - [ ] to input the same image/text twice and the output hidden_states are the same
 - [ ] to input two different image/text and the output hidden_states are different
-- [ ] to input images of different sizes and the input_ids have the same shape (not applied to some models)
+- [ ] bulk test on 10 images
 
-- [ ] work on image only inputs (priority low)
-- [ ] work on text only inputs (priority low)
-- [ ] stress test
+- [ ] (curretnly uncovered) input_ids are vectors of integers
+- [ ] (curretnly uncovered) work on image only inputs
+- [ ] (curretnly uncovered) work on text only inputs
 
 Details
 - [ ] to set `model.eval()` (if needed)
-- [ ] load model configs should be in the yaml file instead of the code
 
 
 ## How to use the test model
 
-Install the requirements
+1. Install the requirements
 
-also remember to install the requirements
+    also remember to install the requirements
 
-```bash
-pip install pytest pytest-cov
-```
+    ```bash
+    pip install pytest pytest-cov
+    ```
 
-run all tests
+2. In `test/test.py`, search for three `NOTE` signs and add your configuration as indicated.
 
-```bash
-pytest -s test/test.py
-```
+3. Run
 
-run a subset of tests
+    run all tests
 
-```bash
-pytest test/test.py -k '<test_name>'
-```
+    ```bash
+    pytest -s test/test.py
+    ```
 
-e.g.,
+    run a subset of tests
 
-```bash
-pytest -s test/test.py -k 'test_hidden_states_diff_inputs'
-```
+    ```bash
+    pytest test/test.py -k '<test_name>'
+    ```
+
+    e.g.,
+
+    ```bash
+    pytest test/test.py -k 'test_hidden_states_diff_inputs'
+    ```
+
+
+## Notes
+
+1. This test class currently does not support running in parallel, since the database has a lock protection.
+
+2. If you want to add more tests, the test function should start with `test_` to be detected by pytest.

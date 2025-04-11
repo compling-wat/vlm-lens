@@ -16,7 +16,8 @@ import torch
 def retrieve_tensors(
     config,
     layer: str,
-    query_img_path: List[str]
+    query_img_path: List[str],
+    return_last: bool = False,
 ) -> List[Tuple[str, torch.Tensor]]:
     """Retrieve a PyTorch tensor based on its inputs and config.
 
@@ -24,6 +25,7 @@ def retrieve_tensors(
         config (Config): The path to the configuration itself.
         layer (str): The name of the layer itself.
         query_img_path (str): Image path to query for.
+        return_last (bool): If True, retrieve the last timestamp for each layer.
 
     Returns:
         List[Tuple[str, torch.Tensor]]:
@@ -56,6 +58,9 @@ def retrieve_tensors(
 
     if conditions:
         query += ' WHERE ' + ' AND '.join(conditions)
+
+    if return_last:
+        query += ' ORDER BY timestamp DESC LIMIT 1;'
 
     logging.debug(f'Query: {query}')
 
