@@ -2,7 +2,7 @@ architecture: janus
 model_path: deepseek-ai/Janus-Pro-7B
 model:
   - torch_dtype: auto
-output_dir: ./janus_output_dir/
+output_db: janus1d3b.db
 input_dir: ../data
 prompt: "Describe the color in this image in one word."
 modules:
