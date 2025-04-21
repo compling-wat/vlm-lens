@@ -6,7 +6,5 @@ output_db: janus1d3b.db
 input_dir: ../data
 prompt: "Describe the color in this image in one word."
 modules:
-  - language_model.lm_head
-  - vision_model.vision_tower.blocks.0.attn.qkv
-  - vision_model.vision_tower.blocks.0.mlp.fc1
-  - vision_model.vision_tower.blocks.0.mlp.fc2
+  - vision_und_enc_model.vision_tower.blocks.5.attn.k_norm
+  - language_model.model.layers.14.self_attn
