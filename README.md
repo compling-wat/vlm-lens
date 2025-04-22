@@ -28,6 +28,7 @@ The supported architecture flags are currently:
 - 'llava'
 - 'qwen'
 - 'clip'
+- 'auto' (use this one for any model that uses `AutoProcessor` and `AutoModelForCausalLM`)
 
 For example, one can run:
 ```base

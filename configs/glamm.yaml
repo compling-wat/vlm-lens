@@ -1,0 +1,7 @@
+architecture: auto
+model_path: MBZUAI/GLaMM-FullScope
+model:
+  - torch_dtype: auto
+output_db: glamm.db
+input_dir: ./data/
+prompt: "Describe the color in this image in one word."
