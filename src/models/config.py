@@ -120,6 +120,8 @@ class Config():
         )
         if self.debug:
             logging.getLogger().setLevel(logging.DEBUG)
+        else:
+            logging.getLogger().setLevel(logging.INFO)
 
         # require that the architecture and the model path to exist
         assert hasattr(self, 'architecture') and hasattr(self, 'model_path'), (
