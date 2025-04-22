@@ -10,10 +10,10 @@ from .config import Config
 
 
 class ClipModel(ModelBase):
-    """Llava model implementation."""
+    """Clip model implementation."""
 
     def __init__(self, config: Config):
-        """Initialization of the llava model.
+        """Initialization of the clip model.
 
         Args:
             config (Config): Parsed config
