@@ -7,6 +7,7 @@ import argparse
 import logging
 import os
 from enum import Enum
+from typing import List
 
 import regex as re
 import torch
@@ -79,7 +80,6 @@ class Config():
                 'defaults to embedding.db'
             )
         )
-
         parser.add_argument(
             '--device',
             type=str,
@@ -87,7 +87,8 @@ class Config():
             help='Specify the device to send tensors and the model to'
         )
 
-        args = parser.parse_args()
+        # only parse the args that we know, and throw out what we don't know
+        args = parser.parse_known_args()[0]
 
         # the set of potential keys should be defined by the config + any
         # other special ones here (such as the model args)
@@ -119,6 +120,8 @@ class Config():
         )
         if self.debug:
             logging.getLogger().setLevel(logging.DEBUG)
+        else:
+            logging.getLogger().setLevel(logging.INFO)
 
         # require that the architecture and the model path to exist
         assert hasattr(self, 'architecture') and hasattr(self, 'model_path'), (
@@ -150,21 +153,16 @@ class Config():
         assert hasattr(self, 'modules') and self.modules is not None, (
             'Must declare at least one module.'
         )
-        self.modules = [re.compile(module) for module in self.modules]
+        self.default_modules = self.modules
+        self.set_modules(self.modules)
 
         self.image_paths = []
-        if hasattr(self, 'input_dir'):
-            # now we take a look through all the images in the input directory
-            # and add those paths to image_paths
-            image_exts = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff']
-            self.image_paths = [
-                os.path.join(self.input_dir, img_path)
-                for img_path in filter(
-                    lambda file_path:
-                        os.path.splitext(file_path)[1].lower() in image_exts,
-                    os.listdir(self.input_dir)
-                )
-            ]
+        self.default_input_dir = (
+            self.input_dir
+            if hasattr(self, 'input_dir') else
+            None
+        )
+        self.set_image_paths(self.default_input_dir)
 
         # check if there is no input data
         if not (self.has_images() or hasattr(self, 'prompt')):
@@ -172,6 +170,9 @@ class Config():
                 'Input directory was either not provided or empty '
                 'and no prompt was provided'
             )
+
+        # now set the default prompt to be used in filters
+        self.default_prompt = self.prompt
 
         # now sets the specific device, first does a check to make sure that if
         # the user wants to use cuda that it is available
@@ -209,3 +210,39 @@ class Config():
             if module.fullmatch(module_name):
                 return True
         return False
+
+    def set_prompt(self, prompt: str):
+        """Sets the prompt for the specific config.
+
+        Args:
+            prompt (str): Prompt to set.
+        """
+        self.prompt = prompt
+
+    def set_modules(self, to_match_modules: List[str]):
+        """Sets the modules for the specific config.
+
+        Args:
+            to_match_modules (List[str]): The module regexes to match.
+        """
+        self.modules = [re.compile(module) for module in to_match_modules]
+
+    def set_image_paths(self, input_dir: (str | None)):
+        """Sets the images based on the input directory.
+
+        Args:
+            input_dir (str | None): The input directory.
+        """
+        if input_dir is None:
+            return
+        # now we take a look through all the images in the input directory
+        # and add those paths to image_paths
+        image_exts = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff']
+        self.image_paths = [
+            os.path.join(input_dir, img_path)
+            for img_path in filter(
+                lambda file_path:
+                    os.path.splitext(file_path)[1].lower() in image_exts,
+                os.listdir(self.input_dir)
+            )
+        ]

@@ -141,7 +141,7 @@ if __name__ == '__main__':
     )
 
     unique_layers = get_unique_layers(config)
-    print(f'Unique layers: {unique_layers}')
+    logging.info(f'Unique layers: {unique_layers}')
 
     image_paths = (
         [config.NO_IMG_PROMPT]
@@ -155,15 +155,17 @@ if __name__ == '__main__':
             if query_img_path != config.NO_IMG_PROMPT else
             query_img_path
         )
-        print(f'~~Tensors for {query_img_path}~~')
+        logging.info(f'~~Tensors for {query_img_path}~~')
         for layer in unique_layers:
+            if not config.matches_module(layer):
+                continue
             tensors = retrieve_tensors(config, layer, query_img_path)
             for layer, tensor, timestamp, image_path, prompt in tensors:
-                print(
+                logging.info(
                     f'Name: {config.model_path}, '
                     f'Architecture: {config.architecture.value}, '
-                    f'Layer: {layer}, Tensor Norm: {torch.norm(tensor)}, '
+                    f'Layer: {layer}, '
+                    f'Tensor Norm: {torch.norm(tensor)}, '
                     f'Timestamp: {timestamp}, Image path: {image_path}, '
                     f'Prompt: {prompt}'
                 )
-        print()
