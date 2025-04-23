@@ -246,8 +246,8 @@ class ModelBase(ABC):
         """Cleanups the database by closing the connection."""
         self.connection.close()
 
-    def _generate_processor_args(self, prompt) -> Tuple[str, str, dict]:
-        """Generate the processor arguments to be input into the processor.
+    def _generate_processor_args(self, prompt, img_path) -> dict:
+        """Generate the processor argument to be input into the processor.
 
         Args:
             prompt (str): The generated prompt string with the input text and
@@ -257,28 +257,16 @@ class ModelBase(ABC):
             Tuple[str, str, dict]: Tuples of the image path, its prompt and
                 the corresponding processor arguments.
         """
-        if not self.config.has_images():
-            return [(
-                self.config.NO_IMG_PROMPT,
-                self.config.prompt,
-                {
-                    'text': prompt,
-                    'return_tensors': 'pt'
-                }
-            )]
-
-        return [
-            (
-                img_path,
-                self.config.prompt,
-                {
-                    'text': prompt,
-                    'images': [Image.open(img_path).convert('RGB')],
-                    'return_tensors': 'pt'
-                }
-            )
-            for img_path in self.config.image_paths
-        ]
+        if img_path is None:
+            return {
+                'text': prompt,
+                'return_tensors': 'pt'
+            }
+        return {
+            'text': prompt,
+            'images': [Image.open(img_path).convert('RGB')],
+            'return_tensors': 'pt'
+        }
 
     def _generate_prompt(self, add_generation_prompt: bool = True) -> str:
         """Generates the prompt string with the input messages.
@@ -333,8 +321,27 @@ class ModelBase(ABC):
         logging.debug('Generating embeddings through its processor...')
         return [
             (image_path, prompt, self.processor(**args))
-            for image_path, prompt, args in self._generate_processor_args(
-                prompt=self._generate_prompt()  # format the prompt to use
+            for image_path, prompt, args in (
+                [(
+                    self.config.NO_IMG_PROMPT,
+                    self.config.prompt,
+                    self._generate_processor_args(
+                        prompt=self._generate_prompt(),
+                        img_path=None
+                    )
+                )]
+                if not self.config.has_images() else
+                [
+                    (
+                        img_path,
+                        self.config.prompt,
+                        self._generate_processor_args(
+                            prompt=self._generate_prompt(),
+                            img_path=img_path
+                        )
+                    )
+                    for img_path in self.config.image_paths
+                ]
             )
         ]
 
