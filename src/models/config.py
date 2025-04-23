@@ -19,7 +19,7 @@ class ModelSelection(str, Enum):
     LLAVA = 'llava'
     QWEN = 'qwen'
     CLIP = 'clip'
-    AUTO = 'auto'
+    GLAMM = 'glamm'
 
 
 class Config():

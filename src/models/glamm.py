@@ -9,8 +9,8 @@ from .base import ModelBase
 from .config import Config
 
 
-class AutoModelBase(ModelBase):
-    """Auto model implementation."""
+class GlammModel(ModelBase):
+    """Glamm model implementation."""
 
     def __init__(self, config: Config):
         """Initialization of the llava model.
@@ -30,3 +30,15 @@ class AutoModelBase(ModelBase):
                 self.model_path
             )
         )
+
+    def _init_processor(self) -> None:
+        """Don't set the self.processor as it's not needed for Glamm."""
+        return
+
+    def _generate_prompt(self) -> str:
+        """Generates the GLaMM model prompt which will not use the chat template.
+
+        Returns:
+            str: The prompt to return, set by the config.
+        """
+        return self.config.prompt
