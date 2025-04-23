@@ -1,4 +1,5 @@
 # vlm-competence-dev
+This repository requires Python version 3.10.12+.
 
 ## Precommit Setup
 We use Google docstring format for our docstrings and the pre-commit library to check our code. To install pre-commit, run the following command:
