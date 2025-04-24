@@ -190,6 +190,7 @@ class ModelBase(ABC):
         Args:
             data (BatchFeature): The given data tensor.
         """
+        data.to(self.config.device)
         with torch.no_grad():
             _ = self.model(**data)
         logging.debug('Completed forward pass...')
@@ -210,7 +211,6 @@ class ModelBase(ABC):
         hooks = self._register_module_hooks(image_path, prompt)
 
         # then ensure that the data is correct
-        data.to(self.config.device)
         self._forward(data)
 
         for hook in hooks:

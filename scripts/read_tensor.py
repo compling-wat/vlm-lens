@@ -165,6 +165,7 @@ if __name__ == '__main__':
                     f'Name: {config.model_path}, '
                     f'Architecture: {config.architecture.value}, '
                     f'Layer: {layer}, '
+                    f'Tensor shape: {tensor.shape},'
                     f'Tensor Norm: {torch.norm(tensor)}, '
                     f'Timestamp: {timestamp}, Image path: {image_path}, '
                     f'Prompt: {prompt}'

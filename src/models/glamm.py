@@ -26,7 +26,11 @@ class GlammModel(ModelBase):
         # initialize the parent class
         super().__init__(config)
 
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_path)
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            self.model_path,
+            padding_side='right',
+            use_fast=False
+        )
 
     def _load_specific_model(self):
         """Overridden function to populate self.model."""
@@ -59,7 +63,7 @@ class GlammModel(ModelBase):
         """
         return self.config.prompt
 
-    def _load_input_data(self, prompt, img_path) -> dict:
+    def _generate_processor_output(self, prompt, img_path) -> dict:
         """Generate the processor argument to be input into the processor.
 
         Args:
@@ -79,8 +83,7 @@ class GlammModel(ModelBase):
             image_np, return_tensors='pt'
         )['pixel_values'][0].unsqueeze(0).bfloat16()
 
-        input_ids = self.tokenizer(prompt, return_tensors='pt')
-        input_ids = input_ids.unsqueeze(0)
+        input_ids = self.tokenizer(prompt, return_tensors='pt').input_ids
 
         return {
             'global_enc_image': global_enc_image,
@@ -98,13 +101,9 @@ class GlammModel(ModelBase):
             data (BatchFeature): The given data tensor.
         """
         with torch.no_grad():
-            _ = self.model.generate(
-                images=data['global_enc_image'],
-                input_ids=data['input_ids'],
-                bboxes=data['bboxes'],
-                max_new_tokens=512,
-                num_beams=1,
-                output_hidden_states=True,
-                return_dict_in_generate=True
+            _ = self.model(
+                images=data['global_enc_image'].to(self.config.device),
+                input_ids=data['input_ids'].to(self.config.device),
+                bboxes=data['bboxes']
             )
         logging.debug('Completed forward pass')
