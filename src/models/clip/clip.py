@@ -5,8 +5,8 @@ File for providing the Clip model implementation.
 
 from transformers import CLIPModel
 
-from .base import ModelBase
-from .config import Config
+from src.models.base import ModelBase
+from src.models.config import Config
 
 
 class ClipModel(ModelBase):

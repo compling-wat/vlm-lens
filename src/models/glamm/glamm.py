@@ -10,8 +10,8 @@ import torch
 from transformers import (AutoModelForVision2Seq, AutoTokenizer,
                           CLIPImageProcessor)
 
-from .base import ModelBase
-from .config import Config
+from src.models.base import ModelBase
+from src.models.config import Config
 
 
 class GlammModel(ModelBase):

@@ -2,8 +2,8 @@
 
 File for providing the Janus model implementation.
 """
-from .base import ModelBase
-from .config import Config
+from src.models.base import ModelBase
+from src.models.config import Config
 
 
 class JanusModel(ModelBase):
