@@ -3,10 +3,16 @@
 This module here is the entrypoint to the VLM Competence toolkit.
 """
 import logging
+import os
+import sys
 
-from models import clip, glamm, llava, qwen
 from models.base import ModelBase
 from models.config import Config, ModelSelection
+
+# add on the src directory to the PythonPath
+EXC_DIR = os.path.dirname(os.path.dirname(__file__))
+sys.path.append(EXC_DIR)
+sys.path.append(os.path.join(EXC_DIR, 'src/'))
 
 
 def get_model(
@@ -25,13 +31,20 @@ def get_model(
         base.ModelBase: A model of type ModelBase which implements the runtime
     """
     if model_arch == ModelSelection.LLAVA:
-        return llava.LlavaModel(config)
+        from models.llava import LlavaModel
+        return LlavaModel(config)
     elif model_arch == ModelSelection.QWEN:
-        return qwen.QwenModel(config)
+        from models.qwen import QwenModel
+        return QwenModel(config)
     elif model_arch == ModelSelection.CLIP:
-        return clip.ClipModel(config)
+        from models.clip import ClipModel
+        return ClipModel(config)
     elif model_arch == ModelSelection.GLAMM:
-        return glamm.GlammModel(config)
+        from models.glamm import GlammModel
+        return GlammModel(config)
+    elif model_arch == ModelSelection.JANUS:
+        from models.janus import JanusModel
+        return JanusModel(config)
 
 
 if __name__ == '__main__':

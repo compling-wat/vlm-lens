@@ -4,8 +4,8 @@ File for providing the Qwen model implementation.
 """
 from transformers import Qwen2VLForConditionalGeneration
 
-from .base import ModelBase
-from .config import Config
+from src.models.base import ModelBase
+from src.models.config import Config
 
 
 class QwenModel(ModelBase):

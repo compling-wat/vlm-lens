@@ -29,7 +29,8 @@ The supported architecture flags are currently:
 - 'llava'
 - 'qwen'
 - 'clip'
-- 'auto' (use this one for any model that uses `AutoProcessor` and `AutoModelForCausalLM`)
+- 'glamm'
+- 'janus'
 
 For example, one can run:
 ```base
@@ -74,6 +75,13 @@ where each column is:
 4. `Image path` is the absolute path to the image.
 5. `Layer` is the matched layer from `model.named_modules()`
 6. `Tensor` is the embedding saved.
+
+### Using specific models
+#### Janus
+For Janus, one needs to clone the separate submodules, which can be done with the following command:
+```
+git submodule update --recursive --init
+```
 
 ## Running with different filters
 We also provide a separate script that relies on the main functionality to run on multiple different filters, which can override the specific layer, prompt and input image directories, defaulting to the original layer, prompt and input image directories. This is specified through configs with the `-fc` or `--filter-config` flags as:

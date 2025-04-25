@@ -1,0 +1,12 @@
+architecture: janus
+model_path: deepseek-ai/Janus-1.3B
+model:
+  - attn_implementation: eager
+output_db: janus.db
+input_dir: ./data
+prompt: "Describe the color in this image in one word."
+modules:
+  - language_model.lm_head
+  - vision_model.vision_tower.blocks.0.attn.qkv
+  - vision_model.vision_tower.blocks.0.mlp.fc1
+  - vision_model.vision_tower.blocks.0.mlp.fc2

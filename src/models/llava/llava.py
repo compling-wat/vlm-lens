@@ -4,8 +4,8 @@ File for providing the Llava model implementation.
 """
 from transformers import LlavaForConditionalGeneration
 
-from .base import ModelBase
-from .config import Config
+from src.models.base import ModelBase
+from src.models.config import Config
 
 
 class LlavaModel(ModelBase):

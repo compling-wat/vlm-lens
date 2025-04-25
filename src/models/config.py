@@ -20,6 +20,7 @@ class ModelSelection(str, Enum):
     QWEN = 'qwen'
     CLIP = 'clip'
     GLAMM = 'glamm'
+    JANUS = 'janus'
 
 
 class Config():
