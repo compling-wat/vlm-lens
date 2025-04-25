@@ -3,9 +3,9 @@
 Provides the common classes used such as the ModelSelection enum as well as the
 abstract base class for models.
 """
+import io
 import logging
 import os
-import pickle
 import sqlite3
 from abc import ABC, abstractmethod
 from typing import List, Tuple, TypeAlias
@@ -111,7 +111,8 @@ class ModelBase(ABC):
             cursor = self.connection.cursor()
 
             # Convert the tensor to a binary blob
-            tensor_blob = pickle.dumps(output)
+            tensor_blob = io.BytesIO()
+            torch.save(output, tensor_blob)
 
             # Insert the tensor into the table
             cursor.execute(f"""
@@ -124,7 +125,7 @@ class ModelBase(ABC):
                     image_path,
                     prompt,
                     name,
-                    tensor_blob
+                    tensor_blob.getvalue()
                 )
             )
 
