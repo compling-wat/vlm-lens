@@ -4,7 +4,7 @@ This module here is the entrypoint to the VLM Competence toolkit.
 """
 import logging
 
-from models import clip, llava, qwen
+from models import clip, glamm, llava, qwen
 from models.base import ModelBase
 from models.config import Config, ModelSelection
 
@@ -30,6 +30,8 @@ def get_model(
         return qwen.QwenModel(config)
     elif model_arch == ModelSelection.CLIP:
         return clip.ClipModel(config)
+    elif model_arch == ModelSelection.GLAMM:
+        return glamm.GlammModel(config)
 
 
 if __name__ == '__main__':

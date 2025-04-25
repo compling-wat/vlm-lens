@@ -1,4 +1,5 @@
 # vlm-competence-dev
+This repository requires Python version 3.10.12+.
 
 ## Precommit Setup
 We use Google docstring format for our docstrings and the pre-commit library to check our code. To install pre-commit, run the following command:
@@ -28,6 +29,7 @@ The supported architecture flags are currently:
 - 'llava'
 - 'qwen'
 - 'clip'
+- 'auto' (use this one for any model that uses `AutoProcessor` and `AutoModelForCausalLM`)
 
 For example, one can run:
 ```base

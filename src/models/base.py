@@ -190,6 +190,7 @@ class ModelBase(ABC):
         Args:
             data (BatchFeature): The given data tensor.
         """
+        data.to(self.config.device)
         with torch.no_grad():
             _ = self.model(**data)
         logging.debug('Completed forward pass...')
@@ -210,7 +211,6 @@ class ModelBase(ABC):
         hooks = self._register_module_hooks(image_path, prompt)
 
         # then ensure that the data is correct
-        data.to(self.config.device)
         self._forward(data)
 
         for hook in hooks:
@@ -246,39 +246,29 @@ class ModelBase(ABC):
         """Cleanups the database by closing the connection."""
         self.connection.close()
 
-    def _generate_processor_args(self, prompt) -> Tuple[str, str, dict]:
-        """Generate the processor arguments to be input into the processor.
+    def _generate_processor_output(self, prompt, img_path) -> dict:
+        """Generate the processor outputs from the prompt and image path.
 
         Args:
             prompt (str): The generated prompt string with the input text and
                 the image labels.
+            img_path (str): The specified image path.
 
         Returns:
-            Tuple[str, str, dict]: Tuples of the image path, its prompt and
-                the corresponding processor arguments.
+            dict: The corresponding processor output per image and prompt.
         """
-        if not self.config.has_images():
-            return [(
-                self.config.NO_IMG_PROMPT,
-                self.config.prompt,
-                {
-                    'text': prompt,
-                    'return_tensors': 'pt'
-                }
-            )]
-
-        return [
-            (
-                img_path,
-                self.config.prompt,
-                {
-                    'text': prompt,
-                    'images': [Image.open(img_path).convert('RGB')],
-                    'return_tensors': 'pt'
-                }
-            )
-            for img_path in self.config.image_paths
-        ]
+        return self.processor(**(
+            {
+                'text': prompt,
+                'return_tensors': 'pt'
+            }
+            if img_path is None else
+            {
+                'text': prompt,
+                'images': [Image.open(img_path).convert('RGB')],
+                'return_tensors': 'pt'
+            }
+        ))
 
     def _generate_prompt(self, add_generation_prompt: bool = True) -> str:
         """Generates the prompt string with the input messages.
@@ -331,11 +321,26 @@ class ModelBase(ABC):
         """
         # by default use the processor, which may not exist for each model
         logging.debug('Generating embeddings through its processor...')
+        if not self.config.has_images():
+            return [(
+                self.config.NO_IMG_PROMPT,
+                self.config.prompt,
+                self._generate_processor_output(
+                    prompt=self._generate_prompt(),
+                    img_path=None
+                )
+            )]
+
         return [
-            (image_path, prompt, self.processor(**args))
-            for image_path, prompt, args in self._generate_processor_args(
-                prompt=self._generate_prompt()  # format the prompt to use
+            (
+                img_path,
+                self.config.prompt,
+                self._generate_processor_output(
+                    prompt=self._generate_prompt(),
+                    img_path=img_path
+                )
             )
+            for img_path in self.config.image_paths
         ]
 
     def run(self) -> None:
