@@ -30,18 +30,21 @@ def get_model(
     Returns:
         base.ModelBase: A model of type ModelBase which implements the runtime
     """
-    from models import clip, glamm, janus, llava, qwen
-
     if model_arch == ModelSelection.LLAVA:
-        return llava.LlavaModel(config)
+        from models.llava import LlavaModel
+        return LlavaModel(config)
     elif model_arch == ModelSelection.QWEN:
-        return qwen.QwenModel(config)
+        from models.qwen import QwenModel
+        return QwenModel(config)
     elif model_arch == ModelSelection.CLIP:
-        return clip.ClipModel(config)
+        from models.clip import ClipModel
+        return ClipModel(config)
     elif model_arch == ModelSelection.GLAMM:
-        return glamm.GlammModel(config)
+        from models.glamm import GlammModel
+        return GlammModel(config)
     elif model_arch == ModelSelection.JANUS:
-        return janus.JanusModel(config)
+        from models.janus import JanusModel
+        return JanusModel(config)
 
 
 if __name__ == '__main__':
