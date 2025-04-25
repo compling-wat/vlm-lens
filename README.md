@@ -86,5 +86,5 @@ git submodule update --recursive --init
 ## Running with different filters
 We also provide a separate script that relies on the main functionality to run on multiple different filters, which can override the specific layer, prompt and input image directories, defaulting to the original layer, prompt and input image directories. This is specified through configs with the `-fc` or `--filter-config` flags as:
 ```
-python src/main.py --config configs/clip-base.yaml --filter-config configs/clip-base-filter.yaml --debug
+python src/run_filters.py --config configs/clip-base.yaml --filter-config configs/clip-base-filter.yaml --debug
 ```

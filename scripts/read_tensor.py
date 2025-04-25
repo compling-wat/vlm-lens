@@ -2,10 +2,9 @@
 
 Outputs the layers and its specific associated tensors.
 """
-
+import io
 import logging
 import os
-import pickle
 import sqlite3
 import sys
 from typing import List, Tuple
@@ -72,7 +71,7 @@ def retrieve_tensors(
     tensors = []
     for result in results:
         layer, tensor, timestamp, image_path, prompt = result
-        tensor = pickle.loads(tensor)
+        tensor = torch.load(io.BytesIO(tensor), map_location=config.device)
         tensors.append((layer, tensor, timestamp, image_path, prompt))
 
     return tensors
