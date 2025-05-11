@@ -1,6 +1,6 @@
 """__init__.py.
 
-Clip package, includes which of this module to export.
+Blip-2 package, includes which of this module to export.
 """
 from .blip2 import Blip2Model
 
