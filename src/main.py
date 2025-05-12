@@ -45,6 +45,9 @@ def get_model(
     elif model_arch == ModelSelection.JANUS:
         from models.janus import JanusModel
         return JanusModel(config)
+    elif model_arch == ModelSelection.MOLMO:
+        from models.molmo import MolmoModel
+        return MolmoModel(config)
 
 
 if __name__ == '__main__':
