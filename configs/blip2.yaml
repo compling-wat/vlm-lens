@@ -6,5 +6,5 @@ output_db: blip2.db
 input_dir: ./data/
 prompt: "Describe the color in this image in one word."
 modules:
-  - vision_proj
-  - text_proj
+  - language_model.lm_head
+  - vision_model.post_layernorm
