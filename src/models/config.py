@@ -22,6 +22,7 @@ class ModelSelection(str, Enum):
     GLAMM = 'glamm'
     JANUS = 'janus'
     MOLMO = 'molmo'
+    INTERNVL = 'internvl'
 
 
 class Config():

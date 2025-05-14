@@ -48,6 +48,9 @@ def get_model(
     elif model_arch == ModelSelection.MOLMO:
         from models.molmo import MolmoModel
         return MolmoModel(config)
+    elif model_arch == ModelSelection.INTERNVL:
+        from models.internvl import InternVLModel
+        return InternVLModel(config)
 
 
 if __name__ == '__main__':
