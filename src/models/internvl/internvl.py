@@ -42,8 +42,7 @@ class InternVLModel(ModelBase):
         Returns:
             str: The prompt to return, set by the config.
         """
-        raw_prompt = self.config.prompt
-        return raw_prompt
+        return self.config.prompt
 
     def _init_processor(self) -> None:
         """Initialize the InternVL processor which need to be done manually."""

@@ -1,4 +1,4 @@
-"""Helper functions from official library."""
+"""Helper functions from official huggingface library of InternVL."""
 
 import torch
 import torchvision.transforms as T
@@ -12,13 +12,12 @@ IMAGENET_STD = (0.229, 0.224, 0.225)
 def build_transform(input_size):
     """Helper function that transform image."""
     MEAN, STD = IMAGENET_MEAN, IMAGENET_STD
-    transform = T.Compose([
+    return T.Compose([
         T.Lambda(lambda img: img.convert('RGB') if img.mode != 'RGB' else img),
         T.Resize((input_size, input_size), interpolation=InterpolationMode.BICUBIC),
         T.ToTensor(),
         T.Normalize(mean=MEAN, std=STD)
     ])
-    return transform
 
 
 def find_closest_aspect_ratio(aspect_ratio, target_ratios, width, height, image_size):
