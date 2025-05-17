@@ -6,7 +6,6 @@ import logging
 import os
 import sys
 
-from models import llava, qwen, internlm
 from models.base import ModelBase
 from models.config import Config, ModelSelection
 
