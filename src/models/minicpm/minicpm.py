@@ -62,7 +62,7 @@ class MiniCPMModel(ModelBase):
         """
         msgs = [{'role': 'user', 'content': prompt}]
         image = Image.open(img_path).convert('RGB')
-        return {msgs: msgs, image: image}
+        return {'msgs': msgs, 'image': image}
 
     def _forward(self, data: BatchFeature):
         """Given some input data, performs a single forward pass.
