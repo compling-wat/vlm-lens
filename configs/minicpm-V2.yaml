@@ -1,0 +1,10 @@
+architecture: minicpm
+model_path: openbmb/MiniCPM-V-2
+model:
+  - torch_dtype: auto
+output_db: minicpm.db
+input_dir: ./data/
+prompt: "Describe the color in this image in one word."
+modules:
+  - language_model.lm_head
+  - vision_model.post_layernorm
