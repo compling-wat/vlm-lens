@@ -7,7 +7,7 @@ import argparse
 import logging
 import os
 from enum import Enum
-from typing import List
+from typing import List, Optional
 
 import regex as re
 import torch
@@ -21,6 +21,7 @@ class ModelSelection(str, Enum):
     CLIP = 'clip'
     GLAMM = 'glamm'
     JANUS = 'janus'
+    BLIP2 = 'blip2'
     MOLMO = 'molmo'
     INTERNVL = 'internvl'
 
@@ -231,11 +232,11 @@ class Config():
         """
         self.modules = [re.compile(module) for module in to_match_modules]
 
-    def set_image_paths(self, input_dir: (str | None)):
+    def set_image_paths(self, input_dir: Optional[str]):
         """Sets the images based on the input directory.
 
         Args:
-            input_dir (str | None): The input directory.
+            input_dir (Optional[str]): The input directory.
         """
         if input_dir is None:
             return
