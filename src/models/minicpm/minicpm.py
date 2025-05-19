@@ -75,5 +75,5 @@ class MiniCPMModel(ModelBase):
         """
         # data.to(self.config.device)
         with torch.no_grad():
-            _ = self.model.chat(**data, context=None, tokenizer=self.tokenizer)
+            _ = self.model.chat(**data, context=None, tokenizer=self.tokenizer, max_new_tokens=1)
         logging.debug('Completed forward pass...')
