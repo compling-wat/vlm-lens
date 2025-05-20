@@ -9,7 +9,7 @@ from src.models.base import ModelBase
 from src.models.config import Config
 
 
-class MiniCPMModel(ModelBase):
+class MiniCPMOModel(ModelBase):
 
     def __init__(self, config: Config):
         # initialize the parent class

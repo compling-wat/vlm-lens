@@ -51,6 +51,10 @@ def get_model(
     elif model_arch == ModelSelection.MOLMO:
         from models.molmo import MolmoModel
         return MolmoModel(config)
+    elif model_arch == ModelSelection.MINICPM_O:
+        from models.minicpm_o import MiniCPMOModel
+        return MiniCPMOModel(config)
+
 
 
 if __name__ == '__main__':
