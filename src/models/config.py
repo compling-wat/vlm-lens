@@ -23,7 +23,7 @@ class ModelSelection(str, Enum):
     JANUS = 'janus'
     BLIP2 = 'blip2'
     MOLMO = 'molmo'
-    INTERNLM = 'internlm'
+    INTERNLM_XC = 'internlm-xcomposer'
 
 
 class Config():

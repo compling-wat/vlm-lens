@@ -1,9 +1,9 @@
-architecture: internlm
+architecture: internlm-xcomposer
 model_path: internlm/internlm-xcomposer2d5-7b
 model:
   - torch_dtype: auto
   - attn_implementation: eager
-output_dir: ./output_dir/
+output_db: internlm.db
 input_dir: ./data/
 prompt: "Describe the color in this image in one word."
 modules:

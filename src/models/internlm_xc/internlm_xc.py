@@ -11,7 +11,7 @@ from src.models.base import ModelBase
 from src.models.config import Config
 
 
-class InternLMModel(ModelBase):
+class InternLMXComposerModel(ModelBase):
     """InternLM model implementation."""
 
     def __init__(self, config: Config):
@@ -25,16 +25,15 @@ class InternLMModel(ModelBase):
 
     def _load_specific_model(self):
         """Overridden function to populate self.model."""
-        logging.debug(self.config.model)
         self.model = AutoModel.from_pretrained(
             self.model_path,
             trust_remote_code=True,
             **self.config.model
-        ).eval().cuda() if hasattr(self.config, 'model') else (
+        ) if hasattr(self.config, 'model') else (
             AutoModel.from_pretrained(
                 self.model_path,
                 trust_remote_code=True
-            ).eval().cuda()
+            )
         )
 
     def _init_processor(self):
@@ -69,5 +68,6 @@ class InternLMModel(ModelBase):
 
     def _forward(self, data: dict):
         """Overridden function to run the model forward pass."""
-        with torch.autocast(device_type='cuda'):
+        device_type = str(self.config.device)
+        with torch.autocast(device_type=device_type):
             _, _ = self.model.chat(self.processor, **data)
