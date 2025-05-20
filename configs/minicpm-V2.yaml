@@ -1,5 +1,5 @@
 architecture: minicpm
-model_path: openbmb/MiniCPM-V-2
+model_path: wonderwind271/MiniCPM-V-2
 model:
   - torch_dtype: auto
   - trust_remote_code: True
