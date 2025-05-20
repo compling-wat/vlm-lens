@@ -60,9 +60,9 @@ class MiniCPMModel(ModelBase):
         Returns:
             dict: The corresponding processor output per image and prompt.
         """
+        msgs = [{'role': 'user', 'content': prompt}]
         image = Image.open(img_path).convert('RGB')
-        msgs = [{'role': 'user', 'content': [image, prompt]}]
-        return {'msgs': msgs, 'image': None}
+        return {'msgs': msgs, 'image': image}
 
     def _forward(self, data: BatchFeature):
         """Given some input data, performs a single forward pass.
@@ -75,5 +75,5 @@ class MiniCPMModel(ModelBase):
         """
         # data.to(self.config.device)
         with torch.no_grad():
-            _ = self.model.chat(**data, tokenizer=self.tokenizer, max_new_tokens=1)
+            _ = self.model.chat(**data, context=None, tokenizer=self.tokenizer, max_new_tokens=1)
         logging.debug('Completed forward pass...')
