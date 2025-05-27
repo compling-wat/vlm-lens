@@ -73,7 +73,6 @@ class MiniCPMModel(ModelBase):
         Args:
             data (BatchFeature): The given data tensor.
         """
-        # data.to(self.config.device)
         with torch.no_grad():
             _ = self.model.chat(**data, context=None, tokenizer=self.tokenizer, max_new_tokens=1)
         logging.debug('Completed forward pass...')
