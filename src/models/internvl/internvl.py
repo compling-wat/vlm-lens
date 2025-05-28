@@ -61,11 +61,8 @@ class InternVLModel(ModelBase):
         Returns:
             dict: The corresponding processor output per image and prompt.
         """
-        pixel_values = None
-
-        if img_path is not None:
-            pixel_values = self.img_processor(img_path, max_num=12).to(dtype=torch.bfloat16).to(self.config.device)
-        return {'prompt': prompt, 'pixel_values': pixel_values}
+        return {'prompt': prompt, 
+                'pixel_values': None if img_path is None else self.img_processor(img_path, max_num=12).to(dtype=torch.bfloat16).to(self.config.device)}
 
     def _forward(self, data: BatchFeature):
         """Given some input data, performs a single forward pass.
@@ -76,7 +73,6 @@ class InternVLModel(ModelBase):
         Args:
             data (BatchFeature): The given data tensor.
         """
-        # data.to(self.config.device)
         generation_config = dict(max_new_tokens=1, do_sample=True)
         with torch.no_grad():
             _ = self.model.chat(self.tokenizer, data['pixel_values'], data['prompt'], generation_config)
