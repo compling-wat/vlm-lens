@@ -24,6 +24,7 @@ class ModelSelection(str, Enum):
     BLIP2 = 'blip2'
     MOLMO = 'molmo'
     MINICPM_O = 'minicpm_o'
+    MINICPM = 'minicpm'
 
 
 class Config():
