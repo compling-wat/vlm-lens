@@ -1,0 +1,11 @@
+architecture: minicpm
+model_path: wonderwind271/MiniCPM-V-2
+model:
+  - torch_dtype: auto
+  - trust_remote_code: True
+output_db: minicpm.db
+input_dir: ./data/
+prompt: "Describe the color in this image in one word."
+modules:
+  - llm.lm_head
+  - vpm.encoder.layers.26

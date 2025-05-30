@@ -54,6 +54,9 @@ def get_model(
     elif model_arch == ModelSelection.INTERNLM_XC:
         from models.internlm_xc import InternLMXComposerModel
         return InternLMXComposerModel(config)
+    elif model_arch == ModelSelection.MINICPM:
+        from models.minicpm import MiniCPMModel
+        return MiniCPMModel(config)
 
 
 if __name__ == '__main__':
