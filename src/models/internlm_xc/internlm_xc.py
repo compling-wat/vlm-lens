@@ -70,4 +70,4 @@ class InternLMXComposerModel(ModelBase):
         """Overridden function to run the model forward pass."""
         device_type = str(self.config.device)
         with torch.autocast(device_type=device_type):
-            _, _ = self.model.chat(self.processor, **data)
+            _, _ = self.model.chat(self.processor, **data, **self.config.forward)
