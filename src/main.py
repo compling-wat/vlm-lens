@@ -54,6 +54,9 @@ def get_model(
     elif model_arch == ModelSelection.INTERNVL:
         from models.internvl import InternVLModel
         return InternVLModel(config)
+    elif model_arch == ModelSelection.MINICPM:
+        from models.minicpm import MiniCPMModel
+        return MiniCPMModel(config)
 
 
 if __name__ == '__main__':
