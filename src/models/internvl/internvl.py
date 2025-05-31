@@ -73,7 +73,7 @@ class InternVLModel(ModelBase):
         Args:
             data (BatchFeature): The given data tensor.
         """
-        generation_config = dict(max_new_tokens=1, do_sample=True)
+        generation_config = self.config.forward
         with torch.no_grad():
             _ = self.model.chat(self.tokenizer, data['pixel_values'], data['prompt'], generation_config)
         logging.debug('Completed forward pass...')

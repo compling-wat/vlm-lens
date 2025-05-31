@@ -101,6 +101,7 @@ class Config():
         config_keys.append('model')
         config_keys.append('prompt')
         config_keys.append('modules')
+        config_keys.append('forward')
 
         # first read the config file and set the current attributes to it
         # then parse through the other arguments as that's what we want use to
@@ -147,6 +148,12 @@ class Config():
             for mapping in self.model:
                 model_mapping = {**model_mapping, **mapping}
             self.model = model_mapping
+
+        if hasattr(self, 'forward'):
+            forward_mapping = {}
+            for mapping in self.forward:
+                forward_mapping = {**forward_mapping, **mapping}
+            self.forward = forward_mapping
 
         # do an early return if we don't need the modules
         self.log_named_modules = (
