@@ -51,6 +51,9 @@ def get_model(
     elif model_arch == ModelSelection.MOLMO:
         from models.molmo import MolmoModel
         return MolmoModel(config)
+    elif model_arch == ModelSelection.INTERNVL:
+        from models.internvl import InternVLModel
+        return InternVLModel(config)
     elif model_arch == ModelSelection.MINICPM:
         from models.minicpm import MiniCPMModel
         return MiniCPMModel(config)
