@@ -1,0 +1,14 @@
+architecture: internvl
+model_path: OpenGVLab/InternVL2_5-8B
+model:
+  - torch_dtype: bfloat16
+  - trust_remote_code: True
+forward:
+  - max_new_tokens: 1
+  - do_sample: True
+output_db: internvl.db
+input_dir: ./data/
+prompt: "Describe the color in this image in one word."
+modules:
+  - vision_model.encoder.layers.23
+  - language_model.output
