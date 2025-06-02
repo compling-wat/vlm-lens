@@ -2,7 +2,7 @@ architecture: paligemma
 model_path: google/paligemma-3b-mix-224
 model:
   - torch_dtype: auto
-  - token: "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"
+  - token: <HUGGINGFACE_TOKEN>
 output_db: paligemma.db
 input_dir: ./data/
 prompt: "Describe the color in this image in one word."
