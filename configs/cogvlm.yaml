@@ -1,0 +1,9 @@
+architecture: cogvlm
+model_path: THUDM/cogvlm-chat-hf
+model:
+  - torch_dtype: bfloat16
+  - low_cpu_mem_usage: True
+  - trust_remote_code: True
+output_db: cogvlm.db
+input_dir: ./data/
+prompt: "Describe the color in this image in one word."
