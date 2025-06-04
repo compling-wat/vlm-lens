@@ -2,11 +2,11 @@
 
 File for providing the CogVLM model implementation.
 """
+import logging
 
 import torch
 from PIL import Image
 from transformers import AutoModelForCausalLM, LlamaTokenizer
-# from transformers.feature_extraction_utils import BatchFeature
 
 from src.models.base import ModelBase
 from src.models.config import Config
@@ -26,10 +26,15 @@ class CogVLMModel(ModelBase):
     def _load_specific_model(self):
         """Overridden function to populate self.model."""
         self.model = AutoModelForCausalLM.from_pretrained(
-            self.model_path, **self.config.model
+            self.model_path, 
+            torch_dtype=torch.bfloat16,
+            **self.config.model
         ) if hasattr(self.config, 'model') else (
             AutoModelForCausalLM.from_pretrained(
-                self.model_path
+                self.model_path,
+                torch_dtype=torch.bfloat16,
+                low_cpu_mem_usage=True,
+                trust_remote_code=True
             )
         )
     
@@ -69,10 +74,30 @@ class CogVLMModel(ModelBase):
         # chat mode
         input_ids = self.model.build_conversation_input_ids(self.tokenizer, query=prompt, history=[], images=[image])
         return {
-            'input_ids': input_ids['input_ids'].unsqueeze(0).to('cuda'),
-            'token_type_ids': input_ids['token_type_ids'].unsqueeze(0).to('cuda'),
-            'attention_mask': input_ids['attention_mask'].unsqueeze(0).to('cuda'),
-            'images': [[input_ids['images'][0].to('cuda').to(torch.bfloat16)]],
-            'max_length': 2048,
-            'do_sample': False
+            'input_ids': input_ids['input_ids'].unsqueeze(0),
+            'token_type_ids': input_ids['token_type_ids'].unsqueeze(0),
+            'attention_mask': input_ids['attention_mask'].unsqueeze(0),
+            'images': input_ids['images'][0].to(torch.bfloat16),
         }
+
+    def _forward(self, data: dict):
+        """Given some input data, performs a single forward pass.
+
+        This function itself can be overriden, while _hook_and_eval
+        should be left in tact.
+
+        Args:
+            data (dict): The dictionary containing input data tensors.
+        """
+        gen_kwargs = self.config.forward
+
+        with torch.no_grad():
+            _ = self.model.generate(
+                input_ids=data['input_ids'].to(self.config.device),
+                token_type_ids=data['token_type_ids'].to(self.config.device),
+                attention_mask=data['attention_mask'].to(self.config.device),
+                images=[[data['images'].to(self.config.device)]],
+                **gen_kwargs
+            )
+
+        logging.debug('Completed forward pass...')
