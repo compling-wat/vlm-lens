@@ -10,4 +10,5 @@ output_db: cogvlm.db
 input_dir: ./data/
 prompt: "Describe the color in this image in one word."
 modules:
-  - model.layers.*.self_attn
+  - model.*
+  - lm_head
