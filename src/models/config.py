@@ -23,6 +23,7 @@ class ModelSelection(str, Enum):
     JANUS = 'janus'
     BLIP2 = 'blip2'
     MOLMO = 'molmo'
+    INTERNLM_XC = 'internlm-xcomposer'
     INTERNVL = 'internvl'
     MINICPM = 'minicpm'
 
@@ -144,12 +145,14 @@ class Config():
             )
             self.architecture = ModelSelection(self.architecture)
 
+        # if the model is set, make sure that it is a mapping
         if hasattr(self, 'model'):
             model_mapping = {}
             for mapping in self.model:
                 model_mapping = {**model_mapping, **mapping}
             self.model = model_mapping
 
+        # if forward is set, make sure that it is a mapping
         if hasattr(self, 'forward'):
             forward_mapping = {}
             for mapping in self.forward:
