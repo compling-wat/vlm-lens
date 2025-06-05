@@ -26,7 +26,6 @@ class ModelSelection(str, Enum):
     INTERNLM_XC = 'internlm-xcomposer'
     INTERNVL = 'internvl'
     MINICPM = 'minicpm'
-    MINICPM_O = 'minicpm_o'
 
 
 class Config():

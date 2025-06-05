@@ -1,8 +1,10 @@
-architecture: minicpm_o
+architecture: minicpm
 model_path: openbmb/MiniCPM-o-2_6
 model:
   - torch_dtype: auto
   - trust_remote_code: True
+forward:
+  - max_new_tokens: 1
 output_db: minicpm-o.db
 input_dir: ./data/
 prompt: "Describe the color in this image in one word."

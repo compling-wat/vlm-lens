@@ -60,9 +60,6 @@ def get_model(
     elif model_arch == ModelSelection.MINICPM:
         from models.minicpm import MiniCPMModel
         return MiniCPMModel(config)
-    elif model_arch == ModelSelection.MINICPM_O:
-        from models.minicpm_o import MiniCPMOModel
-        return MiniCPMOModel(config)
 
 
 
