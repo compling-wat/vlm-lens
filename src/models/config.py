@@ -23,8 +23,10 @@ class ModelSelection(str, Enum):
     JANUS = 'janus'
     BLIP2 = 'blip2'
     MOLMO = 'molmo'
-    MINICPM_O = 'minicpm_o'
+    INTERNLM_XC = 'internlm-xcomposer'
+    INTERNVL = 'internvl'
     MINICPM = 'minicpm'
+    MINICPM_O = 'minicpm_o'
 
 
 class Config():
@@ -102,6 +104,7 @@ class Config():
         config_keys.append('model')
         config_keys.append('prompt')
         config_keys.append('modules')
+        config_keys.append('forward')
 
         # first read the config file and set the current attributes to it
         # then parse through the other arguments as that's what we want use to
@@ -143,11 +146,19 @@ class Config():
             )
             self.architecture = ModelSelection(self.architecture)
 
+        # if the model is set, make sure that it is a mapping
         if hasattr(self, 'model'):
             model_mapping = {}
             for mapping in self.model:
                 model_mapping = {**model_mapping, **mapping}
             self.model = model_mapping
+
+        # if forward is set, make sure that it is a mapping
+        if hasattr(self, 'forward'):
+            forward_mapping = {}
+            for mapping in self.forward:
+                forward_mapping = {**forward_mapping, **mapping}
+            self.forward = forward_mapping
 
         # do an early return if we don't need the modules
         self.log_named_modules = (
