@@ -24,6 +24,7 @@ class PaligemmaModel(ModelBase):
         """Overridden function to populate Paligemma model.
 
         Huggingface token is required to get access to the model.
+        Replace <HUGGINGFACE_TOKEN> in configs/paligemma-3b.yaml file with you own hugging face security token.
         Note: 'token' is a general Hugging Face Hub access token, not specific to PaliGemma.
         It enables loading private models or authenticated access.
         See: https://huggingface.co/docs/hub/en/security-tokens
@@ -36,6 +37,7 @@ class PaligemmaModel(ModelBase):
         """Initialize the Paligemma processor.
 
         Huggingface token is required.
+        Replace <HUGGINGFACE_TOKEN> in configs/paligemma-3b.yaml file with you own hugging face security token.
         Note: 'token' is a general Hugging Face Hub access token, not specific to PaliGemma.
         It enables loading private models or authenticated access.
         See: https://huggingface.co/docs/hub/en/security-tokens
