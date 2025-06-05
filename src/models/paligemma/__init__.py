@@ -2,8 +2,8 @@
 
 Paligemma package, includes which of this module to export.
 """
-from .paligemma import PeligemmaModel
+from .paligemma import PaligemmaModel
 
 __all__ = [
-    'PeligemmaModel'
+    'PaligemmaModel'
 ]
