@@ -62,7 +62,6 @@ def get_model(
         return MiniCPMModel(config)
 
 
-
 if __name__ == '__main__':
     logging.getLogger().setLevel(logging.INFO)
     config = Config()
