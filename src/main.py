@@ -51,6 +51,9 @@ def get_model(
     elif model_arch == ModelSelection.MOLMO:
         from models.molmo import MolmoModel
         return MolmoModel(config)
+    elif model_arch == ModelSelection.INTERNLM_XC:
+        from models.internlm_xc import InternLMXComposerModel
+        return InternLMXComposerModel(config)
     elif model_arch == ModelSelection.INTERNVL:
         from models.internvl import InternVLModel
         return InternVLModel(config)
