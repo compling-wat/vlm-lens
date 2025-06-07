@@ -28,7 +28,8 @@ class CogVLMModel(ModelBase):
         self.model = AutoModelForCausalLM.from_pretrained(
             self.model_path, 
             torch_dtype=torch.bfloat16,
-            **self.config.model
+            low_cpu_mem_usage=self.config.model['low_cpu_mem_usage'],
+            trust_remote_code=self.config.model['trust_remote_code']
         ) if hasattr(self.config, 'model') else (
             AutoModelForCausalLM.from_pretrained(
                 self.model_path,
@@ -45,7 +46,10 @@ class CogVLMModel(ModelBase):
         https://huggingface.co/THUDM/cogvlm-chat-hf
         """
         self.processor = None  # no intended processor here
-        self.tokenizer = LlamaTokenizer.from_pretrained('lmsys/vicuna-7b-v1.5', legacy=True)
+        self.tokenizer = LlamaTokenizer.from_pretrained(
+            self.config.model['tokenizer_path'],
+            legacy=self.config.model['legacy']
+        )
     
     def _generate_prompt(self) -> str:
         """Generates the CogVLM model prompt which will not use the chat template.
@@ -71,8 +75,15 @@ class CogVLMModel(ModelBase):
         
         image = Image.open(img_path).convert('RGB')
 
-        # chat mode
-        input_ids = self.model.build_conversation_input_ids(self.tokenizer, query=prompt, history=[], images=[image])
+        # build input data
+        input_ids = self.model.build_conversation_input_ids(
+            self.tokenizer,
+            query=prompt,
+            history=[],
+            images=[image],
+            template_version=self.config.model['template_version']
+        )
+
         return {
             'input_ids': input_ids['input_ids'].unsqueeze(0),
             'token_type_ids': input_ids['token_type_ids'].unsqueeze(0),
