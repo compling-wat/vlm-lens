@@ -13,5 +13,5 @@ output_db: cogvlm.db
 input_dir: ./data/
 prompt: "Describe the color in this image in one word."
 modules:
-  - model.layers.*.post_attention_layernorm
+  - model.vision.transformer.layers.62
   - lm_head
