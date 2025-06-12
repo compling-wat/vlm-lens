@@ -29,7 +29,7 @@ def download_file(url: str, dst_path: str) -> None:
     wget.download(url, out=dst_path)
 
 
-def main(yaml_path):
+def main(yaml_path: str):
     """Main function."""
     with open(yaml_path, 'r') as file:
         config = yaml.safe_load(file)
