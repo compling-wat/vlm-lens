@@ -10,14 +10,20 @@ import yaml
 
 
 def get_text_dataset(hf_path: str, split: str, save_path: Optional[str] = None) -> datasets.Dataset:
-    """Load a split of a certain dataset from HF. If save_path is specified, save the dataset locally as well."""
+    """Load a split of a certain dataset from HF. If save_path is specified, save the dataset locally as well.
+
+    Args:
+        hf_path (str): The huggingface path of the dataset.
+        split (str): The split name.
+        save_path (str | None): the disk location to save the dataset. If is None, do not save it locally.
+    """
     dataset = datasets.load_dataset(hf_path)[split]
     if save_path is not None:
         dataset.save_to_disk(save_path)
     return dataset
 
 
-def download_file(url, dst_path):
+def download_file(url: str, dst_path: str) -> None:
     """Download image zip file."""
     os.makedirs(os.path.dirname(dst_path), exist_ok=True)
     wget.download(url, out=dst_path)
