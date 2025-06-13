@@ -24,13 +24,22 @@ def get_text_dataset(hf_path: str, split: str, save_path: Optional[str] = None) 
 
 
 def download_file(url: str, dst_path: str) -> None:
-    """Download image zip file."""
+    """Download image zip file.
+
+    Args:
+        url (str): The url to download from.
+        dst_path (str): The location to save the filw. Should be a filename instead of dir name.
+    """
     os.makedirs(os.path.dirname(dst_path), exist_ok=True)
     wget.download(url, out=dst_path)
 
 
 def main(yaml_path: str):
-    """Main function."""
+    """Main function.
+
+    Args:
+        yaml_path (str): The path of yaml config file
+    """
     with open(yaml_path, 'r') as file:
         config = yaml.safe_load(file)
     os.makedirs(config['parent_folder'], exist_ok=True)
