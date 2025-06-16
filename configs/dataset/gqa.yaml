@@ -1,6 +1,6 @@
 dataset_path: wonderwind271/GQA_dataset
 split_name: val
 parent_folder: GQA
-dataset_download_place: ../../data/GQA/GQA_dataset
+dataset_download_place: data/GQA/GQA_dataset
 img_url: https://downloads.cs.stanford.edu/nlp/data/gqa/images.zip
-img_download_place: ../../data/GQA/images.zip
+img_download_place: data/GQA/images.zip
