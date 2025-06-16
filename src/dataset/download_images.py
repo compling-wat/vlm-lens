@@ -43,7 +43,9 @@ def main(yaml_path: str):
     with open(yaml_path, 'r') as file:
         config = yaml.safe_load(file)
     os.makedirs(config['parent_folder'], exist_ok=True)
+    print('===step 1/2: Downloading text dataset===')
     get_text_dataset(config['dataset_path'], config['split_name'], config['dataset_download_place'])
+    print('===step 2/2: Downloading image dataset===')
     download_file(config['img_url'], config['img_download_place'])
 
 
