@@ -1,17 +1,32 @@
-.. vlm-competence-dev documentation master file, created by
-   sphinx-quickstart on Thu Jun 12 16:39:29 2025.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
-vlm-competence-dev documentation
+vlm-competence-dev Documentation
 ================================
-
-Add your content using ``reStructuredText`` syntax. See the
-`reStructuredText <https://www.sphinx-doc.org/en/master/usage/restructuredtext/index.html>`_
-documentation for details.
-
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
+Overview
+================
+This repository provides utilities for extracting hidden states from
+state-of-the-art vision-language models. By surfacing these intermediate
+representations, you can perform a comprehensive analysis of the knowledge
+encoded within each model.
+
+Supported Models
+================
+We currently support extracting hidden states from the following vision-language models:
+
+- BLIP-2  
+- Clip  
+- CogVLM  
+- Glamm  
+- InternLM-XComposer  
+- InternVL  
+- Janus  
+- LLaVa  
+- MiniCPM-V2  
+- MiniCPM-o  
+- Molmo  
+- OMG-LLaVa  
+- PaliGemma  
+- Qwen  
