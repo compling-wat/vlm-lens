@@ -271,7 +271,7 @@ class ModelBase(ABC):
             }
         ))
 
-    def _generate_prompt(self, add_generation_prompt: bool = True) -> str:
+    def _generate_prompt(self, prompt, add_generation_prompt: bool = True) -> str:
         """Generates the prompt string with the input messages.
 
         Args:
@@ -300,7 +300,7 @@ class ModelBase(ABC):
         if hasattr(self.config, 'prompt'):
             input_msgs_formatted[0]['content'].append({
                 'type': 'text',
-                'text': self.config.prompt
+                'text': prompt
             })
 
         # apply the chat template to get the prompt
@@ -322,27 +322,42 @@ class ModelBase(ABC):
         """
         # by default use the processor, which may not exist for each model
         logging.debug('Generating embeddings through its processor...')
-        if not self.config.has_images():
-            return [(
-                self.config.NO_IMG_PROMPT,
-                self.config.prompt,
-                self._generate_processor_output(
-                    prompt=self._generate_prompt(),
-                    img_path=None
+        if self.config.dataset:
+            # Use the dataset to load input data, which includes (id, prompt, image_path)
+            return [
+                (
+                    row['image_path'],
+                    row['prompt'],
+                    self._generate_processor_output(
+                        prompt=self._generate_prompt(row['prompt']),
+                        img_path=row['image_path']
+                    )
                 )
-            )]
+                for row in self.config.dataset
+            ]
 
-        return [
-            (
-                img_path,
-                self.config.prompt,
-                self._generate_processor_output(
-                    prompt=self._generate_prompt(),
-                    img_path=img_path
+        else:
+            if not self.config.has_images():
+                return [(
+                    self.config.NO_IMG_PROMPT,
+                    self.config.prompt,
+                    self._generate_processor_output(
+                        prompt=self._generate_prompt(self.config.prompt),
+                        img_path=None
+                    )
+                )]
+
+            return [
+                (
+                    img_path,
+                    self.config.prompt,
+                    self._generate_processor_output(
+                        prompt=self._generate_prompt(self.config.prompt),
+                        img_path=img_path
+                    )
                 )
-            )
-            for img_path in self.config.image_paths
-        ]
+                for img_path in self.config.image_paths
+            ]
 
     def run(self) -> None:
         """Get the hidden states from the model and saving them."""

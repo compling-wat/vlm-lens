@@ -67,7 +67,6 @@ def get_model(
         from models.cogvlm import CogVLMModel
         return CogVLMModel(config)
 
-
 if __name__ == '__main__':
     logging.getLogger().setLevel(logging.INFO)
     config = Config()
