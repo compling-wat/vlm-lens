@@ -1,7 +1,7 @@
 architecture: plm
 model_path: facebook/Perception-LM-1B
 model:
-  - token: "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"
+  - token: <HUGGINGFACE_TOKEN>
   - max_gen_len: 1
 output_db: plm.db
 input_dir: ./data
