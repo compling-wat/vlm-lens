@@ -1,3 +1,7 @@
 [submodule "src/models/janus/Janus"]
 	path = src/models/janus/Janus
 	url = https://github.com/deepseek-ai/Janus.git
+
+[submodule "src/models/plm/Plm"]
+	path = src/models/plm/Plm
+	url = https://github.com/facebookresearch/perception_models.git

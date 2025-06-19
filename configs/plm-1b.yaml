@@ -1,0 +1,10 @@
+architecture: plm
+model_path: facebook/Perception-LM-1B
+model:
+  - token: "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"
+  - max_gen_len: 1
+output_db: plm.db
+input_dir: ./data
+prompt: "Describe the color in this image in one word."
+modules:
+  - vision_projector
