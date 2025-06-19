@@ -1,4 +1,4 @@
-Config YAML format
+Config YAML Format
 ================================
 
 Using a configuration file lets you manage complex settings, version changes,
@@ -10,7 +10,7 @@ Available fields are:
 - **model_path**: HuggingFace model identifier for the pre-trained model.
 - **model**: List of model-specific args while initializing the model (e.g., ``torch_dtype``).
 - **forward**: List of model-specific args while doing a forward pass (e.g., ``max_new_tokens``).
-- **output_db**: Databae name where results will be saved.
+- **output_db**: Database name where results will be saved.
 - **input_dir**: Directory containing the input data.
 - **prompt**: Prompt for the model.
 - **modules**: List of model layers to extract.
