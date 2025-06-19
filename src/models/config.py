@@ -12,6 +12,7 @@ from typing import List, Optional
 import regex as re
 import torch
 import yaml
+from datasets import Dataset, load_dataset
 
 
 class ModelSelection(str, Enum):
@@ -72,7 +73,6 @@ class Config():
             action='store_true',
             help='Logs the named modules for the specified model'
         )
-        # TODO: Add in a check to make sure that the input directory exists
         parser.add_argument(
             '-i',
             '--input-dir',
@@ -105,6 +105,7 @@ class Config():
         config_keys.append('prompt')
         config_keys.append('modules')
         config_keys.append('forward')
+        config_keys.append('dataset')
 
         # first read the config file and set the current attributes to it
         # then parse through the other arguments as that's what we want use to
@@ -173,12 +174,59 @@ class Config():
         self.default_modules = self.modules
         self.set_modules(self.modules)
 
+        # make sure only one of dataset or input_dir is set
+        if hasattr(self, 'dataset') and hasattr(self, 'input_dir'):
+            raise ValueError(
+                'Only one of `dataset` or `input_dir` can be set, '
+                'not both. Please choose one.'
+            )
+
         self.image_paths = []
-        self.default_input_dir = (
-            self.input_dir
-            if hasattr(self, 'input_dir') else
-            None
-        )
+        if hasattr(self, 'dataset'):
+            # Make sure it is a mapping
+            ds_mapping = {}
+            for mapping in self.dataset:
+                ds_mapping = {**ds_mapping, **mapping}
+
+            # Load image dataset
+            logging.debug(f"Locating image dataset from {ds_mapping['image_dataset_path']} with split {ds_mapping['image_split']}")
+            image_dir = ds_mapping.get('image_dataset_path', None)
+            if image_dir and ds_mapping.get('image_split', None):
+                image_dir = os.path.join(
+                    image_dir,
+                    ds_mapping['image_split']
+                )
+
+            # Set default input directory in case we use filters
+            self.default_input_dir = (image_dir)
+            self.set_image_paths(self.default_input_dir)
+
+            # Load text dataset
+            logging.debug(f"Loading text dataset from {ds_mapping['text_dataset_path']} with split {ds_mapping['text_split']}")
+            text_dataset = load_dataset(
+                ds_mapping['text_dataset_path']
+                )[ds_mapping['text_split']]
+
+            # Map text dataset to image dataset
+            logging.debug('Mapping text prompts to their corresponding images...')
+            self.dataset = self.map_text_to_images(
+                text_dataset,
+                ds_mapping['text_column'],
+                ds_mapping['image_column']
+            )
+
+            self.default_prompt = None
+
+        else:
+            self.default_input_dir = (
+                self.input_dir
+                if hasattr(self, 'input_dir') else
+                None
+            )
+
+            # now set the default prompt to be used in filters
+            self.default_prompt = self.prompt
+
         self.set_image_paths(self.default_input_dir)
 
         # check if there is no input data
@@ -188,16 +236,12 @@ class Config():
                 'and no prompt was provided'
             )
 
-        # now set the default prompt to be used in filters
-        self.default_prompt = self.prompt
-
         # now sets the specific device, first does a check to make sure that if
         # the user wants to use cuda that it is available
         if 'cuda' in self.device and not torch.cuda.is_available():
             raise ValueError('No GPU found for this machine')
 
         self.device = torch.device(self.device)
-
         self.DB_TABLE_NAME = 'tensors'
         self.NO_IMG_PROMPT = 'No image prompt'
 
@@ -260,6 +304,40 @@ class Config():
             for img_path in filter(
                 lambda file_path:
                     os.path.splitext(file_path)[1].lower() in image_exts,
-                os.listdir(self.input_dir)
+                os.listdir(input_dir)
             )
         ]
+
+    def map_text_to_images(
+        self,
+        text_dataset: Dataset,
+        text_column: str,
+        image_column: str,
+    ) -> Dataset:
+        """Map text dataset to image dataset.
+
+        Args:
+            text_dataset (datasets.Dataset): The text dataset.
+            text_column (str): The column name for the text entry in text_dataset.
+            image_column (str): The column name in text_dataset used to match entries in image_dataset.
+
+        Returns:
+            datasets.Dataset: A new dataset with text and images mapped together.
+        """
+        # Create a lookup of filename -> full path
+        filename_to_path = {
+            path.split('/')[-1]: path
+            for path in self.image_paths
+        }
+        # Create a new dataset mapping text entries to their corresponding images
+        mapped_dataset = Dataset.from_dict({
+            'id': text_dataset[image_column],
+            'prompt': text_dataset[text_column]
+        })
+
+        # Map the text dataset entries to their corresponding images
+        mapped_dataset = mapped_dataset.map(lambda x: {
+            'image_path': filename_to_path.get(x['id'], None)
+        }).filter(lambda x: x['image_path'] is not None)
+
+        return mapped_dataset

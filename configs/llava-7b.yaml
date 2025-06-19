@@ -1,2 +1,11 @@
 architecture: llava
-model_path: llava-hf/llava-1.5-7b-hf
+model_path: /model-weights/llava-1.5-7b-hf
+dataset:
+  - text_dataset_path: wonderwind271/CLEVR_val
+  - image_dataset_path: /scratch/ssd004/scratch/hsheta/datasets/CLEVR_v1.0/images
+  - text_split: val
+  - image_split: val
+  - text_column: Q
+  - image_column: image_filename
+modules:
+  - vision_tower.vision_model

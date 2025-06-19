@@ -51,7 +51,6 @@ def get_model(
     elif model_arch == ModelSelection.MOLMO:
         from models.molmo import MolmoModel
         return MolmoModel(config)
-<<<<<<< HEAD
     elif model_arch == ModelSelection.INTERNLM_XC:
         from models.internlm_xc import InternLMXComposerModel
         return InternLMXComposerModel(config)
@@ -61,11 +60,9 @@ def get_model(
     elif model_arch == ModelSelection.MINICPM:
         from models.minicpm import MiniCPMModel
         return MiniCPMModel(config)
-=======
     elif model_arch == ModelSelection.PALIGEMMA:
         from models.paligemma import PeligemmaModel
         return PeligemmaModel(config)
->>>>>>> eb68bd9 (add paligemma setting)
 
 
 if __name__ == '__main__':
