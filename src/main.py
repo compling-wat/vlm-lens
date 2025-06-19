@@ -52,8 +52,8 @@ def get_model(
         from models.molmo import MolmoModel
         return MolmoModel(config)
     elif model_arch == ModelSelection.PALIGEMMA:
-        from models.paligemma import PeligemmaModel
-        return PeligemmaModel(config)
+        from models.paligemma import PaligemmaModel
+        return PaligemmaModel(config)
     elif model_arch == ModelSelection.INTERNLM_XC:
         from models.internlm_xc import InternLMXComposerModel
         return InternLMXComposerModel(config)
@@ -66,6 +66,9 @@ def get_model(
     elif model_arch == ModelSelection.COGVLM:
         from models.cogvlm import CogVLMModel
         return CogVLMModel(config)
+    elif model_arch == ModelSelection.PLM:
+        from models.plm import PlmModel
+        return PlmModel(config)
 
 
 if __name__ == '__main__':
