@@ -3,7 +3,7 @@
 import os
 import pathlib
 import sys
-from typing import Optional
+from typing import List, Optional
 
 import datasets
 import wget
@@ -28,15 +28,19 @@ def process_path(path: str, to_str: bool = False) -> pathlib.Path | str:
         return target
 
 
-def get_text_dataset(hf_path: str, split: str, save_path: Optional[str] = None) -> datasets.Dataset:
+def get_text_dataset(hf_path: str, split: str | List[str], save_path: Optional[str] = None) -> datasets.Dataset | datasets.DatasetDict:
     """Load a split of a certain dataset from HF. If save_path is specified, save the dataset locally as well.
 
     Args:
         hf_path (str): The huggingface path of the dataset.
-        split (str): The split name.
+        split (str | List[str]): The split name or a list of split name.
         save_path (str | None): the disk location to save the dataset. If is None, do not save it locally.
     """
-    dataset = datasets.load_dataset(hf_path)[split]
+    dataset_dict = datasets.load_dataset(hf_path)
+    if isinstance(split, str):
+        dataset = dataset_dict[split]
+    else:
+        dataset = datasets.DatasetDict({s: dataset_dict[s] for s in split})
     if save_path is not None:
         dataset.save_to_disk(process_path(save_path))
     return dataset
