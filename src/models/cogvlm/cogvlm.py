@@ -71,7 +71,7 @@ class CogVLMModel(ModelBase):
             dict: The corresponding processor output per image and prompt.
         """
         if img_path is None:
-            raise ValueError('CogVLM cannot have text-only generation.')
+            raise ValueError('Define input image directory in model config.')
         
         image = Image.open(img_path).convert('RGB')
 
