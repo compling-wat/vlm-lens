@@ -90,7 +90,9 @@ class PlmModel(ModelBase):
             data: The given data tensor.
         """
         if 'image' not in data or data['image'] is None:
-            return None
+            raise RuntimeError(
+                'No image provided. PLM requires at least one image.'
+            )
 
         image, _ = self.transform(data['image'])
         prompt = [(data['text'], image)]
@@ -110,7 +112,9 @@ class PlmModel(ModelBase):
             dict: The corresponding processor output per image and prompt.
         """
         if img_path is None:
-            image = None
+            raise RuntimeError(
+                'No image provided. PLM requires at least one image.'
+            )
         else:
             image = Image.open(img_path).convert('RGB')
 
