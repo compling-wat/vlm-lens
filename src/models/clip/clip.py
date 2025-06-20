@@ -31,10 +31,10 @@ class ClipModel(ModelBase):
             )
         )
 
-    def _generate_prompt(self) -> str:
+    def _generate_prompt(self, prompt) -> str:
         """Generates the CLIP model prompt which will not use the chat template.
 
         Returns:
             str: The prompt to return, set by the config.
         """
-        return self.config.prompt
+        return prompt

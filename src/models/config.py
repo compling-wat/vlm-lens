@@ -226,6 +226,7 @@ class Config():
 
             # now set the default prompt to be used in filters
             self.default_prompt = self.prompt
+            self.dataset = None
 
         self.set_image_paths(self.default_input_dir)
 

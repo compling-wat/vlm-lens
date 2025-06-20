@@ -1,0 +1,17 @@
+architecture: internlm-xcomposer
+model_path: internlm/internlm-xcomposer2d5-7b
+model:
+  - torch_dtype: auto
+  - attn_implementation: eager
+dataset:
+  - text_dataset_path: wonderwind271/CLEVR_val
+  - image_dataset_path: /scratch/ssd004/scratch/hsheta/datasets/CLEVR_v1.0/images
+  - text_split: val
+  - image_split: val
+  - text_column: Q
+  - image_column: image_filename
+forward:
+  - max_new_tokens: 1
+output_db: internlm.db
+modules:
+  - model.layers.31

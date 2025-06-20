@@ -297,7 +297,7 @@ class ModelBase(ABC):
             })
 
         # add the prompt if it exists
-        if hasattr(self.config, 'prompt'):
+        if prompt:
             input_msgs_formatted[0]['content'].append({
                 'type': 'text',
                 'text': prompt
