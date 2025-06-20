@@ -5,7 +5,7 @@ model:
   - attn_implementation: eager
 dataset:
   - text_dataset_path: wonderwind271/CLEVR_val
-  - image_dataset_path: /scratch/ssd004/scratch/hsheta/datasets/CLEVR_v1.0/images
+  - image_dataset_path: /path/to/CLEVR_v1.0/images
   - text_split: val
   - image_split: val
   - text_column: Q

@@ -4,7 +4,7 @@ model:
   - torch_dtype: auto
 dataset:
   - text_dataset_path: wonderwind271/CLEVR_val_categories
-  - image_dataset_path: /h/hsheta/vlm-competence-dev/data/CLEVR-mini
+  - image_dataset_path: /path/to/CLEVR_v1.0/images
   - text_split: color
   - image_split: val
   - text_column: Q
