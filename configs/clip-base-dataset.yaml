@@ -3,11 +3,12 @@ model_path: openai/clip-vit-base-patch32
 model:
   - torch_dtype: auto
 dataset:
-  - text_dataset_path: wonderwind271/CLEVR_val
-  - image_dataset_path: /scratch/ssd004/scratch/hsheta/datasets/CLEVR_v1.0/images
-  - text_split: val
+  - text_dataset_path: wonderwind271/CLEVR_val_categories
+  - image_dataset_path: /path/to/CLEVR_v1.0/images
+  - text_split: color
   - image_split: val
   - text_column: Q
   - image_column: image_filename
+output_db: clip.db
 modules:
-  - vision_tower.vision_model
+  - vision_model.encoder

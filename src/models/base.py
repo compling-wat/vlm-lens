@@ -324,6 +324,7 @@ class ModelBase(ABC):
         logging.debug('Generating embeddings through its processor...')
         if self.config.dataset:
             # Use the dataset to load input data, which includes (id, prompt, image_path)
+            logging.debug('Using dataset to load input data...')
             return [
                 (
                     row['image_path'],
