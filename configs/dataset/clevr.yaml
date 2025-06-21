@@ -1,0 +1,6 @@
+dataset_path: wonderwind271/CLEVR_val_categories
+split_name: [color, shape, material, size, boolean, number]
+parent_folder: CLEVR
+dataset_download_place: data/CLEVR/CLEVR_dataset
+img_url: https://dl.fbaipublicfiles.com/clevr/CLEVR_v1.0.zip
+img_download_place: data/CLEVR/CLEVR_v1.0.zip

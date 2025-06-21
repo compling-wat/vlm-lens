@@ -1,0 +1,6 @@
+dataset_path: wonderwind271/coco-val2017-obj-qa-categories
+split_name: val2017
+parent_folder: COCO
+dataset_download_place: data/COCO/COCO_dataset
+img_url: http://images.cocodataset.org/zips/val2017.zip
+img_download_place: data/COCO/val2017.zip
