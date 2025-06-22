@@ -1,0 +1,13 @@
+model:
+  activation: ReLU
+  input_size: 1024  # To be automatically set based on the input data
+  hidden_size: 256
+  output_size: 10  # Task-specific number of classes for classification
+  num_layers: 2
+training:
+  batch_size: 32
+  epochs: 10
+  learning_rate: 0.001
+  optimizer: AdamW
+data:
+  input_db: "/h/hsheta/vlm-competence-dev/clip.db"
