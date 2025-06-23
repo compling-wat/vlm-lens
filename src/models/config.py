@@ -212,8 +212,9 @@ class Config():
             logging.debug('Mapping text prompts to their corresponding images...')
             self.dataset = self.map_text_to_images(
                 text_dataset,
-                ds_mapping['text_column'],
-                ds_mapping['image_column']
+                image_column=ds_mapping['image_column'],
+                prompt_column=ds_mapping['prompt_column'],
+                answer_column=ds_mapping.get('answer_column', None),
             )
 
             self.default_prompt = None
@@ -313,15 +314,17 @@ class Config():
     def map_text_to_images(
         self,
         text_dataset: Dataset,
-        text_column: str,
         image_column: str,
+        prompt_column: str,
+        answer_column: Optional[str] = None,
     ) -> Dataset:
         """Map text dataset to image dataset.
 
         Args:
             text_dataset (datasets.Dataset): The text dataset.
-            text_column (str): The column name for the text entry in text_dataset.
             image_column (str): The column name in text_dataset used to match entries in image_dataset.
+            prompt_column (str): The column name for the prompt or question entry in text_dataset.
+            answer_column (str): The column name for the answer entry in text_dataset.
 
         Returns:
             datasets.Dataset: A new dataset with text and images mapped together.
@@ -334,8 +337,14 @@ class Config():
         # Create a new dataset mapping text entries to their corresponding images
         mapped_dataset = Dataset.from_dict({
             'id': text_dataset[image_column],
-            'prompt': text_dataset[text_column]
+            'prompt': text_dataset[prompt_column]
         })
+
+        # If the ground truth answer is provided, add it to dataset
+        if answer_column:
+            mapped_dataset = mapped_dataset.add_column(
+                'answer', text_dataset[answer_column]
+            )
 
         # Map the text dataset entries to their corresponding images
         mapped_dataset = mapped_dataset.map(lambda x: {

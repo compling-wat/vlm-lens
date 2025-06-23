@@ -51,7 +51,7 @@ def download_file(url: str, dst_path: str) -> None:
 
     Args:
         url (str): The url to download from.
-        dst_path (str): The location to save the filw. Should be a filename instead of dir name.
+        dst_path (str): The location to save the file. Should be a filename instead of dir name.
     """
     dst_path = process_path(dst_path, to_str=True)
     print(f'===Downloading from {url} to {dst_path}===')

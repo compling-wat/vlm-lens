@@ -8,7 +8,7 @@ import logging
 import os
 import sqlite3
 from abc import ABC, abstractmethod
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import torch
 from PIL import Image
@@ -78,7 +78,7 @@ class ModelBase(ABC):
         """Initialize the self.processor by loading from the path."""
         self.processor = AutoProcessor.from_pretrained(self.model_path)
 
-    def _generate_state_hook(self, name: str, image_path: str, prompt: str):
+    def _generate_state_hook(self, name: str, image_path: str, prompt: str, answer: Optional[str]):
         """Generates the state hook depending on the embedding type.
 
         Args:
@@ -117,13 +117,14 @@ class ModelBase(ABC):
             # Insert the tensor into the table
             cursor.execute(f"""
                     INSERT INTO {self.config.DB_TABLE_NAME}
-                    (name, architecture, image_path, prompt, layer, tensor)
-                    VALUES (?, ?, ?, ?, ?, ?);
+                    (name, architecture, image_path, prompt, answer, layer, tensor)
+                    VALUES (?, ?, ?, ?, ?, ?, ?);
                 """, (
                     self.model_path,
                     self.config.architecture.value,
                     image_path,
                     prompt,
+                    answer,
                     name,
                     tensor_blob.getvalue()
                 )
@@ -141,7 +142,8 @@ class ModelBase(ABC):
     def _register_module_hooks(
         self,
         image_path: str,
-        prompt: str
+        prompt: str,
+        answer: str
     ) -> List[torch.utils.hooks.RemovableHandle]:
         """Register the generated hook function to the modules in the config.
 
@@ -171,7 +173,7 @@ class ModelBase(ABC):
         for name, module in self.model.named_modules():
             if self.config.matches_module(name):
                 hooks.append(module.register_forward_hook(
-                    self._generate_state_hook(name, image_path, prompt)
+                    self._generate_state_hook(name, image_path, prompt, answer)
                 ))
                 logging.debug(f'Registered hook to {name}')
 
@@ -206,10 +208,10 @@ class ModelBase(ABC):
         logging.debug('Starting forward pass')
         self.model.eval()
 
-        image_path, prompt, data = input
+        image_path, prompt, answer, data = input
 
         # now set up the modules to register the hook to
-        hooks = self._register_module_hooks(image_path, prompt)
+        hooks = self._register_module_hooks(image_path, prompt, answer)
 
         # then ensure that the data is correct
         self._forward(data)
@@ -236,6 +238,7 @@ class ModelBase(ABC):
                     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
                     image_path TEXT NOT NULL,
                     prompt TEXT NOT NULL,
+                    answer TEXT NULL,
                     layer TEXT NOT NULL,
                     tensor BLOB NOT NULL
                 );
@@ -329,6 +332,7 @@ class ModelBase(ABC):
                 (
                     row['image_path'],
                     row['prompt'],
+                    row['answer'],
                     self._generate_processor_output(
                         prompt=self._generate_prompt(row['prompt']),
                         img_path=row['image_path']
