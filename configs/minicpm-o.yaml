@@ -3,6 +3,7 @@ model_path: openbmb/MiniCPM-o-2_6
 model:
   - torch_dtype: auto
   - trust_remote_code: True
+  - attn_implementation: sdpa
 forward:
   - max_new_tokens: 1
 output_db: minicpm-o.db
