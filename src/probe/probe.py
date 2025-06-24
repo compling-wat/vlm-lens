@@ -6,10 +6,11 @@ import argparse
 import io
 import logging
 import sqlite3
-from typing import Any, Dict, List
+from typing import Any, Dict, Tuple
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 import yaml
 
@@ -35,6 +36,13 @@ class ProbeConfig():
             help='Flag to print out debug statements'
         )
 
+        parser.add_argument(
+            '--device',
+            type=str,
+            default='cpu',
+            help='The device to send the model and tensors to'
+        )
+
         args = parser.parse_args()
 
         assert args.config is not None, 'Config file must be provided.'
@@ -45,6 +53,13 @@ class ProbeConfig():
 
         # Set debug mode based on config
         logging.getLogger().setLevel(logging.DEBUG if args.debug else logging.INFO)
+
+        # Load model device
+        if 'cuda' in args.device and not torch.cuda.is_available():
+            raise ValueError('No GPU found for this machine')
+
+        self.device = args.device
+        logging.debug(self.device)
 
         # Load input database
         assert hasattr(self, 'data') and 'input_db' in self.data, (
@@ -107,44 +122,61 @@ class Probe(nn.Module):
         logging.debug('Forward pass with input: %s', x.shape)
         return self.model(x)
 
-    def load_tensors(self) -> List[torch.Tensor]:
+    def load_data(self) -> Tuple[torch.Tensor]:
         """Load tensors from the database."""
         logging.debug('Loading tensors from the database...')
-        db = self.config.data['input_db']
-        db_name = self.config.data['db_name']
-
         # Connect to database
-        connection = sqlite3.connect(db)
+        connection = sqlite3.connect(self.config.data['input_db'])
         cursor = connection.cursor()
 
-        # Build query
-        cursor.execute(f'SELECT layer, tensor FROM {db_name}')
-
-        # Fetch the results
+        # Build query and fetch results
+        cursor.execute(f"SELECT layer, tensor, answer FROM {self.config.data['db_name']}")
         results = cursor.fetchall()
 
         # Close the connection
         connection.close()
 
-        # Convert the binary blobs to tensors
-        tensors = []
-        for result in results:
-            layer, tensor = result
-            tensor = torch.load(io.BytesIO(tensor))  # outputs BaseModelOutput(last_hidden_state=tensor([[[...]]]), hidden_states=None, attentions=None)
+        # Gather unique class labels
+        all_labels = [result[2] for result in results]
+        assert len(all_labels) == self.config.model['output_size'], (
+            'Input number of classes does not match dataset classes.'
+        )
 
-            # TODO: Do we only train on the probe on tensors from the same layer?
-            tensors.append({'layer': layer, 'tensor': tensor})
+        # Label to one-hot tensor mapping
+        label_to_tensor = {label: F.one_hot(
+                                torch.tensor(i),
+                                num_classes=len(all_labels)
+                                ).float() for i, label in enumerate(all_labels)}
 
-        return tensors
+        # Construct feature tensors
+        features = []
+        targets = []
+        for _, tensor_bytes, answer in results:
+            # Mean pool the input tensor to shape (hidden_size)
+            tensor = torch.load(io.BytesIO(tensor_bytes)).last_hidden_state
+            pooled_tensor = tensor.mean(dim=1).squeeze(0)
+            features.append(pooled_tensor)
 
-    def train(self, data: List[torch.Tensor]) -> None:
+            # Add one-hot label of entry
+            targets.append(label_to_tensor[answer])
+
+        # Stack lists into batched tensors
+        X, Y = torch.stack(features), torch.stack(targets)
+
+        # Move tensors to same device as model
+        X, Y = X.to(self.config.device), Y.to(self.config.device)
+
+        return X, Y
+
+    def train(self, data: Tuple[torch.Tensor]) -> None:
         """Train the probe model.
 
         Args:
-            data (List[torch.Tensor]): List of tensors to train on.
+            data (Tuple[torch.Tensor]]): Tuple of feature and target tensors to train the probe.
         """
         logging.debug('Training the probe model...')
         train_config = self.config.training
+        X, Y = data
 
         # Set attributes if not specified
         train_config.setdefault('optimizer', 'AdamW')
@@ -167,17 +199,17 @@ class Probe(nn.Module):
         optimizer = optimizer_class(self.parameters(), lr=train_config['learning_rate'])
 
         # Intialize the loss function
-        # loss_fn = getattr(nn, train_config['loss'])()
+        loss_fn = getattr(nn, train_config['loss'])()
 
         for epoch in range(train_config['num_epochs']):
             logging.debug(f'Starting epoch {epoch + 1}/{train_config["num_epochs"]}')
 
             optimizer.zero_grad()
-            # outputs = self.model(data)
+            outputs = self.model(X)
 
-            # TODO: load in target tensors
-            # loss = loss_fn(outputs, y_batch)
-            # loss.backward()
+            loss = loss_fn(outputs, Y)
+            logging.debug(f'loss {loss}')
+            loss.backward()
             optimizer.step()
 
         return
@@ -190,10 +222,8 @@ def main():
     logging.debug('Initializing Probe with config: %s', config)
     probe = Probe(config)
 
-    logging.debug('Loading tensors for training...')
-    data = probe.load_tensors()
+    data = probe.load_data()
 
-    logging.debug('Training the model with %d tensors...', len(data))
     probe.train(data)
 
     # TODO: support all configs shown in the yaml with the probe config
