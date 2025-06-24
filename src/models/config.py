@@ -6,13 +6,20 @@ for providing the model specific classes a way to access the parsed arguments.
 import argparse
 import logging
 import os
+import sys
 from enum import Enum
+from pathlib import Path
 from typing import List, Optional
 
 import regex as re
 import torch
 import yaml
-from datasets import Dataset, load_dataset
+from datasets import load_dataset
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]  # models -> src -> root
+sys.path.append(str(PROJECT_ROOT))
+
+from scripts.dataset.map_datasets import map_text_to_images  # noqa: E402
 
 
 class ModelSelection(str, Enum):
@@ -210,8 +217,9 @@ class Config():
 
             # Map text dataset to image dataset
             logging.debug('Mapping text prompts to their corresponding images...')
-            self.dataset = self.map_text_to_images(
+            self.dataset = map_text_to_images(
                 text_dataset,
+                self.image_paths,
                 image_column=ds_mapping['image_column'],
                 prompt_column=ds_mapping['prompt_column'],
                 answer_column=ds_mapping.get('answer_column', None),
@@ -310,45 +318,3 @@ class Config():
                 os.listdir(input_dir)
             )
         ]
-
-    def map_text_to_images(
-        self,
-        text_dataset: Dataset,
-        image_column: str,
-        prompt_column: str,
-        answer_column: Optional[str] = None,
-    ) -> Dataset:
-        """Map text dataset to image dataset.
-
-        Args:
-            text_dataset (datasets.Dataset): The text dataset.
-            image_column (str): The column name in text_dataset used to match entries in image_dataset.
-            prompt_column (str): The column name for the prompt or question entry in text_dataset.
-            answer_column (str): The column name for the answer entry in text_dataset.
-
-        Returns:
-            datasets.Dataset: A new dataset with text and images mapped together.
-        """
-        # Create a lookup of filename -> full path
-        filename_to_path = {
-            path.split('/')[-1]: path
-            for path in self.image_paths
-        }
-        # Create a new dataset mapping text entries to their corresponding images
-        mapped_dataset = Dataset.from_dict({
-            'id': text_dataset[image_column],
-            'prompt': text_dataset[prompt_column]
-        })
-
-        # If the ground truth answer is provided, add it to dataset
-        if answer_column:
-            mapped_dataset = mapped_dataset.add_column(
-                'answer', text_dataset[answer_column]
-            )
-
-        # Map the text dataset entries to their corresponding images
-        mapped_dataset = mapped_dataset.map(lambda x: {
-            'image_path': filename_to_path.get(x['id'], None)
-        }).filter(lambda x: x['image_path'] is not None)
-
-        return mapped_dataset
