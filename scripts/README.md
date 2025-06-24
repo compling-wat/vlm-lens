@@ -12,3 +12,10 @@ Given a filter config, simply provide this just as the running script with:
 python scripts/read_filter_tensor.py --config configs/clip-base.yaml --filter-config configs/clip-base-filter.yaml
 ```
 where it will read out the specific architecture, layers, prompts and image input.
+## print_layer_names.py
+A utility for inspecting PyTorch model checkpoints hosted on Hugging Face Hub.
+**Example:**
+```
+python print_layer_names.py --project zhangtao-whu/OMG-LLaVA -pth omg_llava_7b_finetune_8gpus.pth --limit 0 --show-shapes
+```
+Please read the description at the top of the python file for a more detailed description.
