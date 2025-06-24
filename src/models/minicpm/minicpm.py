@@ -1,6 +1,6 @@
 """minicpm.py.
 
-File for providing the Intern-VL model implementation.
+File for providing the MiniCPM model implementation.
 """
 
 import logging
@@ -29,15 +29,11 @@ class MiniCPMModel(ModelBase):
     def _load_specific_model(self):
         """Overridden function to populate self.model."""
         self.model = AutoModel.from_pretrained(
-            self.model_path, **self.config.model
-        ) if hasattr(self.config, 'model') else (
-            AutoModel.from_pretrained(
-                self.model_path
-            )
+            self.model_path, **getattr(self.config, 'model', {})
         )
 
     def _generate_prompt(self) -> str:
-        """Generates the InternVL model prompt which will not use the chat template.
+        """Generates the MiniCPM model prompt which will not use the chat template.
 
         Returns:
             str: The prompt to return, set by the config.
@@ -45,7 +41,7 @@ class MiniCPMModel(ModelBase):
         return self.config.prompt
 
     def _init_processor(self) -> None:
-        """Initialize the InternVL processor which need to be done manually."""
+        """Initialize the MiniCPM Tokenizer"""
         self.processor = None  # no intended processor here
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_path, trust_remote_code=True)
 
@@ -74,5 +70,5 @@ class MiniCPMModel(ModelBase):
             data (BatchFeature): The given data tensor.
         """
         with torch.no_grad():
-            _ = self.model.chat(**data, context=None, tokenizer=self.tokenizer, max_new_tokens=1)
+            _ = self.model.chat(**data, context=None, tokenizer=self.tokenizer, **self.config.forward)
         logging.debug('Completed forward pass...')
