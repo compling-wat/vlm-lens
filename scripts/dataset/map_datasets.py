@@ -94,7 +94,7 @@ def main(config_path: str):
         image_paths,
         image_column=config['image_column'],
         prompt_column=config['prompt_column'],
-        answer_column=config.get('answer_column', None),
+        label_column=config.get('label_column', None),
         save_path=config.get('save_path', None),
     )
 
