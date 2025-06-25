@@ -114,6 +114,7 @@ class Config():
         config_keys.append('modules')
         config_keys.append('forward')
         config_keys.append('dataset')
+        config_keys.append('pooled_output')
 
         # first read the config file and set the current attributes to it
         # then parse through the other arguments as that's what we want use to
@@ -222,7 +223,7 @@ class Config():
                 self.image_paths,
                 image_column=ds_mapping['image_column'],
                 prompt_column=ds_mapping['prompt_column'],
-                answer_column=ds_mapping.get('answer_column', None),
+                label_column=ds_mapping.get('label_column', None),
             )
 
             self.default_prompt = None
@@ -259,6 +260,8 @@ class Config():
         # if there is no output database set, use embeddings.db as the default
         if not hasattr(self, 'output_db'):
             self.output_db = 'embeddings.db'
+
+        self.pooled_output = self.pooled_output if hasattr(self, 'pooled_output') else False
 
     def has_images(self) -> bool:
         """Returns a boolean for whether or not the input directory has images.

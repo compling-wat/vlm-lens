@@ -78,13 +78,14 @@ class ModelBase(ABC):
         """Initialize the self.processor by loading from the path."""
         self.processor = AutoProcessor.from_pretrained(self.model_path)
 
-    def _generate_state_hook(self, name: str, image_path: str, prompt: str, answer: Optional[str]):
+    def _generate_state_hook(self, name: str, image_path: str, prompt: str, label: Optional[str] = None):
         """Generates the state hook depending on the embedding type.
 
         Args:
             name (str): The module name.
             image_path (str): The path to the image used for the specific pass.
             prompt (str): The prompt used for the specific pass.
+            label (str): Optional argument for the ground truth or classification label of an entry.
 
         Returns:
             hook function: The hook function to return.
@@ -112,19 +113,20 @@ class ModelBase(ABC):
 
             # Convert the tensor to a binary blob
             tensor_blob = io.BytesIO()
-            torch.save(output, tensor_blob)
+            final_output = output.mean(dim=1) if self.config.pooled_output else output
+            torch.save(final_output, tensor_blob)
 
             # Insert the tensor into the table
             cursor.execute(f"""
                     INSERT INTO {self.config.DB_TABLE_NAME}
-                    (name, architecture, image_path, prompt, answer, layer, tensor)
+                    (name, architecture, image_path, prompt, label, layer, tensor)
                     VALUES (?, ?, ?, ?, ?, ?, ?);
                 """, (
                     self.model_path,
                     self.config.architecture.value,
                     image_path,
                     prompt,
-                    answer,
+                    label,
                     name,
                     tensor_blob.getvalue()
                 )
@@ -143,7 +145,7 @@ class ModelBase(ABC):
         self,
         image_path: str,
         prompt: str,
-        answer: str
+        label: Optional[str] = None,
     ) -> List[torch.utils.hooks.RemovableHandle]:
         """Register the generated hook function to the modules in the config.
 
@@ -153,6 +155,7 @@ class ModelBase(ABC):
         Args:
             image_path (str): The path to the image used for the specific pass.
             prompt (str): The prompt used for the specific pass.
+            label (str): Optional argument for the ground truth or classification label of an entry.
 
         Raises:
             RuntimeError: Calls a runtime error if no hooks were registered
@@ -173,7 +176,7 @@ class ModelBase(ABC):
         for name, module in self.model.named_modules():
             if self.config.matches_module(name):
                 hooks.append(module.register_forward_hook(
-                    self._generate_state_hook(name, image_path, prompt, answer)
+                    self._generate_state_hook(name, image_path, prompt, label)
                 ))
                 logging.debug(f'Registered hook to {name}')
 
@@ -208,10 +211,14 @@ class ModelBase(ABC):
         logging.debug('Starting forward pass')
         self.model.eval()
 
-        image_path, prompt, answer, data = input
+        label = None
+        if len(input) == 4:
+            image_path, prompt, label, data = input
+        else:
+            image_path, prompt, data = input
 
         # now set up the modules to register the hook to
-        hooks = self._register_module_hooks(image_path, prompt, answer)
+        hooks = self._register_module_hooks(image_path, prompt, label)
 
         # then ensure that the data is correct
         self._forward(data)
@@ -238,7 +245,7 @@ class ModelBase(ABC):
                     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
                     image_path TEXT NOT NULL,
                     prompt TEXT NOT NULL,
-                    answer TEXT NULL,
+                    label TEXT NULL,
                     layer TEXT NOT NULL,
                     tensor BLOB NOT NULL
                 );
@@ -328,18 +335,31 @@ class ModelBase(ABC):
         if self.config.dataset:
             # Use the dataset to load input data, which includes (id, prompt, image_path)
             logging.debug('Using dataset to load input data...')
-            return [
-                (
-                    row['image_path'],
-                    row['prompt'],
-                    row['answer'],
-                    self._generate_processor_output(
-                        prompt=self._generate_prompt(row['prompt']),
-                        img_path=row['image_path']
+            if 'label' in self.config.dataset.column_names:
+                return [
+                    (
+                        row['image_path'],
+                        row['prompt'],
+                        row['label'],
+                        self._generate_processor_output(
+                            prompt=self._generate_prompt(row['prompt']),
+                            img_path=row['image_path']
+                        )
                     )
-                )
-                for row in self.config.dataset
-            ]
+                    for row in self.config.dataset
+                ]
+            else:
+                return [
+                    (
+                        row['image_path'],
+                        row['prompt'],
+                        self._generate_processor_output(
+                            prompt=self._generate_prompt(row['prompt']),
+                            img_path=row['image_path']
+                        )
+                    )
+                    for row in self.config.dataset
+                ]
 
         else:
             if not self.config.has_images():

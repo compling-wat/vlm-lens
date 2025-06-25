@@ -15,7 +15,7 @@ def map_text_to_images(
                         image_paths: List[str],
                         image_column: str,
                         prompt_column: str,
-                        answer_column: Optional[str] = None,
+                        label_column: Optional[str] = None,
                         save_path: Optional[str] = None
                     ) -> Dataset:
     """Map text dataset to image dataset.
@@ -25,7 +25,7 @@ def map_text_to_images(
         image_paths (list[str]): List of the input image file paths.
         image_column (str): The column name in text_dataset used to match entries in image_dataset.
         prompt_column (str): The column name for the prompt entry in text_dataset.
-        answer_column (str): The column name for the answer entry in text_dataset.
+        label_column (str): The column name for the classification label/answer entry in text_dataset.
         save_path (str): The location to save the dataset.
 
     Returns:
@@ -44,9 +44,9 @@ def map_text_to_images(
     })
 
     # If the ground truth answer is provided, add it to dataset
-    if answer_column:
+    if label_column:
         mapped_dataset = mapped_dataset.add_column(
-            'answer', text_dataset[answer_column]
+            'label', text_dataset[label_column]
         )
 
     # Map the text dataset entries to their corresponding images
