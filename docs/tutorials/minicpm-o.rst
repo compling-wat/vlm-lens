@@ -5,7 +5,7 @@ This tutorial guides you through extracting MiniCPM-o model layers.
 
 Dependency
 -------------------------------
-First, create and activate a virtual environment using `conda`:
+First, create and activate a virtual environment using ``conda``:
 
 .. code-block:: bash
 
@@ -39,7 +39,7 @@ A comprehensive list of available modules is provided in the log file: ``logs/op
 Usage
 -------------------------------
 
-To run a forward pass and extract layers on a CUDA-enabled device, execute:
+To extract layers on a CUDA-enabled device, execute:
 
 .. code-block:: bash
 
