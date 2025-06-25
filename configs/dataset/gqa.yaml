@@ -1,4 +1,4 @@
-dataset_path: wonderwind271/GQA_dataset
+dataset_path: compling/GQA_dataset_binary
 split_name: val
 parent_folder: GQA
 dataset_download_place: data/GQA/GQA_dataset
