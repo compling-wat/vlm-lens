@@ -63,6 +63,9 @@ def get_model(
     elif model_arch == ModelSelection.MINICPM:
         from models.minicpm import MiniCPMModel
         return MiniCPMModel(config)
+    elif model_arch == ModelSelection.OMG_LLAVA:
+        from models.omg_llava import OmgLlavaModel
+        return OmgLlavaModel(config)
 
 
 if __name__ == '__main__':

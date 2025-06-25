@@ -1,0 +1,9 @@
+architecture: omg_llava
+model_path: zhangtao-whu/OMG-LLaVA
+model:
+  - torch_dtype: auto
+output_db: omg-llava-1.db
+input_dir: ./data/
+prompt: "Describe the color in this image in one word."
+modules:
+  - language_model.model.layers.12.mlp.act_fn
