@@ -1,0 +1,17 @@
+architecture: cogvlm
+model_path: THUDM/cogvlm-chat-hf
+model:
+  - low_cpu_mem_usage: True
+  - trust_remote_code: True
+  - tokenizer_path: lmsys/vicuna-7b-v1.5
+  - legacy: True
+  - template_version: vqa
+forward:
+  - max_new_tokens: 2048
+  - do_sample: False
+output_db: cogvlm.db
+input_dir: ./data/
+prompt: "Describe the color in this image in one word."
+modules:
+  - model.vision.transformer.layers.62
+  - lm_head
