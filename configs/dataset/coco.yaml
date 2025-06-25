@@ -1,4 +1,4 @@
-dataset_path: wonderwind271/coco-val2017-obj-qa-categories
+dataset_path: compling/coco-val2017-obj-qa-categories
 split_name: val2017
 parent_folder: COCO
 dataset_download_place: data/COCO/COCO_dataset
