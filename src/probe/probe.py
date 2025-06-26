@@ -15,7 +15,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 import yaml
 from sklearn.model_selection import KFold, train_test_split
-from torch.utils.data import DataLoader, Subset, TensorDataset
+from torch.utils.data import DataLoader, Dataset, Subset, TensorDataset
 
 
 class ProbeConfig:
@@ -29,7 +29,6 @@ class ProbeConfig:
         )
 
         parser.add_argument(
-            '-d',
             '--debug',
             default=False,
             action='store_true',
@@ -37,6 +36,7 @@ class ProbeConfig:
         )
 
         parser.add_argument(
+            '-d',
             '--device',
             type=str,
             default='cpu',
@@ -61,31 +61,55 @@ class ProbeConfig:
         self.device = args.device
         logging.debug(self.device)
 
-        # Load input database
+        # Load data mapping
         assert (
-            hasattr(self, 'data') and 'input_db' in self.data
-        ), 'Input database must be specified in the configuration.'
+            hasattr(self, 'data')
+        ), 'The `data` field must be specified in the config, with an input database path.'
+
+        data_mapping = {}
+        for mapping in self.data:
+            data_mapping = {**data_mapping, **mapping}
 
         # Check if specific layer in specified for the database
-        # data_mapping.get('input_layer', None)
-
-        # Check if output database is specified, use probe_output.db as default
-        if 'output_db' not in self.data:
-            self.data['output_db'] = 'probe_output.db'
+        data_mapping.setdefault('input_layer', None)
 
         # Set default database name if not specified
-        if 'db_name' not in self.data:
-            logging.debug('Database name not specified, setting to default `tensors`.')
-            self.data['db_name'] = 'tensors'
+        if 'db_name' not in data_mapping:
+            logging.debug('Input database name attribute `db_name` not specified, setting to default `tensors`.')
+            data_mapping.setdefault('db_name', 'tensors')
+        self.data = data_mapping
 
-        # Intialize the model config attributes
-        if not hasattr(self, 'model'):
-            # TODO: figure out how to automatically set input/hidden/output size
-            self.model = {'activation': 'ReLU', 'num_layers': 2}
+        # Load model mapping
+        model_mapping = {}
+        if hasattr(self, 'model'):
+            for mapping in self.model:
+                model_mapping = {**model_mapping, **mapping}
 
-        # Intialize the training config attributes
-        if not hasattr(self, 'training'):
-            self.training = {}
+        # Set default model config if not provided
+        # input_size and output_size will be set when the data is loaded
+        model_mapping.update({k: v for k, v in {
+                        'activation': 'ReLU',
+                        'hidden_size': 256,
+                        'num_layers': 2,
+                    }.items() if k not in model_mapping})
+        logging.debug(model_mapping)
+        self.model = model_mapping
+
+        # Load training mapping
+        train_mapping = {}
+        if hasattr(self, 'training'):
+            for mapping in self.training:
+                train_mapping = {**train_mapping, **mapping}
+
+        # Set default training config if not provided
+        train_mapping.update({k: v for k, v in {
+                        'optimizer': 'AdamW',
+                        'learning_rate': 1e-3,
+                        'loss': 'MSELoss',
+                        'num_epochs': 10,
+                        'batch_size': 32
+                    }.items() if k not in train_mapping})
+        self.training = train_mapping
 
 
 class Probe(nn.Module):
@@ -98,26 +122,28 @@ class Probe(nn.Module):
             config (Dict[str, Any]): Configuration dictionary for the probe.
         """
         super(Probe, self).__init__()
-        layers = list()
         self.config = config
-        model_config = config.model
 
-        # Intialize the input layer and activation
+        # Load input data to parse model input_size and output_size
+        self.data = self.load_data()
+
+        # Intialize probe model
+        layers = list()
         layers.append(
-            nn.Linear(model_config['input_size'], model_config['hidden_size'])
+            nn.Linear(config.model['input_size'], config.model['hidden_size'])
         )
-        layers.append(getattr(nn, model_config['activation'])())
+        layers.append(getattr(nn, config.model['activation'])())
 
         # Intialize intermediate layers based on config
-        for _ in range(model_config['num_layers'] - 2):
+        for _ in range(config.model['num_layers'] - 2):
             layers.append(
-                nn.Linear(model_config['hidden_size'], model_config['hidden_size'])
+                nn.Linear(config.model['hidden_size'], config.model['hidden_size'])
             )
-            layers.append(getattr(nn, model_config['activation'])())
+            layers.append(getattr(nn, config.model['activation'])())
 
         # Final layer to output the desired size
         layers.append(
-            nn.Linear(model_config['hidden_size'], model_config['output_size'])
+            nn.Linear(config.model['hidden_size'], config.model['output_size'])
         )
 
         # Combine all layers to construct the model
@@ -146,9 +172,11 @@ class Probe(nn.Module):
 
         # Gather unique class labels
         all_labels = set([result[2] for result in results])
+        logging.debug(len(all_labels))
+        self.config.model.setdefault('output_size', len(all_labels))
         assert (
-            len(all_labels) == self.config.model['output_size']
-        ), 'Input number of classes does not match dataset classes.'
+            'output_size' in self.config.model and len(all_labels) == self.config.model['output_size']
+        ), 'Input attribute `output_size` does not match number of classes in dataset. Leave blank to assign automatically.'
 
         # Label to one-hot tensor mapping
         label_to_tensor = {
@@ -158,12 +186,26 @@ class Probe(nn.Module):
 
         features, targets = [], []
         probe_layer = self.config.data.get('input_layer', None)
+        if not probe_layer:
+            logging.debug('No `input_layer` attribute provided for database loading, extracting all tensors...')
+
+        input_size = self.config.data.get('input_size', None)
         for layer, tensor_bytes, label in results:
             if (probe_layer and layer == probe_layer) or (not probe_layer):
-                # Mean pool the input tensor to shape (hidden_size)
-                tensor = torch.load(io.BytesIO(tensor_bytes)).last_hidden_state
-                if tensor.ndim > 1:
-                    tensor = tensor.mean(dim=1).squeeze(0)
+                tensor = torch.load(io.BytesIO(tensor_bytes))
+                if tensor.ndim > 2:
+                    # Apply mean pooling if tensor is already pooled
+                    tensor = tensor.mean(dim=1)
+                # Squeeze to shape (hidden_dim)
+                tensor = tensor.squeeze()
+
+                if not input_size:
+                    # Set model config input_size once
+                    input_size = tensor.shape[0]  # pooled tensor
+                    self.config.model.setdefault('input_size', input_size)
+                    assert (
+                        'input_size' in self.config.model and input_size == self.config.model['input_size']
+                        ), 'Input attribute `input_size` does not match input tensor dimension. Leave blank to assign automatically.'
 
                 features.append(tensor)
                 targets.append(label_to_tensor[label])
@@ -176,19 +218,10 @@ class Probe(nn.Module):
 
         return TensorDataset(X, Y)
 
-    def train(self, data: torch.Dataset, kfold: int = 5) -> None:
+    def train(self, data: Dataset, kfold: int = 5) -> None:
         """Train the probe model."""
         logging.debug('Training the probe model...')
         train_config = self.config.training
-
-        # Set attributes if not specified
-        train_config.setdefault('optimizer', 'AdamW')
-        train_config.setdefault('learning_rate', 1e-3)
-        train_config.setdefault('loss', 'MSELoss')
-        train_config.setdefault('num_epochs', 10)
-        train_config.setdefault('batch_size', 32)
-
-        logging.debug('Training configuration: %s', train_config)
 
         # Set the device
         device = torch.device(self.config.device)
@@ -202,9 +235,10 @@ class Probe(nn.Module):
         loss_fn = getattr(nn, train_config['loss'])()
 
         kf = KFold(n_splits=kfold, shuffle=True, random_state=42)
-        # Assuming data is a Subset object
-        kf_split = kf.split(data)
-        for _, (train_idx, val_idx) in enumerate(kf_split):
+        # TODO: test this by passing Dataset and not Subset
+        kf_split = kf.split(range(len(data)))
+        for fold, (train_idx, val_idx) in enumerate(kf_split):
+            logging.debug(f'===Starting fold {fold}/{kfold}===')
             train_set, val_set = Subset(data, train_idx), Subset(data, val_idx)
 
             train_loader = DataLoader(
@@ -213,10 +247,6 @@ class Probe(nn.Module):
             val_loader = DataLoader(val_set, batch_size=train_config['batch_size'])
 
             for epoch in range(train_config['num_epochs']):
-                logging.debug(
-                    f"===Starting epoch {epoch + 1}/{train_config['num_epochs']}==="
-                )
-
                 # Set the model to training mode
                 self.model.train()
                 total_loss = 0
@@ -232,7 +262,6 @@ class Probe(nn.Module):
                     total_loss += loss.item()
 
                 mean_train_loss = total_loss / len(train_loader)
-                logging.debug(f'Train loss: {mean_train_loss:.4f}')
 
                 # Set model to eval mode and calculate validation loss
                 self.model.eval()
@@ -244,10 +273,17 @@ class Probe(nn.Module):
                         val_loss += loss.item()
 
                 mean_val_loss = val_loss / len(val_loader)
-                logging.debug(f'Validation loss: {mean_val_loss:.4f}')
+
+                logging.debug(f"--Epoch {epoch + 1}/{train_config['num_epochs']}: Train loss: {mean_train_loss:.4f}, Validation loss: {mean_val_loss:.4f}")
 
         self.save_model()
         return
+
+    def save_model(self) -> None:
+        """Saves the trained model to a user-specified path."""
+        save_path = self.config.model.get('save_path', 'probe.pth')
+        torch.save(self.model.state_dict(), save_path)
+        logging.debug(f'Model saved to {save_path}')
 
 
 def main():
@@ -258,16 +294,15 @@ def main():
     probe = Probe(config)
 
     # Load data and split into train/val and test
-    data = probe.load_data()
+    data = probe.data
     indices = list(range(len(data)))
 
     train_idx, test_idx = train_test_split(indices, test_size=0.2, random_state=42)
     train_data = Subset(data, train_idx)
     # test_set = Subset(data, test_idx)
 
-    probe.train(train_data, kfolds=5)
+    probe.train(train_data)
 
-    # TODO: support all configs shown in the yaml with the probe config
     # TODO: implement a demo
 
 
