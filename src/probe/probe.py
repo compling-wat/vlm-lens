@@ -212,7 +212,7 @@ class Probe(nn.Module):
 
         # Stack lists into batched tensors
         X, Y = torch.stack(features), torch.stack(targets)
-
+        logging.debug(f'X.shape {X.shape} Y.shape {Y.shape}')
         # Move tensors to same device as model
         X, Y = X.to(self.config.device), Y.to(self.config.device)
 
