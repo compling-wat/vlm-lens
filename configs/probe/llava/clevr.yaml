@@ -1,0 +1,20 @@
+model:
+  - activation: ReLU
+  # - input_size: 768  # To be automatically set based on the input data
+  - hidden_size: 256
+  # - output_size: 3  # To be automatically set based on the input data
+  - num_layers: 2
+  - save_path: llava_color_probe.pth
+training:
+  - batch_size: 32
+  - num_epochs: 50
+  - learning_rate: 0.0005
+  - optimizer: AdamW
+  - loss: CrossEntropyLoss
+test:
+  - batch_size: 32
+  - loss: CrossEntropyLoss
+data:
+  - input_db: /projects/compling/hsheta/llava_color.db
+  - db_name: tensors
+  - input_layer: language_model.model.layers.16.post_attention_layernorm
