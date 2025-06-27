@@ -7,11 +7,10 @@ import argparse
 import io
 import logging
 import sqlite3
-from typing import Any, Dict
+from typing import Any, Dict, Tuple
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
 import yaml
 from sklearn.model_selection import KFold, train_test_split
@@ -105,11 +104,29 @@ class ProbeConfig:
         train_mapping.update({k: v for k, v in {
                         'optimizer': 'AdamW',
                         'learning_rate': 1e-3,
-                        'loss': 'MSELoss',
+                        'loss': 'CrossEntropyLoss',
                         'num_epochs': 10,
                         'batch_size': 32
                     }.items() if k not in train_mapping})
+
         self.training = train_mapping
+
+        # Load test mapping
+        test_mapping = {}
+        if hasattr(self, 'test'):
+            for mapping in self.test:
+                test_mapping = {**test_mapping, **mapping}
+
+        # Set default test config if not provided
+        test_mapping.update({k: v for k, v in {
+                        'optimizer': 'AdamW',
+                        'learning_rate': 1e-3,
+                        'loss': 'CrossEntropyLoss',
+                        'num_epochs': 10,
+                        'batch_size': 32
+                    }.items() if k not in test_mapping})
+
+        self.test = test_mapping
 
 
 class Probe(nn.Module):
@@ -172,17 +189,13 @@ class Probe(nn.Module):
 
         # Gather unique class labels
         all_labels = set([result[2] for result in results])
-        logging.debug(len(all_labels))
         self.config.model.setdefault('output_size', len(all_labels))
         assert (
             'output_size' in self.config.model and len(all_labels) == self.config.model['output_size']
         ), 'Input attribute `output_size` does not match number of classes in dataset. Leave blank to assign automatically.'
 
-        # Label to one-hot tensor mapping
-        label_to_tensor = {
-            label: F.one_hot(torch.tensor(i), num_classes=len(all_labels)).float()
-            for i, label in enumerate(all_labels)
-        }
+        # Label to index mapping
+        label_to_idx = {label: i for i, label in enumerate(all_labels)}
 
         features, targets = [], []
         probe_layer = self.config.data.get('input_layer', None)
@@ -208,11 +221,13 @@ class Probe(nn.Module):
                         ), 'Input attribute `input_size` does not match input tensor dimension. Leave blank to assign automatically.'
 
                 features.append(tensor)
-                targets.append(label_to_tensor[label])
+                targets.append(label_to_idx[label])
 
         # Stack lists into batched tensors
-        X, Y = torch.stack(features), torch.stack(targets)
-        logging.debug(f'X.shape {X.shape} Y.shape {Y.shape}')
+        X = torch.stack(features)
+        Y = torch.tensor(targets)
+        logging.debug(f'Features shape {X.shape}, Targets shape {Y.shape}')
+
         # Move tensors to same device as model
         X, Y = X.to(self.config.device), Y.to(self.config.device)
 
@@ -225,7 +240,7 @@ class Probe(nn.Module):
 
         # Set the device
         device = torch.device(self.config.device)
-        self.to(device)
+        self.model.to(device)
 
         # Initialize the optimizer
         optimizer_class = getattr(optim, train_config['optimizer'])
@@ -279,6 +294,36 @@ class Probe(nn.Module):
         self.save_model()
         return
 
+    def evaluate(self, test_set: Dataset) -> Tuple[int]:
+        """Evaluate the probe model on the input test set."""
+        self.model.eval()
+
+        device = torch.device(self.config.device)
+        self.model.to(device)
+
+        test_config = self.config.test
+
+        test_loader = DataLoader(test_set, batch_size=test_config['batch_size'])
+
+        loss_fn = getattr(nn, test_config['loss'])()
+        total_loss = 0.0
+        num_correct, num_samples = 0, 0
+        with torch.no_grad():
+            for X, Y in test_loader:
+                outputs = self.model(X)
+                loss = loss_fn(outputs, Y)
+                total_loss += loss.item() * X.size(0)  # to account for incomplete batches
+
+                preds = outputs.argmax(dim=1)
+                num_correct += (preds == Y).sum()
+                num_samples += Y.size(0)
+
+        mean_loss = total_loss / len(test_set)
+        accuracy = num_correct / num_samples
+
+        logging.debug(f'Test accuracy: {accuracy}, Test mean loss: {mean_loss}')
+        return accuracy, mean_loss
+
     def save_model(self) -> None:
         """Saves the trained model to a user-specified path."""
         save_path = self.config.model.get('save_path', 'probe.pth')
@@ -289,8 +334,6 @@ class Probe(nn.Module):
 def main():
     """Main function to run the probe."""
     config = ProbeConfig()
-
-    logging.debug('Initializing Probe with config: %s', config)
     probe = Probe(config)
 
     # Load data and split into train/val and test
@@ -298,10 +341,14 @@ def main():
     indices = list(range(len(data)))
 
     train_idx, test_idx = train_test_split(indices, test_size=0.2, random_state=42)
-    train_data = Subset(data, train_idx)
-    # test_set = Subset(data, test_idx)
+    train_set = Subset(data, train_idx)
+    test_set = Subset(data, test_idx)
 
-    probe.train(train_data)
+    # Train the model
+    probe.train(train_set)
+
+    # Test the model
+    probe.evaluate(test_set)
 
     # TODO: implement a demo
 
