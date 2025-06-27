@@ -345,7 +345,7 @@ def main():
     test_set = Subset(data, test_idx)
 
     # Train the model
-    probe.train(train_set)
+    probe.train(train_set, kfold=10)
 
     # Test the model
     probe.evaluate(test_set)
