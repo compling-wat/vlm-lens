@@ -74,7 +74,8 @@ class ProbeConfig:
 
         # Set default database name if not specified
         if 'db_name' not in data_mapping:
-            logging.debug('Input database name attribute `db_name` not specified, setting to default `tensors`.')
+            logging.debug(
+                'Input database name attribute `db_name` not specified, setting to default `tensors`.')
             data_mapping.setdefault('db_name', 'tensors')
         self.data = data_mapping
 
@@ -87,10 +88,10 @@ class ProbeConfig:
         # Set default model config if not provided
         # input_size and output_size will be set when the data is loaded
         model_mapping.update({k: v for k, v in {
-                        'activation': 'ReLU',
-                        'hidden_size': 256,
-                        'num_layers': 2,
-                    }.items() if k not in model_mapping})
+            'activation': 'ReLU',
+            'hidden_size': 256,
+            'num_layers': 2,
+        }.items() if k not in model_mapping})
         logging.debug(model_mapping)
         self.model = model_mapping
 
@@ -102,12 +103,12 @@ class ProbeConfig:
 
         # Set default training config if not provided
         train_mapping.update({k: v for k, v in {
-                        'optimizer': 'AdamW',
-                        'learning_rate': 1e-3,
-                        'loss': 'CrossEntropyLoss',
-                        'num_epochs': 10,
-                        'batch_size': 32
-                    }.items() if k not in train_mapping})
+            'optimizer': 'AdamW',
+            'learning_rate': 1e-3,
+            'loss': 'CrossEntropyLoss',
+            'num_epochs': 10,
+            'batch_size': 32
+        }.items() if k not in train_mapping})
 
         self.training = train_mapping
 
@@ -119,12 +120,12 @@ class ProbeConfig:
 
         # Set default test config if not provided
         test_mapping.update({k: v for k, v in {
-                        'optimizer': 'AdamW',
-                        'learning_rate': 1e-3,
-                        'loss': 'CrossEntropyLoss',
-                        'num_epochs': 10,
-                        'batch_size': 32
-                    }.items() if k not in test_mapping})
+            'optimizer': 'AdamW',
+            'learning_rate': 1e-3,
+            'loss': 'CrossEntropyLoss',
+            'num_epochs': 10,
+            'batch_size': 32
+        }.items() if k not in test_mapping})
 
         self.test = test_mapping
 
@@ -144,23 +145,30 @@ class Probe(nn.Module):
         # Load input data to parse model input_size and output_size
         self.data = self.load_data()
 
+        self.build_model()
+
+    def build_model(self):
+        """Builds the probe model from scratch."""
         # Intialize probe model
         layers = list()
         layers.append(
-            nn.Linear(config.model['input_size'], config.model['hidden_size'])
+            nn.Linear(self.config.model['input_size'],
+                      self.config.model['hidden_size'])
         )
-        layers.append(getattr(nn, config.model['activation'])())
+        layers.append(getattr(nn, self.config.model['activation'])())
 
         # Intialize intermediate layers based on config
-        for _ in range(config.model['num_layers'] - 2):
+        for _ in range(self.config.model['num_layers'] - 2):
             layers.append(
-                nn.Linear(config.model['hidden_size'], config.model['hidden_size'])
+                nn.Linear(self.config.model['hidden_size'],
+                          self.config.model['hidden_size'])
             )
-            layers.append(getattr(nn, config.model['activation'])())
+            layers.append(getattr(nn, self.config.model['activation'])())
 
         # Final layer to output the desired size
         layers.append(
-            nn.Linear(config.model['hidden_size'], config.model['output_size'])
+            nn.Linear(self.config.model['hidden_size'],
+                      self.config.model['output_size'])
         )
 
         # Combine all layers to construct the model
@@ -191,7 +199,8 @@ class Probe(nn.Module):
         all_labels = set([result[2] for result in results])
         self.config.model.setdefault('output_size', len(all_labels))
         assert (
-            'output_size' in self.config.model and len(all_labels) == self.config.model['output_size']
+            'output_size' in self.config.model and len(
+                all_labels) == self.config.model['output_size']
         ), 'Input attribute `output_size` does not match number of classes in dataset. Leave blank to assign automatically.'
 
         # Label to index mapping
@@ -200,7 +209,8 @@ class Probe(nn.Module):
         features, targets = [], []
         probe_layer = self.config.data.get('input_layer', None)
         if not probe_layer:
-            logging.debug('No `input_layer` attribute provided for database loading, extracting all tensors...')
+            logging.debug(
+                'No `input_layer` attribute provided for database loading, extracting all tensors...')
 
         input_size = self.config.data.get('input_size', None)
         for layer, tensor_bytes, label in results:
@@ -217,8 +227,9 @@ class Probe(nn.Module):
                     input_size = tensor.shape[0]  # pooled tensor
                     self.config.model.setdefault('input_size', input_size)
                     assert (
-                        'input_size' in self.config.model and input_size == self.config.model['input_size']
-                        ), 'Input attribute `input_size` does not match input tensor dimension. Leave blank to assign automatically.'
+                        'input_size' in self.config.model and input_size == self.config.model[
+                            'input_size']
+                    ), 'Input attribute `input_size` does not match input tensor dimension. Leave blank to assign automatically.'
 
                 features.append(tensor)
                 targets.append(label_to_idx[label])
@@ -233,7 +244,7 @@ class Probe(nn.Module):
 
         return TensorDataset(X, Y)
 
-    def train(self, data: Dataset, kfold: int = 5) -> None:
+    def train(self, train_set: Dataset, val_set: Dataset) -> dict:
         """Train the probe model."""
         logging.debug('Training the probe model...')
         train_config = self.config.training
@@ -244,55 +255,58 @@ class Probe(nn.Module):
 
         # Initialize the optimizer
         optimizer_class = getattr(optim, train_config['optimizer'])
-        optimizer = optimizer_class(self.parameters(), lr=train_config['learning_rate'])
+        optimizer = optimizer_class(
+            self.parameters(), lr=train_config['learning_rate'])
 
         # Intialize the loss function
         loss_fn = getattr(nn, train_config['loss'])()
+        train_loader = DataLoader(
+            train_set, batch_size=train_config['batch_size'], shuffle=True)
+        val_loader = DataLoader(val_set, batch_size=train_config['batch_size'])
 
-        kf = KFold(n_splits=kfold, shuffle=True, random_state=42)
-        # TODO: test this by passing Dataset and not Subset
-        kf_split = kf.split(range(len(data)))
-        for fold, (train_idx, val_idx) in enumerate(kf_split):
-            logging.debug(f'===Starting fold {fold}/{kfold}===')
-            train_set, val_set = Subset(data, train_idx), Subset(data, val_idx)
+        for epoch in range(train_config['num_epochs']):
+            # Set the model to training mode
+            self.model.train()
+            total_loss = 0
+            for X, Y in train_loader:
+                optimizer.zero_grad()
 
-            train_loader = DataLoader(
-                train_set, batch_size=train_config['batch_size'], shuffle=True
-            )
-            val_loader = DataLoader(val_set, batch_size=train_config['batch_size'])
+                outputs = self.model(X)
+                loss = loss_fn(outputs, Y)
 
-            for epoch in range(train_config['num_epochs']):
-                # Set the model to training mode
-                self.model.train()
-                total_loss = 0
-                for X, Y in train_loader:
-                    optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
 
-                    outputs = self.model(X)
-                    loss = loss_fn(outputs, Y)
+                total_loss += loss.item() * X.size(0)
 
-                    loss.backward()
-                    optimizer.step()
+            mean_train_loss = total_loss / len(train_set)
+            logging.debug(
+                f"--Epoch {epoch + 1}/{train_config['num_epochs']}: Train loss: {mean_train_loss:.4f}")
 
-                    total_loss += loss.item()
+        # Set model to eval mode and calculate validation loss
+        self.model.eval()
+        val_loss = 0
+        preds, labels = [], []
+        with torch.no_grad():
+            for X_val, Y_val in val_loader:
+                outputs = self.model(X_val)
+                loss = loss_fn(outputs, Y_val)
+                val_loss += loss.item() * X_val.size(0)
+                preds.append(outputs)
+                labels.append(Y_val)
 
-                mean_train_loss = total_loss / len(train_loader)
+        preds = torch.cat(preds, dim=0)
+        labels = torch.cat(labels, dim=0)
+        logging.debug(
+            f'Val prediction shape {preds.shape}, Val labels shape {labels.shape}')
 
-                # Set model to eval mode and calculate validation loss
-                self.model.eval()
-                val_loss = 0
-                with torch.no_grad():
-                    for X_val, Y_val in val_loader:
-                        outputs = self.model(X_val)
-                        loss = loss_fn(outputs, Y_val)
-                        val_loss += loss.item()
+        val_loss = val_loss / len(val_set)
+        val_acc = (preds.argmax(dim=1) == labels).float().mean().item()
+        logging.debug(
+            f'Validation accuracy: {val_acc}, Validation mean loss: {val_loss}')
 
-                mean_val_loss = val_loss / len(val_loader)
-
-                logging.debug(f"--Epoch {epoch + 1}/{train_config['num_epochs']}: Train loss: {mean_train_loss:.4f}, Validation loss: {mean_val_loss:.4f}")
-
-        self.save_model()
-        return
+        return {'preds': preds, 'labels': labels, 'val_loss': val_loss, 'val_acc': val_acc}
+        # self.save_model()
 
     def evaluate(self, test_set: Dataset) -> Tuple[int]:
         """Evaluate the probe model on the input test set."""
@@ -302,8 +316,8 @@ class Probe(nn.Module):
         self.model.to(device)
 
         test_config = self.config.test
-
-        test_loader = DataLoader(test_set, batch_size=test_config['batch_size'])
+        test_loader = DataLoader(
+            test_set, batch_size=test_config['batch_size'])
 
         loss_fn = getattr(nn, test_config['loss'])()
         total_loss = 0.0
@@ -321,7 +335,8 @@ class Probe(nn.Module):
         mean_loss = total_loss / len(test_set)
         accuracy = num_correct / num_samples
 
-        logging.debug(f'Test accuracy: {accuracy}, Test mean loss: {mean_loss}')
+        logging.debug(
+            f'Test accuracy: {accuracy}, Test mean loss: {mean_loss}')
         return accuracy, mean_loss
 
     def save_model(self) -> None:
@@ -340,12 +355,24 @@ def main():
     data = probe.data
     indices = list(range(len(data)))
 
-    train_idx, test_idx = train_test_split(indices, test_size=0.2, random_state=42)
-    train_set = Subset(data, train_idx)
-    test_set = Subset(data, test_idx)
+    train_idx, test_idx = train_test_split(
+        indices, test_size=0.2, random_state=42)
+    train_set, test_set = Subset(data, train_idx), Subset(data, test_idx)
 
-    # Train the model
-    probe.train(train_set, kfold=10)
+    # Train the model with cross-fold validation
+    nfolds = 5
+    kf = KFold(n_splits=nfolds, shuffle=True, random_state=42)
+    all_folds = []
+    for fold, (train_idx, val_idx) in enumerate(kf.split(range(len(train_set)))):
+        logging.debug(f'===Starting fold {fold}/{nfolds}===')
+        train_set, val_set = Subset(data, train_idx), Subset(data, val_idx)
+        if fold > 1:
+            probe.build_model()
+
+        results = probe.train(train_set, val_set)
+        results['fold'] = fold
+
+        all_folds.append(results)
 
     # Test the model
     probe.evaluate(test_set)
