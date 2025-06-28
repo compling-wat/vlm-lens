@@ -5,6 +5,7 @@ Example command: python src/probe/probe.py -c configs/probe.yaml
 
 import argparse
 import io
+import itertools
 import logging
 import sqlite3
 from typing import Any, Dict, Tuple
@@ -55,7 +56,7 @@ class ProbeConfig:
 
         # Load model device
         if 'cuda' in args.device and not torch.cuda.is_available():
-            raise ValueError('No GPU found for this machine')
+            raise ValueError('No GPU found on this machine')
 
         self.device = args.device
         logging.debug(self.device)
@@ -101,6 +102,7 @@ class ProbeConfig:
             for mapping in self.training:
                 train_mapping = {**train_mapping, **mapping}
 
+        logging.debug(train_mapping)
         # Set default training config if not provided
         train_mapping.update({k: v for k, v in {
             'optimizer': 'AdamW',
@@ -217,7 +219,7 @@ class Probe(nn.Module):
             if (probe_layer and layer == probe_layer) or (not probe_layer):
                 tensor = torch.load(io.BytesIO(tensor_bytes))
                 if tensor.ndim > 2:
-                    # Apply mean pooling if tensor is already pooled
+                    # Apply mean pooling if tensor is not already pooled
                     tensor = tensor.mean(dim=1)
                 # Squeeze to shape (hidden_dim)
                 tensor = tensor.squeeze()
@@ -244,10 +246,27 @@ class Probe(nn.Module):
 
         return TensorDataset(X, Y)
 
-    def train(self, train_set: Dataset, val_set: Dataset) -> dict:
+    def cross_validate(self, config: dict, data: Dataset, nfolds: int = 5) -> float:
+        """Trains the model using the config hyperparameters across k folds."""
+        kf = KFold(n_splits=nfolds, shuffle=True, random_state=42)
+        val_losses = []
+        for fold, (train_idx, val_idx) in enumerate(kf.split(range(len(data)))):
+            logging.debug(f'===Starting fold {fold}/{nfolds}===')
+            train_set, val_set = Subset(data, train_idx), Subset(data, val_idx)
+            if fold > 0:
+                # Reinitialize model after each fold to prevent contamination
+                self.build_model()
+
+            result = self.train(config, train_set, val_set)
+            val_losses.append(result['val_loss'])
+
+        # Return lowest validation loss
+        return min(val_losses)
+
+    def train(self, train_config: dict, train_set: Dataset, val_set: Dataset = None) -> dict:
         """Train the probe model."""
-        logging.debug('Training the probe model...')
-        train_config = self.config.training
+        logging.debug(
+            f'Training the probe model with config {train_config}...')
 
         # Set the device
         device = torch.device(self.config.device)
@@ -262,7 +281,6 @@ class Probe(nn.Module):
         loss_fn = getattr(nn, train_config['loss'])()
         train_loader = DataLoader(
             train_set, batch_size=train_config['batch_size'], shuffle=True)
-        val_loader = DataLoader(val_set, batch_size=train_config['batch_size'])
 
         for epoch in range(train_config['num_epochs']):
             # Set the model to training mode
@@ -283,30 +301,34 @@ class Probe(nn.Module):
             logging.debug(
                 f"--Epoch {epoch + 1}/{train_config['num_epochs']}: Train loss: {mean_train_loss:.4f}")
 
-        # Set model to eval mode and calculate validation loss
-        self.model.eval()
-        val_loss = 0
-        preds, labels = [], []
-        with torch.no_grad():
-            for X_val, Y_val in val_loader:
-                outputs = self.model(X_val)
-                loss = loss_fn(outputs, Y_val)
-                val_loss += loss.item() * X_val.size(0)
-                preds.append(outputs)
-                labels.append(Y_val)
+        if val_set:
+            val_loader = DataLoader(
+                val_set, batch_size=train_config['batch_size'])
+            # Set model to eval mode and calculate validation loss
+            self.model.eval()
+            val_loss = 0
+            preds, labels = [], []
+            with torch.no_grad():
+                for X_val, Y_val in val_loader:
+                    outputs = self.model(X_val)
+                    loss = loss_fn(outputs, Y_val)
+                    val_loss += loss.item() * X_val.size(0)
 
-        preds = torch.cat(preds, dim=0)
-        labels = torch.cat(labels, dim=0)
-        logging.debug(
-            f'Val prediction shape {preds.shape}, Val labels shape {labels.shape}')
+                    preds.append(outputs)
+                    labels.append(Y_val)
 
-        val_loss = val_loss / len(val_set)
-        val_acc = (preds.argmax(dim=1) == labels).float().mean().item()
-        logging.debug(
-            f'Validation accuracy: {val_acc}, Validation mean loss: {val_loss}')
+            preds = torch.cat(preds, dim=0)
+            labels = torch.cat(labels, dim=0)
 
-        return {'preds': preds, 'labels': labels, 'val_loss': val_loss, 'val_acc': val_acc}
-        # self.save_model()
+            val_loss = val_loss / len(val_set)
+            val_acc = (preds.argmax(dim=1) == labels).float().mean().item()
+            logging.debug(
+                f'Validation accuracy: {val_acc}, Validation mean loss: {val_loss}')
+
+            return {'preds': preds, 'labels': labels, 'val_loss': val_loss, 'val_acc': val_acc}
+
+        # TODO: Return train details here
+        return {}
 
     def evaluate(self, test_set: Dataset) -> Tuple[int]:
         """Evaluate the probe model on the input test set."""
@@ -359,23 +381,30 @@ def main():
         indices, test_size=0.2, random_state=42)
     train_set, test_set = Subset(data, train_idx), Subset(data, test_idx)
 
-    # Train the model with cross-fold validation
-    nfolds = 5
-    kf = KFold(n_splits=nfolds, shuffle=True, random_state=42)
-    all_folds = []
-    for fold, (train_idx, val_idx) in enumerate(kf.split(range(len(train_set)))):
-        logging.debug(f'===Starting fold {fold}/{nfolds}===')
-        train_set, val_set = Subset(data, train_idx), Subset(data, val_idx)
-        if fold > 1:
-            probe.build_model()
+    # Load all combinations of hyperparameters
+    train_keys = list(config.training.keys())
+    train_configs = list(itertools.product(
+        *[[config.training[k]] if not isinstance(config.training[k], list) else config.training[k] for k in train_keys]))
+    logging.debug(
+        f'Hyperparamer tuning using {len(train_configs)} config combinations...')
 
-        results = probe.train(train_set, val_set)
-        results['fold'] = fold
+    # Train using k-fold cross validation on all configs and store the lowest validation losses
+    val_losses = []
+    for config in train_configs:
+        val_loss = probe.cross_validate(
+            dict(zip(train_keys, config)), train_set)
+        val_losses.append(val_loss)
 
-        all_folds.append(results)
+    # Finally, train the model on the whole train_set using best config
+    min_idx = val_losses.index(min(val_losses))
+    final_config = dict(zip(train_keys, train_configs[min_idx]))
+    probe.train(final_config, train_set)
+    logging.debug(
+        f'Model train results after hyperparameter tuning: {final_config}')
 
     # Test the model
     probe.evaluate(test_set)
+    probe.save_model()
 
     # TODO: implement a demo
 
