@@ -1,3 +1,4 @@
+.. _config_format:
 Config YAML Format
 ================================
 
