@@ -9,7 +9,8 @@ import datasets
 import wget
 import yaml
 
-ROOT = pathlib.Path(__file__).resolve().parents[2]  # go up two levels: dataset -> src -> root
+# go up two levels: dataset -> scripts -> root
+ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.append(str(ROOT))
 from project_root import PROJECT_ROOT  # noqa: E402
 
@@ -70,7 +71,8 @@ def main(yaml_path: str):
         config = yaml.safe_load(file)
     os.makedirs(process_path(config['parent_folder']), exist_ok=True)
     print('===step 1/2: Downloading text dataset===')
-    get_text_dataset(config['dataset_path'], config['split_name'], config['dataset_download_place'])
+    get_text_dataset(
+        config['dataset_path'], config['split_name'], config['dataset_download_place'])
     print('===step 2/2: Downloading image dataset===')
     download_file(config['img_url'], config['img_download_place'])
 

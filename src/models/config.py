@@ -198,32 +198,37 @@ class Config():
                 ds_mapping = {**ds_mapping, **mapping}
 
             # Load image dataset
-            logging.debug(f"Locating image dataset from {ds_mapping['image_dataset_path']} with split {ds_mapping['image_split']}")
-            image_dir = ds_mapping.get('image_dataset_path', None)
-            if image_dir and ds_mapping.get('image_split', None):
-                image_dir = os.path.join(
-                    image_dir,
-                    ds_mapping['image_split']
+            img_dir = ds_mapping.get('image_dataset_path', None)
+            img_split = ds_mapping.get('image_split', None)
+            if img_dir and img_split:
+                img_dir = os.path.join(
+                    img_dir,
+                    img_split
                 )
+            logging.debug(
+                f'Locating image dataset from {img_dir} with split {img_split}')
 
             # Set default input directory in case we use filters
-            self.default_input_dir = (image_dir)
+            self.default_input_dir = (img_dir)
             self.set_image_paths(self.default_input_dir)
 
             # Load text dataset
-            logging.debug(f"Loading text dataset from {ds_mapping['text_dataset_path']} with split {ds_mapping['text_split']}")
+            logging.debug(
+                f"Loading text dataset from {ds_mapping['text_dataset_path']} with split {ds_mapping['text_split']}")
             text_dataset = load_dataset(
                 ds_mapping['text_dataset_path']
-                )[ds_mapping['text_split']]
+            )[ds_mapping['text_split']]
 
             # Map text dataset to image dataset
-            logging.debug('Mapping text prompts to their corresponding images...')
+            logging.debug(
+                'Mapping text prompts to their corresponding images...')
             self.dataset = map_text_to_images(
                 text_dataset,
                 self.image_paths,
                 image_column=ds_mapping['image_column'],
                 prompt_column=ds_mapping['prompt_column'],
                 label_column=ds_mapping.get('label_column', None),
+                image_regex=ds_mapping.get('image_regex', '{id}'),
             )
 
             self.default_prompt = None
@@ -261,7 +266,8 @@ class Config():
         if not hasattr(self, 'output_db'):
             self.output_db = 'embeddings.db'
 
-        self.pooled_output = self.pooled_output if hasattr(self, 'pooled_output') else False
+        self.pooled_output = self.pooled_output if hasattr(
+            self, 'pooled_output') else False
 
     def has_images(self) -> bool:
         """Returns a boolean for whether or not the input directory has images.

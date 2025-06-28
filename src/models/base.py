@@ -8,6 +8,7 @@ import logging
 import os
 import sqlite3
 from abc import ABC, abstractmethod
+from collections.abc import Iterator
 from typing import List, Optional, Tuple
 
 import torch
@@ -113,7 +114,8 @@ class ModelBase(ABC):
 
             # Convert the tensor to a binary blob
             tensor_blob = io.BytesIO()
-            final_output = output.mean(dim=1) if self.config.pooled_output else output
+            final_output = output.mean(
+                dim=1) if self.config.pooled_output else output
             torch.save(final_output, tensor_blob)
 
             # Insert the tensor into the table
@@ -122,14 +124,14 @@ class ModelBase(ABC):
                     (name, architecture, image_path, prompt, label, layer, tensor)
                     VALUES (?, ?, ?, ?, ?, ?, ?);
                 """, (
-                    self.model_path,
-                    self.config.architecture.value,
-                    image_path,
-                    prompt,
-                    label,
-                    name,
-                    tensor_blob.getvalue()
-                )
+                self.model_path,
+                self.config.architecture.value,
+                image_path,
+                prompt,
+                label,
+                name,
+                tensor_blob.getvalue()
+            )
             )
 
             self.connection.commit()
@@ -293,7 +295,6 @@ class ModelBase(ABC):
             str: The generated prompt with the input text and the image labels.
         """
         logging.debug('Loading data...')
-
         # build the input dict for the chat template
         input_msgs_formatted = [{
             'role': 'user',
@@ -319,7 +320,7 @@ class ModelBase(ABC):
             add_generation_prompt=add_generation_prompt
         )
 
-    def _load_input_data(self) -> List[ModelInput]:
+    def _load_input_data(self) -> Iterator[ModelInput]:
         """From a configuration, loads the input image and text data.
 
         For each prompt and input image, create a separate batch feature that
@@ -334,10 +335,9 @@ class ModelBase(ABC):
         logging.debug('Generating embeddings through its processor...')
         if self.config.dataset:
             # Use the dataset to load input data, which includes (id, prompt, image_path)
-            logging.debug('Using dataset to load input data...')
-            if 'label' in self.config.dataset.column_names:
-                return [
-                    (
+            for row in self.config.dataset:
+                if 'label' in self.config.dataset.column_names:
+                    yield (
                         row['image_path'],
                         row['prompt'],
                         row['label'],
@@ -346,11 +346,10 @@ class ModelBase(ABC):
                             img_path=row['image_path']
                         )
                     )
-                    for row in self.config.dataset
-                ]
-            else:
-                return [
-                    (
+
+                else:
+
+                    yield (
                         row['image_path'],
                         row['prompt'],
                         self._generate_processor_output(
@@ -358,31 +357,27 @@ class ModelBase(ABC):
                             img_path=row['image_path']
                         )
                     )
-                    for row in self.config.dataset
-                ]
 
         else:
             if not self.config.has_images():
-                return [(
+                yield (
                     self.config.NO_IMG_PROMPT,
                     self.config.prompt,
                     self._generate_processor_output(
                         prompt=self._generate_prompt(self.config.prompt),
                         img_path=None
                     )
-                )]
-
-            return [
-                (
-                    img_path,
-                    self.config.prompt,
-                    self._generate_processor_output(
-                        prompt=self._generate_prompt(self.config.prompt),
-                        img_path=img_path
-                    )
                 )
-                for img_path in self.config.image_paths
-            ]
+            else:
+                for img_path in self.config.image_paths:
+                    yield (
+                        img_path,
+                        self.config.prompt,
+                        self._generate_processor_output(
+                            prompt=self._generate_prompt(self.config.prompt),
+                            img_path=img_path
+                        )
+                    )
 
     def run(self) -> None:
         """Get the hidden states from the model and saving them."""

@@ -1,32 +1,38 @@
 """Utility functions to map text datasets to images."""
 
 import os
+import pathlib
 import sys
 from typing import List, Optional
 
 import yaml
 from datasets import Dataset, load_dataset
 
-from .download_datasets import process_path
+# go up two levels: dataset -> scripts -> root
+ROOT = pathlib.Path(__file__).resolve().parents[2]
+sys.path.append(str(ROOT))
+from project_root import PROJECT_ROOT  # noqa: E402
 
 
 def map_text_to_images(
-                        text_dataset: Dataset,
-                        image_paths: List[str],
-                        image_column: str,
-                        prompt_column: str,
-                        label_column: Optional[str] = None,
-                        save_path: Optional[str] = None
-                    ) -> Dataset:
+    text_dataset: Dataset,
+    image_paths: List[str],
+    image_column: str,
+    prompt_column: str,
+    label_column: Optional[str] = None,
+    image_regex: Optional[str] = '{id}',
+    save_path: Optional[str] = None,
+) -> Dataset:
     """Map text dataset to image dataset.
 
     Args:
-        text_dataset (datasets.Dataset): The text dataset.
-        image_paths (list[str]): List of the input image file paths.
+        text_dataset (Dataset): The text dataset.
+        image_paths (List[str]): List of the input image file paths.
         image_column (str): The column name in text_dataset used to match entries in image_dataset.
         prompt_column (str): The column name for the prompt entry in text_dataset.
-        label_column (str): The column name for the classification label/answer entry in text_dataset.
-        save_path (str): The location to save the dataset.
+        label_column (Optional[str]): The column name for the classification label/answer entry in text_dataset.
+        image_regex (Optional[str]): The regex pattern to convert image_column -> image filename.
+        save_path (Optional[str]): The location to save the dataset.
 
     Returns:
         datasets.Dataset: A new dataset with text and images mapped together.
@@ -51,7 +57,7 @@ def map_text_to_images(
 
     # Map the text dataset entries to their corresponding images
     mapped_dataset = mapped_dataset.map(lambda x: {
-        'image_path': filename_to_path.get(x['id'], None)
+        'image_path': filename_to_path.get(image_regex.format(id=str(x['id']).replace(',', '')), None)
     }).filter(lambda x: x['image_path'] is not None)
 
     # Save dataset if path provided
@@ -67,12 +73,13 @@ def main(config_path: str):
     Args:
         config_path (str): The yaml file containing the config attributes for the script/
     """
-    yaml_path = process_path(config_path)
+    yaml_path = os.path.join(PROJECT_ROOT, config_path)
     with open(yaml_path, 'r') as file:
         config = yaml.safe_load(file)
 
     # Load text_dataset
-    text_dataset = load_dataset(config['text_dataset_path'])[config['text_split']]
+    text_dataset = load_dataset(config['text_dataset_path'])[
+        config['text_split']]
 
     # Locate image dataset dir
     image_dir = config.get('image_dataset_path', None)
@@ -95,6 +102,7 @@ def main(config_path: str):
         image_column=config['image_column'],
         prompt_column=config['prompt_column'],
         label_column=config.get('label_column', None),
+        image_regex=config.get('image_regex', '{id}'),
         save_path=config.get('save_path', None),
     )
 
