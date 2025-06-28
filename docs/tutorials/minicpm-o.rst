@@ -43,7 +43,7 @@ To extract layers on a CUDA-enabled device, execute:
 
 .. code-block:: bash
 
-   python src/main.py --config configs/minicpm-o.yaml --device cuda
+   python src/main.py --config configs/minicpm-o.yaml --device cuda --debug
 
 Results
 -------------------------------
