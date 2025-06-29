@@ -2,7 +2,7 @@ model:
   - activation: ReLU
   - hidden_size: 512
   - num_layers: 2
-  - save_path: llava_shape_probe_l31.pth
+  - save_dir: llava_shape_probe_l31
 training:
   - batch_size: [64, 128, 1024]
   - num_epochs: [50, 100, 200]

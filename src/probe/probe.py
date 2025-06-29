@@ -6,9 +6,11 @@ Example command: python src/probe/probe.py -c configs/probe.yaml
 import argparse
 import io
 import itertools
+import json
 import logging
+import os
 import sqlite3
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -147,6 +149,7 @@ class Probe(nn.Module):
         # Load input data to parse model input_size and output_size
         self.data = self.load_data()
 
+        # Intialize the model
         self.build_model()
 
     def build_model(self):
@@ -217,7 +220,8 @@ class Probe(nn.Module):
         input_size = self.config.data.get('input_size', None)
         for layer, tensor_bytes, label in results:
             if (probe_layer and layer == probe_layer) or (not probe_layer):
-                tensor = torch.load(io.BytesIO(tensor_bytes))
+                tensor = torch.load(io.BytesIO(tensor_bytes),
+                                    map_location=self.config.device)
                 if tensor.ndim > 2:
                     # Apply mean pooling if tensor is not already pooled
                     tensor = tensor.mean(dim=1)
@@ -253,15 +257,15 @@ class Probe(nn.Module):
         for fold, (train_idx, val_idx) in enumerate(kf.split(range(len(data)))):
             logging.debug(f'===Starting fold {fold}/{nfolds}===')
             train_set, val_set = Subset(data, train_idx), Subset(data, val_idx)
-            if fold > 0:
-                # Reinitialize model after each fold to prevent contamination
-                self.build_model()
+
+            # Reinitialize model after each fold to prevent contamination
+            self.build_model()
 
             result = self.train(config, train_set, val_set)
-            val_losses.append(result['val_loss'])
+            val_losses.append(result['val_loss'] * len(val_set))
 
-        # Return lowest validation loss
-        return min(val_losses)
+        # Return the mean validation loss across all folds
+        return sum(val_losses) / len(data)
 
     def train(self, train_config: dict, train_set: Dataset, val_set: Dataset = None) -> dict:
         """Train the probe model."""
@@ -354,18 +358,33 @@ class Probe(nn.Module):
                 num_correct += (preds == Y).sum()
                 num_samples += Y.size(0)
 
-        mean_loss = total_loss / len(test_set)
-        accuracy = num_correct / num_samples
+        mean_loss = float(total_loss / len(test_set))
+        accuracy = float(num_correct / num_samples)
 
         logging.debug(
             f'Test accuracy: {accuracy}, Test mean loss: {mean_loss}')
         return accuracy, mean_loss
 
-    def save_model(self) -> None:
+    def save_model(self, metadata: Optional[dict] = None) -> None:
         """Saves the trained model to a user-specified path."""
-        save_path = self.config.model.get('save_path', 'probe.pth')
-        torch.save(self.model.state_dict(), save_path)
-        logging.debug(f'Model saved to {save_path}')
+        save_dir = self.config.model.get('save_dir') or 'probe_output'
+        os.makedirs(save_dir, exist_ok=True)
+
+        save_path = os.path.join(save_dir, 'probe.pth')
+        try:
+            torch.save(self.model.state_dict(), save_path)
+            logging.debug(f'Model saved to {save_path}')
+        except Exception as e:
+            logging.error(f'Failed to save probe model: {e}')
+
+        if metadata:
+            try:
+                data_path = os.path.join(save_dir, 'probe_results.txt')
+                with open(data_path, 'w') as f:
+                    f.write(json.dumps(metadata, indent=2))
+                logging.debug('Probe metadata saved to {data_path}')
+            except Exception as e:
+                logging.error(f'Failed to save metadata: {e}')
 
 
 def main():
@@ -392,19 +411,24 @@ def main():
     val_losses = []
     for config in train_configs:
         val_loss = probe.cross_validate(
-            dict(zip(train_keys, config)), train_set)
+            dict(zip(train_keys, config)), train_set, nfolds=2)
         val_losses.append(val_loss)
 
     # Finally, train the model on the whole train_set using best config
     min_idx = val_losses.index(min(val_losses))
     final_config = dict(zip(train_keys, train_configs[min_idx]))
+
+    # Reinitialize model to train with best config
+    probe.build_model()
     probe.train(final_config, train_set)
     logging.debug(
         f'Model train results after hyperparameter tuning: {final_config}')
 
     # Test the model
-    probe.evaluate(test_set)
-    probe.save_model()
+    accuracy, loss = probe.evaluate(test_set)
+    probe.save_model({'train_config': final_config,
+                      'test_accuracy': accuracy,
+                      'test_loss': loss})
 
     # TODO: implement a demo
 
