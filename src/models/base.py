@@ -352,9 +352,17 @@ class ModelBase(ABC):
         # then convert to gpu
         self.model.to(self.config.device)
 
+        # then reset the starting point in tracking maximum GPU memory, if using cuda
+        if self.config.device.type == 'cuda':
+            torch.cuda.reset_peak_memory_stats(self.config.device)
+
         # then run everything else
         for input in self._load_input_data():
             self._hook_and_eval(input)
+
+        # then output peak memory usage, if using cuda
+        if self.config.device.type == 'cuda':
+            logging.debug(f'Peak GPU memory allocated: {torch.cuda.max_memory_allocated(self.config.device) / 1e6:.2f} MB')
 
         # finally clean up, closing database connection, etc.
         self._cleanup()
