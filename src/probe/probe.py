@@ -9,6 +9,7 @@ import itertools
 import json
 import logging
 import os
+import random
 import sqlite3
 from typing import Any, Dict, Optional, Tuple
 
@@ -184,7 +185,7 @@ class Probe(nn.Module):
         logging.debug('Forward pass with input: %s', x.shape)
         return self.model(x)
 
-    def load_data(self) -> TensorDataset:
+    def load_data(self, shuffle: bool = False) -> TensorDataset:
         """Load tensors from the database."""
         logging.debug('Loading tensors from the database...')
         # Connect to database
@@ -239,6 +240,9 @@ class Probe(nn.Module):
 
                 features.append(tensor)
                 targets.append(label_to_idx[label])
+
+        if shuffle:
+            random.shuffle(targets)
 
         # Stack lists into batched tensors
         X = torch.stack(features)
@@ -411,25 +415,35 @@ def main():
     val_losses = []
     for config in train_configs:
         val_loss = probe.cross_validate(
-            dict(zip(train_keys, config)), train_set, nfolds=2)
+            dict(zip(train_keys, config)), train_set)
         val_losses.append(val_loss)
 
     # Finally, train the model on the whole train_set using best config
     min_idx = val_losses.index(min(val_losses))
     final_config = dict(zip(train_keys, train_configs[min_idx]))
+    logging.debug(
+        f'Model config results after hyperparameter tuning: {final_config}')
 
-    # Reinitialize model to train with best config
+    # Shuffle the data and train the model again to test generalization
+    shffl_data = probe.load_data(shuffle=True)
+    shuffl_train, shuffl_test = Subset(
+        shffl_data, train_idx), Subset(shffl_data, test_idx)
+    probe.build_model()
+    probe.train(final_config, shuffl_train)
+
+    shuffl_acc, shuffl_loss = probe.evaluate(shuffl_test)
+
+    # Reinitialize model to finally train with best config
     probe.build_model()
     probe.train(final_config, train_set)
-    logging.debug(
-        f'Model train results after hyperparameter tuning: {final_config}')
-
-    # Test the model
     accuracy, loss = probe.evaluate(test_set)
+
+    # Save results to file with non-shuffled model to file
     probe.save_model({'train_config': final_config,
+                      'shuffle_accuracy': shuffl_acc,
+                      'shuffle_loss': shuffl_loss,
                       'test_accuracy': accuracy,
                       'test_loss': loss})
-
     # TODO: implement a demo
 
 
