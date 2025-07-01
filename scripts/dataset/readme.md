@@ -14,3 +14,9 @@ python map_datasets.py [yaml config file]
 See existing config files like `configs/dataset/map-*.yaml` for reference. You need to provide the attribute names to be mapped. Otherwise, this functionality is done automatically within the model execution pipeline.
 
 For the `image_regex` attribute, this is providing a pattern to convert the image ID column in the text dataset (`image_column`) into the corresponding image filenames saved under `image_dataset_path`, e.g., `123,456 -> 000000123456.jpg`. You may leave this blank if it doesn't require conversion.
+
+## convert_images.py
+If you need to convert the format of your input images before passing them, use the `convert_images.py` script like this:
+```
+python convert_images.py --format RGB --input_dir /path/to/input/images --output_dir /path/to/converted/images
+```
