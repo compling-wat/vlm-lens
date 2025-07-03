@@ -1,0 +1,18 @@
+architecture: paligemma
+model_path: google/paligemma-3b-mix-224
+model:
+  - token: <HUGGINGFACE_TOKEN>
+dataset:
+  - text_dataset_path: compling/coco-val2017-obj-qa-categories
+  - image_dataset_path: /home/jiahong/workspace/vlm-competence/vlm-competence-dev/data/COCO/  # downloaded using configs/dataset/coco.yaml
+  - text_split: val2017
+  - image_split: val2017
+  - prompt_column: question
+  - label_column: answer
+  - image_column: image_id
+  - image_regex: "{id:0>12}.jpg"
+output_db: /home/jiahong/workspace/vlm-competence/db/paligemma_coco.db
+pooled_output: True
+modules:
+  - language_model.model.layers.9.post_attention_layernorm
+  - language_model.model.layers.17.post_attention_layernorm

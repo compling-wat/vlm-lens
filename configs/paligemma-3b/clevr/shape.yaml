@@ -1,0 +1,17 @@
+architecture: paligemma
+model_path: google/paligemma-3b-mix-224
+model:
+  - token: <HUGGINGFACE_TOKEN>
+dataset:
+  - text_dataset_path: compling/CLEVR_val_categories
+  - image_dataset_path: /home/jiahong/workspace/vlm-competence/vlm-competence-dev/data/CLEVR/CLEVR_v1.0/images  # downloaded using configs/dataset/clevr.yaml
+  - text_split: shape
+  - image_split: val
+  - prompt_column: Q
+  - label_column: A
+  - image_column: image_filename
+output_db: /home/jiahong/workspace/vlm-competence/paligemma_shape.db
+pooled_output: True
+modules:
+  - language_model.model.layers.9.post_attention_layernorm
+  - language_model.model.layers.17.post_attention_layernorm

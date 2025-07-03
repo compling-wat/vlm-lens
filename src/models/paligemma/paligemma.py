@@ -44,10 +44,10 @@ class PaligemmaModel(ModelBase):
         """
         self.processor = AutoProcessor.from_pretrained(self.model_path, token=self.config.model['token'])
 
-    def _generate_prompt(self) -> str:
+    def _generate_prompt(self, prompt) -> str:
         """Generates the Paligemma model prompt which will not use the chat template.
 
         Returns:
             str: The prompt to return, set by the config.
         """
-        return self.config.prompt
+        return prompt
