@@ -2,6 +2,9 @@ architecture: molmo
 model_path: allenai/Molmo-7B-D-0924
 model:
   - torch_dtype: auto
+forward:
+  - max_new_tokens: 1
+  - stop_strings: <|endoftext|>
 output_db: molmo.db
 input_dir: ./data/
 prompt: "Describe the color in this image in one word."

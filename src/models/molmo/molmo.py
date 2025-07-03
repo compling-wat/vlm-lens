@@ -90,10 +90,11 @@ class MolmoModel(ModelBase):
         Args:
             data: The given data tensor.
         """
+        generation_config = self.config.forward
         with torch.no_grad():
             _ = self.model.generate_from_batch(
                 data,
-                GenerationConfig(max_new_tokens=1, stop_strings='<|endoftext|>'),
+                GenerationConfig(**generation_config),
                 tokenizer=self.processor.tokenizer
             )
         logging.debug('Completed forward pass...')
