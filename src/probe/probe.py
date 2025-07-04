@@ -18,6 +18,7 @@ import torch.nn as nn
 import torch.optim as optim
 import yaml
 from sklearn.model_selection import KFold, train_test_split
+from statsmodels.stats.proportion import proportions_ztest
 from torch.utils.data import DataLoader, Dataset, Subset, TensorDataset
 
 
@@ -297,7 +298,7 @@ class Probe(nn.Module):
             for X, Y in train_loader:
                 optimizer.zero_grad()
 
-                outputs = self.model(X)
+                outputs = self.model(X.float())
                 loss = loss_fn(outputs, Y)
 
                 loss.backward()
@@ -318,7 +319,7 @@ class Probe(nn.Module):
             preds, labels = [], []
             with torch.no_grad():
                 for X_val, Y_val in val_loader:
-                    outputs = self.model(X_val)
+                    outputs = self.model(X_val.float())
                     loss = loss_fn(outputs, Y_val)
                     val_loss += loss.item() * X_val.size(0)
 
@@ -352,9 +353,10 @@ class Probe(nn.Module):
         loss_fn = getattr(nn, test_config['loss'])()
         total_loss = 0.0
         num_correct, num_samples = 0, 0
+        all_preds, all_labels = [], []
         with torch.no_grad():
             for X, Y in test_loader:
-                outputs = self.model(X)
+                outputs = self.model(X.float())
                 loss = loss_fn(outputs, Y)
                 total_loss += loss.item() * X.size(0)  # to account for incomplete batches
 
@@ -362,12 +364,20 @@ class Probe(nn.Module):
                 num_correct += (preds == Y).sum()
                 num_samples += Y.size(0)
 
+                all_preds.append(preds)
+                all_labels.append(Y)
+
         mean_loss = float(total_loss / len(test_set))
         accuracy = float(num_correct / num_samples)
 
+        all_preds = torch.cat(all_preds, dim=0).cpu().numpy()
+        all_labels = torch.cat(all_labels, dim=0).cpu().numpy()
         logging.debug(
             f'Test accuracy: {accuracy}, Test mean loss: {mean_loss}')
-        return accuracy, mean_loss
+        return {'accuracy': accuracy,
+                'loss': mean_loss,
+                'labels': all_labels,
+                'preds': all_preds}
 
     def save_model(self, metadata: Optional[dict] = None) -> None:
         """Saves the trained model to a user-specified path."""
@@ -383,10 +393,10 @@ class Probe(nn.Module):
 
         if metadata:
             try:
-                data_path = os.path.join(save_dir, 'probe_results.txt')
+                data_path = os.path.join(save_dir, 'probe_data.txt')
                 with open(data_path, 'w') as f:
                     f.write(json.dumps(metadata, indent=2))
-                logging.debug('Probe metadata saved to {data_path}')
+                logging.debug(f'Probe metadata saved to {data_path}')
             except Exception as e:
                 logging.error(f'Failed to save metadata: {e}')
 
@@ -428,22 +438,34 @@ def main():
     shffl_data = probe.load_data(shuffle=True)
     shuffl_train, shuffl_test = Subset(
         shffl_data, train_idx), Subset(shffl_data, test_idx)
+
     probe.build_model()
     probe.train(final_config, shuffl_train)
-
-    shuffl_acc, shuffl_loss = probe.evaluate(shuffl_test)
+    shffl_results = probe.evaluate(shuffl_test)
 
     # Reinitialize model to finally train with best config
     probe.build_model()
     probe.train(final_config, train_set)
-    accuracy, loss = probe.evaluate(test_set)
+    test_results = probe.evaluate(test_set)
+
+    # Calculate p-value using proportions z-test
+    shffl_correct = (shffl_results['preds'] == shffl_results['labels']).sum()
+    test_correct = (test_results['preds'] == test_results['labels']).sum()
+    pvalue = proportions_ztest([test_correct, shffl_correct],
+                               [len(test_results['preds']), len(shffl_results['preds'])])[1]
 
     # Save results to file with non-shuffled model to file
     probe.save_model({'train_config': final_config,
-                      'shuffle_accuracy': shuffl_acc,
-                      'shuffle_loss': shuffl_loss,
-                      'test_accuracy': accuracy,
-                      'test_loss': loss})
+                      'shuffle_accuracy': shffl_results['accuracy'],
+                      'shuffle_loss': shffl_results['loss'],
+                      'shuffle_preds': shffl_results['preds'].tolist(),
+                      'shuffle_labels': shffl_results['labels'].tolist(),
+                      'test_accuracy': test_results['accuracy'],
+                      'test_loss': test_results['loss'],
+                      'test_preds': test_results['preds'].tolist(),
+                      'test_labels': test_results['labels'].tolist(),
+                      'pvalue': pvalue})
+
     # TODO: implement a demo
 
 
