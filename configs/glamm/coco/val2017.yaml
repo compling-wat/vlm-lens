@@ -1,0 +1,18 @@
+architecture: glamm
+model_path: MBZUAI/GLaMM-FullScope
+model:
+  - torch_dtype: auto
+dataset:
+  - text_dataset_path: compling/coco-val2017-obj-qa-categories
+  - image_dataset_path: /scratch/ssd004/scratch/iliall/COCO  # downloaded using configs/dataset/coco.yaml
+  - text_split: val2017
+  - image_split: val2017
+  - prompt_column: question
+  - label_column: answer
+  - image_column: image_id
+  - image_regex: "{id:0>12}.jpg"
+output_db: glamm_coco.db
+pooled_output: True
+modules:
+  - language_model.model.layers.15.post_attention_layernorm
+  - language_model.model.layers.31.post_attention_layernorm

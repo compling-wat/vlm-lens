@@ -1,0 +1,17 @@
+architecture: glamm
+model_path: MBZUAI/GLaMM-FullScope
+model:
+  - torch_dtype: auto
+dataset:
+  - text_dataset_path: compling/CLEVR_val_categories
+  - image_dataset_path: /scratch/ssd004/scratch/iliall/CLEVR/CLEVR_v1.0/images  # downloaded using configs/dataset/clevr.yaml
+  - text_split: size
+  - image_split: val
+  - prompt_column: Q
+  - label_column: A
+  - image_column: image_filename
+output_db: glamm_size.db
+pooled_output: True
+modules:
+  - language_model.model.layers.15.post_attention_layernorm
+  - language_model.model.layers.31.post_attention_layernorm

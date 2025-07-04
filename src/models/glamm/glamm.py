@@ -55,13 +55,13 @@ class GlammModel(ModelBase):
             self.model.config.vision_tower
         )
 
-    def _generate_prompt(self) -> str:
+    def _generate_prompt(self, prompt) -> str:
         """Generates the GLaMM model prompt which will not use the chat template.
 
         Returns:
             str: The prompt to return, set by the config.
         """
-        return self.config.prompt
+        return prompt
 
     def _generate_processor_output(self, prompt, img_path) -> dict:
         """Generate the processor argument to be input into the processor.
