@@ -22,7 +22,7 @@ The architecture name (used for model selection) is shown in square brackets:
 
 - **BLIP-2** [blip2]
 - **CLIP** [clip]
-- **CogVLM** [//PENDING//]
+- **CogVLM** [cogvlm]
 - **Glamm** [glamm]
 - **InternLM-XComposer** [internlm-xcomposer]
 - **InternVL** [internvl]

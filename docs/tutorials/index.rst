@@ -1,4 +1,4 @@
-Tutorials
+Model Tutorials
 =========
 
 .. toctree::
@@ -6,3 +6,4 @@ Tutorials
    :hidden:
 
    minicpm-o
+   cogvlm

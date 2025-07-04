@@ -1,7 +1,7 @@
 MiniCPM-o
 ================================
 
-This tutorial guides you through extracting MiniCPM-o model layers.
+This tutorial guides you through extracting hidden representations for MiniCPM-o.
 
 Dependency
 -------------------------------
@@ -39,7 +39,7 @@ A comprehensive list of available modules is provided in the log file: ``logs/op
 Usage
 -------------------------------
 
-To extract layers on a CUDA-enabled device, execute:
+To extract hidden representations on a CUDA-enabled device, execute:
 
 .. code-block:: bash
 
