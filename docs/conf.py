@@ -6,7 +6,7 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'vlm-competence-dev'
+project = 'VLM-Lens'
 copyright = '2025, CompLING Lab, University of Waterloo'
 author = 'CompLING Lab, University of Waterloo'
 release = '1.0'

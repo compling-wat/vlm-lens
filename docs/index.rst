@@ -1,4 +1,4 @@
-vlm-competence-dev Documentation
+VLM-Lens Documentation
 ================================
 
 .. toctree::
