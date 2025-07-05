@@ -15,6 +15,7 @@ representations, you can perform a comprehensive analysis of the knowledge
 encoded within each model.
 
 .. _supported_models:
+
 Supported Models
 -------------------------------
 We currently support extracting hidden states from the following vision-language models.

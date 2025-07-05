@@ -7,6 +7,7 @@ For example, if we wanted to match with all the attention layer's query projecti
 simply add the following lines to the config YAML file:
 
 .. code-block:: bash
+    
     modules:
         - model.layers.*.self_attn.q_proj
         
