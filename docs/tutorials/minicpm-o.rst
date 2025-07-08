@@ -1,7 +1,9 @@
 MiniCPM-o
 ================================
 
+
 This tutorial guides you through extracting hidden representations for MiniCPM-o.
+
 
 Dependency
 -------------------------------
@@ -39,7 +41,9 @@ A comprehensive list of available modules is provided in the log file: ``logs/op
 Usage
 -------------------------------
 
+
 To extract hidden representations on a CUDA-enabled device, execute:
+
 
 .. code-block:: bash
 
