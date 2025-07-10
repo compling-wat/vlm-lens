@@ -1,0 +1,22 @@
+architecture: internvl
+model_path: OpenGVLab/InternVL2_5-8B
+dataset:
+  - text_dataset_path: compling/coco-val2017-obj-qa-categories
+  - image_dataset_path: /scratch/chaijy_root/chaijy2/shuyuwu/coco  # downloaded using configs/dataset/coco.yaml
+  - text_split: val2017
+  - image_split: val2017
+  - prompt_column: question
+  - label_column: answer
+  - image_column: image_id
+  - image_regex: "{id:0>12}.jpg"
+output_db: /scratch/chaijy_root/chaijy2/shuyuwu/compling/internvl_coco.db
+model:
+  - torch_dtype: bfloat16
+  - trust_remote_code: True
+forward:
+  - max_new_tokens: 1
+  - do_sample: True
+pooled_output: True
+modules:
+  - language_model.model.layers.16
+  - language_model.model.layers.31

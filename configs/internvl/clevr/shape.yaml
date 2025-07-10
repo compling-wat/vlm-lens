@@ -1,0 +1,21 @@
+architecture: internvl
+model_path: OpenGVLab/InternVL2_5-8B
+dataset:
+  - text_dataset_path: compling/CLEVR_val_categories
+  - image_dataset_path: /scratch/chaijy_root/chaijy2/shuyuwu/data/CLEVR/images/CLEVR_v1.0/images  # downloaded using configs/dataset/clevr.yaml
+  - text_split: shape
+  - image_split: val
+  - prompt_column: Q
+  - label_column: A
+  - image_column: image_filename
+output_db: /scratch/chaijy_root/chaijy2/shuyuwu/compling/internvl_shape.db
+model:
+  - torch_dtype: bfloat16
+  - trust_remote_code: True
+forward:
+  - max_new_tokens: 1
+  - do_sample: True
+pooled_output: True
+modules:
+  - language_model.model.layers.16
+  - language_model.model.layers.31
