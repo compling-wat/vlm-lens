@@ -1,5 +1,6 @@
 """Utility functions to map text datasets to images."""
 
+import importlib.util
 import os
 import pathlib
 import sys
@@ -22,6 +23,7 @@ def map_text_to_images(
     label_column: Optional[str] = None,
     image_regex: Optional[str] = '{id}',
     save_path: Optional[str] = None,
+    map_fn=None,
 ) -> Dataset:
     """Map text dataset to image dataset.
 
@@ -33,6 +35,7 @@ def map_text_to_images(
         label_column (Optional[str]): The column name for the classification label/answer entry in text_dataset.
         image_regex (Optional[str]): The regex pattern to convert image_column -> image filename.
         save_path (Optional[str]): The location to save the dataset.
+        map_function (Optional[function]):
 
     Returns:
         datasets.Dataset: A new dataset with text and images mapped together.
@@ -55,16 +58,49 @@ def map_text_to_images(
             'label', text_dataset[label_column]
         )
 
+    def resolve_filename(row):
+        """Helper function to define the mapping method for the image id to its path."""
+        if map_fn:
+            # Use custom map function is provided
+            try:
+                match_key = map_fn(row['id'])
+            except Exception as e:
+                raise ValueError(
+                    f'Error encountered in custom mapping function: {e}')
+        else:
+            # Define mapping function using input regex
+            clean_id = str(row['id']).replace(',', '')
+            match_key = image_regex.format(id=clean_id)
+
+        return {'image_path': filename_to_path.get(match_key, None)}
+
     # Map the text dataset entries to their corresponding images
-    mapped_dataset = mapped_dataset.map(lambda x: {
-        'image_path': filename_to_path.get(image_regex.format(id=str(x['id']).replace(',', '')), None)
-    }).filter(lambda x: x['image_path'] is not None)
+    mapped_dataset = mapped_dataset.map(resolve_filename)
+    mapped_dataset = mapped_dataset.filter(
+        lambda x: x['image_path'] is not None)
 
     # Save dataset if path provided
     if save_path:
         mapped_dataset.save_to_disk(save_path)
 
     return mapped_dataset
+
+
+def load_function_from_file(file_path, fn_name) -> callable:
+    """Loads a function from an input file_path.
+
+    Args:
+        file_path (str): The path to the file containing the function.
+        fn_name (str): The name of the function to load.
+
+    Returns:
+        callable: The loaded function.
+    """
+    spec = importlib.util.spec_from_file_location('map_module', file_path)
+    map_module = importlib.util.module_from_spec(spec)
+    sys.modules['map_module'] = map_module
+    spec.loader.exec_module(map_module)
+    return getattr(map_module, fn_name)
 
 
 def main(config_path: str):
@@ -95,7 +131,18 @@ def main(config_path: str):
             os.listdir(image_dir)
         )
     ]
-    # Map text datasets to image paths
+    custom_map_fn = None
+    if 'custom_mapping' in config:
+        file_path = config['custom_mapping'].get('file', None)
+        fn_name = config['custom_mapping'].get('function', None)
+
+        assert file_path is not None and fn_name is not None, (
+            'Must declare both the function name and its path under `file` and `function`.'
+        )
+
+        custom_map_fn = load_function_from_file(file_path, fn_name)
+
+        # Map text datasets to image paths
     map_text_to_images(
         text_dataset,
         image_paths,
@@ -104,6 +151,7 @@ def main(config_path: str):
         label_column=config.get('label_column', None),
         image_regex=config.get('image_regex', '{id}'),
         save_path=config.get('save_path', None),
+        map_fn=custom_map_fn,
     )
 
 
