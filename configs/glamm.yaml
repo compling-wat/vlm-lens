@@ -1,10 +1,17 @@
 architecture: glamm
 model_path: MBZUAI/GLaMM-FullScope
-model:
-  - torch_dtype: auto
+vis_save_path: "./vis_output"
+precision: "bf16"
+image_size: 1024
+model_max_length: 1536
+lora_r: 8
+vision_tower: "openai/clip-vit-large-patch14-336"
+local_rank: 0
+use_mm_start_end: true
+conv_type: "llava_v1"
 output_db: glamm.db
 input_dir: ./data/
 prompt: "Describe the color in this image in one word."
 modules:
-  - multi_modal_projector
-  - language_model.lm_head
+  - vision_model.encoder.layers.23
+  - language_model.output
