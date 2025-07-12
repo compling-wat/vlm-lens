@@ -114,6 +114,7 @@ class ModelBase(ABC):
 
             # Convert the tensor to a binary blob
             tensor_blob = io.BytesIO()
+            # TODO: add support for max and endpoint pooling
             final_output = output.mean(
                 dim=1) if self.config.pooled_output else output
             torch.save(final_output, tensor_blob)
