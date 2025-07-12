@@ -1,8 +1,8 @@
 architecture: minicpm
 model_path: openbmb/MiniCPM-o-2_6
 dataset:
-  - text_dataset_path: wonderwind271/CLEVR_val_categories
-  - image_dataset_path: /path/to/your/CLEVR/CLEVR_v1.0/images  # CHANGE ME
+  - text_dataset_path: compling/CLEVR_val_categories
+  - image_dataset_path: /path/to/your/CLEVR/CLEVR_v1.0/images  # downloaded using configs/dataset/clevr.yaml
   - text_split: boolean
   - image_split: val
   - prompt_column: Q
