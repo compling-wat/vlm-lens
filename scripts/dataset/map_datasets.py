@@ -23,7 +23,7 @@ def map_text_to_images(
     label_column: Optional[str] = None,
     image_regex: Optional[str] = '{id}',
     save_path: Optional[str] = None,
-    map_fn=None,
+    map_fn: Optional[callable] = None,
 ) -> Dataset:
     """Map text dataset to image dataset.
 
@@ -35,7 +35,7 @@ def map_text_to_images(
         label_column (Optional[str]): The column name for the classification label/answer entry in text_dataset.
         image_regex (Optional[str]): The regex pattern to convert image_column -> image filename.
         save_path (Optional[str]): The location to save the dataset.
-        map_function (Optional[function]):
+        map_function (Optional[callable]): A custom mapping function.
 
     Returns:
         datasets.Dataset: A new dataset with text and images mapped together.
