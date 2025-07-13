@@ -38,8 +38,7 @@ class MiniCPMModel(ModelBase):
         Returns:
             str: The prompt to return, set by the config.
         """
-        if prompt: return prompt
-        return self.config.prompt
+        return prompt
 
     def _init_processor(self) -> None:
         """Initialize the MiniCPM Tokenizer"""
