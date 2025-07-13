@@ -67,7 +67,7 @@ def get_model(
         from models.cogvlm import CogVLMModel
         return CogVLMModel(config)
     elif model_arch == ModelSelection.PIXTRAL:
-        from models.pixtral.pixtral import PixtralModel
+        from models.pixtral import PixtralModel
         return PixtralModel(config)
 
 
