@@ -2,13 +2,13 @@ architecture: internvl
 model_path: OpenGVLab/InternVL2_5-8B
 dataset:
   - text_dataset_path: compling/CLEVR_val_categories
-  - image_dataset_path: /scratch/chaijy_root/chaijy2/shuyuwu/data/CLEVR/images/CLEVR_v1.0/images  # downloaded using configs/dataset/clevr.yaml
+  - image_dataset_path: /path/to/CLEVR_v1.0/images  # downloaded using configs/dataset/clevr.yaml
   - text_split: material
   - image_split: val
   - prompt_column: Q
   - label_column: A
   - image_column: image_filename
-output_db: /scratch/chaijy_root/chaijy2/shuyuwu/compling/internvl_material.db
+output_db: internvl_material.db
 model:
   - torch_dtype: bfloat16
   - trust_remote_code: True
