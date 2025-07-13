@@ -1,0 +1,16 @@
+architecture: qwen
+model_path: /model-weights/Qwen2-VL-7B-Instruct
+dataset:
+  - text_dataset_path: compling/coco-val2017-obj-qa-categories
+  - image_dataset_path: /scratch/ssd004/scratch/hsheta/datasets/COCO  # downloaded using configs/dataset/coco.yaml
+  - text_split: val2017
+  - image_split: val2017
+  - prompt_column: question
+  - label_column: answer
+  - image_column: image_id
+  - image_regex: "{id:0>12}.jpg"
+output_db: /projects/compling/hsheta/qwen_coco.db
+pooled_output: True
+modules:
+  - model.layers.13.post_attention_layernorm
+  - model.layers.27.post_attention_layernorm
