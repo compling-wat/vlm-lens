@@ -1,4 +1,4 @@
-vlm-competence-dev Documentation
+VLM-Lens Documentation
 ================================
 
 .. toctree::
@@ -15,6 +15,7 @@ representations, you can perform a comprehensive analysis of the knowledge
 encoded within each model.
 
 .. _supported_models:
+
 Supported Models
 -------------------------------
 We currently support extracting hidden states from the following vision-language models.
@@ -22,7 +23,7 @@ The architecture name (used for model selection) is shown in square brackets:
 
 - **BLIP-2** [blip2]
 - **CLIP** [clip]
-- **CogVLM** [//PENDING//]
+- **CogVLM** [cogvlm]
 - **Glamm** [glamm]
 - **InternLM-XComposer** [internlm-xcomposer]
 - **InternVL** [internvl]
