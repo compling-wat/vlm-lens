@@ -27,6 +27,7 @@ from tools.markdown_utils import (markdown_default, examples, title, description
                                   draw_bbox, ImageSketcher)
 
 def grounding_enc_processor(x: torch.Tensor) -> torch.Tensor:
+    """Preprocess function."""
     IMG_MEAN = torch.Tensor([123.675, 116.28, 103.53]).view(-1, 1, 1)
     IMG_STD = torch.Tensor([58.395, 57.12, 57.375]).view(-1, 1, 1)
     IMG_SIZE = 1024
@@ -35,8 +36,9 @@ def grounding_enc_processor(x: torch.Tensor) -> torch.Tensor:
     x = F.pad(x, (0, IMG_SIZE - w, 0, IMG_SIZE - h))
     return x
 
+
 def prepare_model_for_inference(model, args):
-    # Initialize vision tower
+    """Initialize vision tower."""
     print(
         '\033[92m' + "---- Initialized Global Image Encoder (vision tower) from: {} ----".format(
             args['vision_tower']
@@ -48,6 +50,7 @@ def prepare_model_for_inference(model, args):
     model = model.bfloat16().cuda()
     return model
 
+
 class GlammModel(ModelBase):
     """Glamm model implementation."""
 
@@ -57,9 +60,7 @@ class GlammModel(ModelBase):
         Args:
             config (Config): Parsed config
         """
-        # initialize the parent class
         super().__init__(config)
-
 
     def _load_specific_model(self):
         """Overridden function to populate self.model."""
@@ -154,7 +155,7 @@ class GlammModel(ModelBase):
             "grounding_enc_image": grounding_enc_image,
             "resize_list": resize_list,
             "original_size_list": original_size_list,
-            "bboxes": None  # Optional: pass if you have them
+            "bboxes": None
         }
 
     def _forward(self, data):
@@ -173,7 +174,7 @@ class GlammModel(ModelBase):
                 data["input_ids"],
                 data["resize_list"],
                 data["original_size_list"],
-                max_tokens_new=1,
+                max_tokens_new=self.config.forward['max_new_tokens'],
                 bboxes=data["bboxes"]
             )
         logging.debug('Completed forward pass')

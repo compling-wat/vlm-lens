@@ -1,7 +1,6 @@
 architecture: glamm
 model_path: MBZUAI/GLaMM-FullScope
 model:
-  - precision: "bf16"
   - image_size: 1024
   - model_max_length: 1536
   - lora_r: 8
@@ -9,7 +8,8 @@ model:
   - local_rank: 0
   - use_mm_start_end: true
   - conv_type: "llava_v1"
-
+forward:
+  - max_new_tokens: 1
 vis_save_path: "./vis_output"
 output_db: glamm.db
 input_dir: ./data/
