@@ -7,6 +7,7 @@ import logging
 
 import cv2
 import torch
+import torch.nn.functional as F
 from transformers import (AutoModelForVision2Seq, AutoTokenizer,
                           CLIPImageProcessor)
 
@@ -34,6 +35,19 @@ def grounding_enc_processor(x: torch.Tensor) -> torch.Tensor:
     x = F.pad(x, (0, IMG_SIZE - w, 0, IMG_SIZE - h))
     return x
 
+def prepare_model_for_inference(model, args):
+    # Initialize vision tower
+    print(
+        '\033[92m' + "---- Initialized Global Image Encoder (vision tower) from: {} ----".format(
+            args['vision_tower']
+        ) + '\033[0m'
+    )
+    model.get_model().initialize_vision_modules(model.get_model().config)
+    vision_tower = model.get_model().get_vision_tower()
+    vision_tower.to(dtype=torch.bfloat16, device=args['local_rank'])
+    model = model.bfloat16().cuda()
+    return model
+
 class GlammModel(ModelBase):
     """Glamm model implementation."""
 
@@ -51,30 +65,31 @@ class GlammModel(ModelBase):
         """Overridden function to populate self.model."""
         # set up tokenizer first
         self.tokenizer = AutoTokenizer.from_pretrained(
-            self.config['model_path'],
-            model_max_length=self.config['model_max_length'],
+            self.config.model_path,
+            model_max_length=self.config.model['model_max_length'],
             padding_side="right",
             use_fast=False
         )
-        tokenizer.pad_token = tokenizer.unk_token
-        self.config['bbox_token_idx'] = tokenizer("<bbox>", add_special_tokens=False).input_ids[0]
-        self.config['seg_token_idx'] = tokenizer("[SEG]", add_special_tokens=False).input_ids[0]
-        self.config['bop_token_idx'] = tokenizer("<p>", add_special_tokens=False).input_ids[0]
-        self.config['eop_token_idx'] = tokenizer("</p>", add_special_tokens=False).input_ids[0]
+        self.tokenizer.pad_token = self.tokenizer.unk_token
+        self.config.model['bbox_token_idx'] = self.tokenizer("<bbox>", add_special_tokens=False).input_ids[0]
+        self.config.model['seg_token_idx'] = self.tokenizer("[SEG]", add_special_tokens=False).input_ids[0]
+        self.config.model['bop_token_idx'] = self.tokenizer("<p>", add_special_tokens=False).input_ids[0]
+        self.config.model['eop_token_idx'] = self.tokenizer("</p>", add_special_tokens=False).input_ids[0]
 
         model_args = {
-            "seg_token_idx": self.config['seg_token_idx'],
-            "bbox_token_idx": self.config['bbox_token_idx'],
-            "eop_token_idx": self.config['eop_token_idx'],
-            "bop_token_idx": self.config['bop_token_idx'],
+            "seg_token_idx": self.config.model['seg_token_idx'],
+            "bbox_token_idx": self.config.model['bbox_token_idx'],
+            "eop_token_idx": self.config.model['eop_token_idx'],
+            "bop_token_idx": self.config.model['bop_token_idx'],
         }
 
         self.model = GLaMMForCausalLM.from_pretrained(
-        self.config['model_path'],
-        torch_dtype=torch.bfloat16,
-        low_cpu_mem_usage=True,
-        **model_args
+            self.config.model_path,
+            torch_dtype=torch.bfloat16,
+            low_cpu_mem_usage=True,
+            **model_args
         )
+        self.model = prepare_model_for_inference(self.model, self.config.model)
 
     def _init_processor(self) -> None:
         """Set the self.processor to follow the example given.
@@ -82,13 +97,12 @@ class GlammModel(ModelBase):
         This should follow the processor setting and tokenizers under:
         https://github.com/mbzuai-oryx/groundingLMM/blob/main/app.py
         """
-        
 
         processor = {
-            "global_enc_processor": CLIPImageProcessor.from_pretrained(self.config['vision_tower']),
-            "grounding_transform": ResizeLongestSide(self.config['image_size'])
+            "global_enc_processor": CLIPImageProcessor.from_pretrained(self.config.model['vision_tower']),
+            "grounding_transform": ResizeLongestSide(self.config.model['image_size'])
         }
-        return tokenizer, processor
+        self.processor = processor
 
     def _generate_prompt(self) -> str:
         """Generates the GLaMM model prompt which will not use the chat template.
@@ -97,7 +111,7 @@ class GlammModel(ModelBase):
             str: The prompt to return, set by the config.
         """
         prompt = f"The {DEFAULT_IMAGE_TOKEN} provides an overview of the picture.\n{self.config.prompt}"
-        if self.config['use_mm_start_end']:
+        if self.config.model['use_mm_start_end']:
             replace_token = DEFAULT_IM_START_TOKEN + DEFAULT_IMAGE_TOKEN + DEFAULT_IM_END_TOKEN
             prompt = prompt.replace(DEFAULT_IMAGE_TOKEN, replace_token)
         return prompt
@@ -116,7 +130,7 @@ class GlammModel(ModelBase):
         if img_path is None:
             raise ValueError('GLAMM cannot have text-only generation.')
 
-        image_np = cv2.imread(image_path)
+        image_np = cv2.imread(img_path)
         image_np = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB)
         orig_h, orig_w = image_np.shape[:2]
         original_size_list = [(orig_h, orig_w)]
@@ -153,7 +167,7 @@ class GlammModel(ModelBase):
             data (BatchFeature): The given data tensor.
         """
         with torch.no_grad():
-            output_ids, _ = model.evaluate(
+            output_ids, _ = self.model.evaluate(
                 data["global_enc_image"],
                 data["grounding_enc_image"],
                 data["input_ids"],
