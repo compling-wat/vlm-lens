@@ -66,6 +66,9 @@ def get_model(
     elif model_arch == ModelSelection.COGVLM:
         from models.cogvlm import CogVLMModel
         return CogVLMModel(config)
+    elif model_arch == ModelSelection.AYA_VISION:
+        from models.aya_vision import AyaVisionModel
+        return AyaVisionModel(config)
 
 
 if __name__ == '__main__':
