@@ -2,6 +2,7 @@ architecture: janus
 model_path: deepseek-ai/Janus-1.3B
 model:
   - attn_implementation: eager
+  - torch_dtype: bfloat16
 output_db: janus.db
 input_dir: ./data
 prompt: "Describe the color in this image in one word."
