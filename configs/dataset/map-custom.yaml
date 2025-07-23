@@ -1,0 +1,10 @@
+text_dataset_path: compling/CLEVR_val_categories
+image_dataset_path: /h/hsheta/vlm-competence-dev/data/converted_CLEVR
+text_split: color
+prompt_column: Q
+label_column: A
+image_column: image_filename
+custom_mapping:
+  file: scripts/dataset/examples/custom_map.py
+  function: custom_map_fn
+save_path: converted_clevr

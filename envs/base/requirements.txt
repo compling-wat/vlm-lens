@@ -1,6 +1,7 @@
 certifi==2024.12.14
 cfgv==3.4.0
 charset-normalizer==3.4.1
+datasets==3.6.0
 distlib==0.3.9
 filelock==3.17.0
 fsspec==2024.12.0
@@ -42,3 +43,4 @@ triton==3.1.0
 typing_extensions==4.12.2
 urllib3==2.3.0
 virtualenv==20.29.1
+wget==3.2
