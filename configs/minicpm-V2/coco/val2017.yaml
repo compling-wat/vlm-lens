@@ -1,5 +1,5 @@
 architecture: minicpm
-model_path: wonderwind271/MiniCPM-V-2
+model_path: compling/MiniCPM-V-2
 dataset:
   - text_dataset_path: compling/coco-val2017-obj-qa-categories
   - image_dataset_path: /path/to/your/COCO   # downloaded using configs/dataset/coco.yaml

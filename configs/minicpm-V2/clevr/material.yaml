@@ -1,5 +1,5 @@
 architecture: minicpm
-model_path: wonderwind271/MiniCPM-V-2
+model_path: compling/MiniCPM-V-2
 dataset:
   - text_dataset_path: compling/CLEVR_val_categories
   - image_dataset_path: /path/to/your/CLEVR/CLEVR_v1.0/images  # downloaded using configs/dataset/clevr.yaml
