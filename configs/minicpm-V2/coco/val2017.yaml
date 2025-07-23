@@ -1,0 +1,21 @@
+architecture: minicpm
+model_path: compling/MiniCPM-V-2
+dataset:
+  - text_dataset_path: compling/coco-val2017-obj-qa-categories
+  - image_dataset_path: /path/to/your/COCO   # downloaded using configs/dataset/coco.yaml
+  - text_split: val2017
+  - image_split: val2017
+  - prompt_column: question
+  - label_column: answer
+  - image_column: image_id
+  - image_regex: "{id:0>12}.jpg"
+model:
+  - torch_dtype: auto
+  - trust_remote_code: True
+forward:
+  - max_new_tokens: 1
+output_db: minicpm-V2-coco.db
+pooled_output: True
+modules:
+  - llm.model.layers.19.post_attention_layernorm
+  - llm.model.layers.39.post_attention_layernorm
