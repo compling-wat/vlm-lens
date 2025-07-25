@@ -1,4 +1,4 @@
-# VLM-Lens <img src="imgs/logo.png" alt="VLM-Lens Logo" width="48" style="vertical-align:middle; margin-right:10px;"/>
+# <img src="imgs/logo.png" alt="VLM-Lens Logo" width="48" style="vertical-align:middle; margin-right:10px;"/>VLM-Lens
 
 [![python](https://img.shields.io/badge/Python-3.10.12%2B-blue.svg?logo=python&style=flat-square)](https://www.python.org/downloads/release/python-31012/)
 
