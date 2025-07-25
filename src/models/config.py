@@ -28,6 +28,7 @@ class ModelSelection(str, Enum):
     INTERNVL = 'internvl'
     MINICPM = 'minicpm'
     COGVLM = 'cogvlm'
+    AYA_VISION = 'aya-vision'
 
 
 class Config():
