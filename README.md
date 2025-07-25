@@ -1,5 +1,7 @@
-# vlm-competence-dev
-This repository requires Python version 3.10.12+.
+# VLM-Lens <img src="imgs/logo.png" alt="VLM-Lens Logo" width="48" style="vertical-align:middle; margin-right:10px;"/>
+
+[![python](https://img.shields.io/badge/Python-3.10.12%2B-blue.svg?logo=python&style=flat-square)](https://www.python.org/downloads/release/python-31012/)
+
 
 ## Precommit Setup
 We use Google docstring format for our docstrings and the pre-commit library to check our code. To install pre-commit, run the following command:
@@ -11,7 +13,7 @@ pre-commit install
 
 The pre-commit hooks will run automatically when you try to commit changes to the repository.
 
-## VLM Competence Embedding Extraction Script
+## VLM Lens Embedding Extraction Script
 To run the embedding extraction script, first download the dependencies through:
 ```bash
 pip install -r requirements.txt
