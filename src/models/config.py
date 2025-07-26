@@ -28,6 +28,7 @@ class ModelSelection(str, Enum):
     INTERNVL = 'internvl'
     MINICPM = 'minicpm'
     COGVLM = 'cogvlm'
+    PIXTRAL = 'pixtral'
     AYA_VISION = 'aya-vision'
 
 
@@ -95,6 +96,11 @@ class Config():
             type=str,
             default='cpu',
             help='Specify the device to send tensors and the model to'
+        )
+        parser.add_argument(
+            '--download-path',
+            type=str,
+            help='The path where downloaded models should be stored'
         )
 
         # only parse the args that we know, and throw out what we don't know
