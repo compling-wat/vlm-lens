@@ -1,6 +1,3 @@
-[submodule "src/models/janus/Janus"]
-	path = src/models/janus/Janus
-	url = https://github.com/deepseek-ai/Janus.git
 [submodule "src/models/glamm/groundingLMM"]
 	path = src/models/glamm/groundingLMM
 	url = git@github.com:compling-wat/groundingLMM.git
