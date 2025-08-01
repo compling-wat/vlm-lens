@@ -79,11 +79,12 @@ where each column is:
 6. `Tensor` is the embedding saved.
 
 ### Using specific models
-#### Janus
-For Janus, one needs to clone the separate submodules, which can be done with the following command:
+#### Glamm
+For Glamm (GroundingLMM), one needs to clone the separate submodules, which can be done with the following command:
 ```
 git submodule update --recursive --init
 ```
+
 
 ## Running with different filters
 We also provide a separate script that relies on the main functionality to run on multiple different filters, which can override the specific layer, prompt and input image directories, defaulting to the original layer, prompt and input image directories. This is specified through configs with the `-fc` or `--filter-config` flags as:
