@@ -75,4 +75,4 @@ class JanusModel(ModelBase):
         Args:
             data: The given data tensor.
         """
-        _ = self.model.generate(**data, max_new_tokens=1, generation_mode='text', do_sample=False)
+        _ = self.model.generate(**data, **self.config.forward)

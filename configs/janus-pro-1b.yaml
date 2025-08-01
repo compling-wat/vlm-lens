@@ -2,6 +2,10 @@ architecture: janus
 model_path: deepseek-community/Janus-Pro-1B
 model:
   - attn_implementation: eager
+forward:
+  - max_new_tokens: 1
+  - do_sample: True
+  - generation_mode: 'text'
 output_db: janus.db
 input_dir: ./data
 prompt: "Describe the color in this image in one word."
