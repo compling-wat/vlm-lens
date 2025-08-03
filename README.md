@@ -3,15 +3,27 @@
 [![python](https://img.shields.io/badge/Python-3.11%2B-blue.svg?logo=python&style=flat-square)](https://www.python.org/downloads/release/python-31012/)
 
 
-## Precommit Setup
-We use Google docstring format for our docstrings and the pre-commit library to check our code. To install pre-commit, run the following command:
+## Table of Contents
 
+- [Environment Setup](#environment-setup)
+- [VLM Lens Embedding Extraction Script](#vlm-lens-embedding-extraction-script)
+
+## Environment Setup
+We recommend using a virtual environment to manage your dependencies. You can create one using the following command to create a virtual environment under
 ```bash
-conda install pre-commit  # or pip install pre-commit
-pre-commit install
+virtualenv --no-download "venv/vlm-lens-base" --prompt "vlm-lens-base"
+source venv/vlm-lens-base/bin/activate
 ```
 
-The pre-commit hooks will run automatically when you try to commit changes to the repository.
+Then, install the required dependencies:
+```bash
+pip install -r envs/base/requirements.txt
+```
+
+There are a few models that require slightly different dependencies, and we recommend creating a separate virtual environment for each of them to avoid conflicts.
+For such models, we have offered a separate `requirements.txt` file under `envs/<model_name>/requirements.txt`, which can be installed in the same way as above.
+
+**Note**: There may be local constraints (e.g., issues caused by cluster regulations) that cause failure of the above commands. In such cases, you are encouraged to modify it whenever fit. We welcome issues and pull requests to help us keep the dependencies up to date.
 
 ## VLM Lens Embedding Extraction Script
 To run the embedding extraction script, first download the dependencies through:
