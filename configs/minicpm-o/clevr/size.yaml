@@ -1,0 +1,22 @@
+architecture: minicpm
+model_path: openbmb/MiniCPM-o-2_6
+dataset:
+  - text_dataset_path: compling/CLEVR_val_categories
+  - image_dataset_path: /path/to/your/CLEVR/CLEVR_v1.0/images  # downloaded using configs/dataset/clevr.yaml
+  - text_split: size
+  - image_split: val
+  - prompt_column: Q
+  - label_column: A
+  - image_column: image_filename
+forward:
+  - max_new_tokens: 1
+output_db: minicpm-o-size.db
+model:
+  - torch_dtype: auto
+  - trust_remote_code: True
+  - attn_implementation: sdpa
+pooled_output: True
+modules:
+  - llm.model.layers.13.post_attention_layernorm
+  - llm.model.layers.27.post_attention_layernorm
+
