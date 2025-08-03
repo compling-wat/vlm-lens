@@ -6,12 +6,20 @@ for providing the model specific classes a way to access the parsed arguments.
 import argparse
 import logging
 import os
+import sys
 from enum import Enum
+from pathlib import Path
 from typing import List, Optional
 
 import regex as re
 import torch
 import yaml
+from datasets import load_dataset
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]  # models -> src -> root
+sys.path.append(str(PROJECT_ROOT))
+
+from scripts.dataset.map_datasets import map_text_to_images  # noqa: E402
 
 
 class ModelSelection(str, Enum):
@@ -75,7 +83,6 @@ class Config():
             action='store_true',
             help='Logs the named modules for the specified model'
         )
-        # TODO: Add in a check to make sure that the input directory exists
         parser.add_argument(
             '-i',
             '--input-dir',
@@ -113,6 +120,8 @@ class Config():
         config_keys.append('prompt')
         config_keys.append('modules')
         config_keys.append('forward')
+        config_keys.append('dataset')
+        config_keys.append('pooled_output')
 
         # first read the config file and set the current attributes to it
         # then parse through the other arguments as that's what we want use to
@@ -181,12 +190,67 @@ class Config():
         self.default_modules = self.modules
         self.set_modules(self.modules)
 
+        # make sure only one of dataset or input_dir is set
+        if hasattr(self, 'dataset') and hasattr(self, 'input_dir'):
+            raise ValueError(
+                'Only one of `dataset` or `input_dir` can be set, '
+                'not both. Please choose one.'
+            )
+
         self.image_paths = []
-        self.default_input_dir = (
-            self.input_dir
-            if hasattr(self, 'input_dir') else
-            None
-        )
+        if hasattr(self, 'dataset'):
+            # Make sure it is a mapping
+            ds_mapping = {}
+            for mapping in self.dataset:
+                ds_mapping = {**ds_mapping, **mapping}
+
+            # Load image dataset
+            img_dir = ds_mapping.get('image_dataset_path', None)
+            img_split = ds_mapping.get('image_split', None)
+            if img_dir and img_split:
+                img_dir = os.path.join(
+                    img_dir,
+                    img_split
+                )
+            logging.debug(
+                f'Locating image dataset from {img_dir} with split {img_split}')
+
+            # Set default input directory in case we use filters
+            self.default_input_dir = (img_dir)
+            self.set_image_paths(self.default_input_dir)
+
+            # Load text dataset
+            logging.debug(
+                f"Loading text dataset from {ds_mapping['text_dataset_path']} with split {ds_mapping['text_split']}")
+            text_dataset = load_dataset(
+                ds_mapping['text_dataset_path']
+            )[ds_mapping['text_split']]
+
+            # Map text dataset to image dataset
+            logging.debug(
+                'Mapping text prompts to their corresponding images...')
+            self.dataset = map_text_to_images(
+                text_dataset,
+                self.image_paths,
+                image_column=ds_mapping['image_column'],
+                prompt_column=ds_mapping['prompt_column'],
+                label_column=ds_mapping.get('label_column', None),
+                image_regex=ds_mapping.get('image_regex', '{id}'),
+            )
+
+            self.default_prompt = None
+
+        else:
+            self.default_input_dir = (
+                self.input_dir
+                if hasattr(self, 'input_dir') else
+                None
+            )
+
+            # now set the default prompt to be used in filters
+            self.default_prompt = self.prompt
+            self.dataset = None
+
         self.set_image_paths(self.default_input_dir)
 
         # check if there is no input data
@@ -196,22 +260,21 @@ class Config():
                 'and no prompt was provided'
             )
 
-        # now set the default prompt to be used in filters
-        self.default_prompt = self.prompt
-
         # now sets the specific device, first does a check to make sure that if
         # the user wants to use cuda that it is available
         if 'cuda' in self.device and not torch.cuda.is_available():
             raise ValueError('No GPU found for this machine')
 
         self.device = torch.device(self.device)
-
         self.DB_TABLE_NAME = 'tensors'
         self.NO_IMG_PROMPT = 'No image prompt'
 
         # if there is no output database set, use embeddings.db as the default
         if not hasattr(self, 'output_db'):
             self.output_db = 'embeddings.db'
+
+        self.pooled_output = self.pooled_output if hasattr(
+            self, 'pooled_output') else False
 
     def has_images(self) -> bool:
         """Returns a boolean for whether or not the input directory has images.
@@ -268,6 +331,6 @@ class Config():
             for img_path in filter(
                 lambda file_path:
                     os.path.splitext(file_path)[1].lower() in image_exts,
-                os.listdir(self.input_dir)
+                os.listdir(input_dir)
             )
         ]

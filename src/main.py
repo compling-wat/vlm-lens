@@ -73,7 +73,6 @@ def get_model(
         from models.aya_vision import AyaVisionModel
         return AyaVisionModel(config)
 
-
 if __name__ == '__main__':
     logging.getLogger().setLevel(logging.INFO)
     config = Config()
