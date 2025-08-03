@@ -1,12 +1,15 @@
 # <img src="imgs/logo.png" alt="VLM-Lens Logo" height="48" style="vertical-align:middle; margin-right:50px;"/> VLM-Lens
 
 [![python](https://img.shields.io/badge/Python-3.11%2B-blue.svg?logo=python&style=flat-square)](https://www.python.org/downloads/release/python-31012/)
-
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](https://www.apache.org/licenses/LICENSE-2.0)
+[![Documentation](https://img.shields.io/badge/Documentation-Online-blue.svg?style=flat-square)](https://compling-wat.github.io/vlm-lens/)
 
 ## Table of Contents
 
 - [Environment Setup](#environment-setup)
-- [VLM Lens Embedding Extraction Script](#vlm-lens-embedding-extraction-script)
+- [Example Usage: Extract Qwen2-VL-2B Embeddings with VLM-Lens](#example-usage-extract-qwen2-vl-2b-embeddings-with-vlm-lens)
+  - [General Command-Line Demo](#general-command-line-demo)
+  - [Run Qwen2-VL-2B Embeddings Extraction](#run-qwen2-vl-2b-embeddings-extraction)
 
 ## Environment Setup
 We recommend using a virtual environment to manage your dependencies. You can create one using the following command to create a virtual environment under
@@ -25,34 +28,42 @@ For such models, we have offered a separate `requirements.txt` file under `envs/
 
 **Note**: There may be local constraints (e.g., issues caused by cluster regulations) that cause failure of the above commands. In such cases, you are encouraged to modify it whenever fit. We welcome issues and pull requests to help us keep the dependencies up to date.
 
-## VLM Lens Embedding Extraction Script
-To run the embedding extraction script, first download the dependencies through:
-```bash
-pip install -r requirements.txt
-```
+## Example Usage: Extract Qwen2-VL-2B Embeddings with VLM-Lens
 
-Then, execute the following command:
+### General Command-Line Demo
+
+The general command to run the quick command-line demo is:
 ```bash
-python src/main.py --architecture <architecture> --model-path <model-path> --debug --config <config-file-path> --input-dir <input-dir> --output-db <output-db>
+python src/main.py \
+  --config <config-file-path> \
+  --debug
 ```
 with an optional debug flag to see more detailed outputs.
 
-Note that the config file should be in yaml format, and that any arguments you want to send to the huggingface API should be under the `model` key. See `configs/qwen-2b.yaml` as an example.
+Note that the config file should be in yaml format, and that any arguments you want to send to the huggingface API should be under the `model` key.
+See `configs/qwen-2b.yaml` as an example.
 
-The supported architecture flags are currently:
-- 'llava'
-- 'qwen'
-- 'clip'
-- 'glamm'
-- 'janus'
+### Run Qwen2-VL-2B Embeddings Extraction
+The file `configs/qwen-2b.yaml` contains the configuration for running the Qwen2-VL-2B model.
 
-For example, one can run:
-```base
-python src/main.py --architecture qwen --model-path Qwen/Qwen2-VL-2B-Instruct --debug
+```yaml
+architecture: qwen  # Architecture of the model, see more options in src/models/configs.py
+model_path: Qwen/Qwen2-VL-2B-Instruct  # HuggingFace model path
+model:  # Model configuration, i.e., arguments to pass to the model
+  - torch_dtype: auto
+output_db: output/qwen.db  # Output database file to store embeddings
+input_dir: ./data/  # Directory containing images to process
+prompt: "Describe the color in this image in one word."  # Textual prompt
+modules:  # List of modules to extract embeddings from
+  - lm_head
+  - visual.blocks.31
 ```
-or:
+
+To run the extraction, use the following command:
 ```base
-python src/main.py --config configs/qwen-2b.yaml --debug
+python src/main.py \
+  --config configs/qwen-2b.yaml \
+  --debug
 ```
 
 ### Matching Layers
