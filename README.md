@@ -59,10 +59,11 @@ modules:  # List of modules to extract embeddings from
   - visual.blocks.31
 ```
 
-To run the extraction, use the following command:
+To run the extraction on available GPU, use the following command:
 ```base
 python src/main.py \
   --config configs/qwen-2b.yaml \
+  --device cuda \
   --debug
 ```
 
