@@ -23,8 +23,9 @@ Then, install the required dependencies:
 pip install -r envs/base/requirements.txt
 ```
 
-There are a few models that require slightly different dependencies, and we recommend creating a separate virtual environment for each of them to avoid conflicts.
+There are some models that require different dependencies, and we recommend creating a separate virtual environment for each of them to avoid conflicts.
 For such models, we have offered a separate `requirements.txt` file under `envs/<model_name>/requirements.txt`, which can be installed in the same way as above.
+All the model-specific environments are independent of the base environment, and can be installed individually.
 
 **Note**: There may be local constraints (e.g., issues caused by cluster regulations) that cause failure of the above commands. In such cases, you are encouraged to modify it whenever fit. We welcome issues and pull requests to help us keep the dependencies up to date.
 
