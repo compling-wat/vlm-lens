@@ -55,7 +55,6 @@ MarkupSafe==2.1.3
 matplotlib==3.8.2
 mdit-py-plugins==0.3.3
 mdurl==0.1.2
--e git+https://github.com/open-mmlab/mmcv@e319369068c8fe813086ecddf1070ac510860592#egg=mmcv_full
 msgpack==1.0.7
 multidict==6.0.4
 networkx==3.2.1
