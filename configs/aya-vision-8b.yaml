@@ -2,7 +2,7 @@ architecture: aya-vision
 model_path: CohereLabs/aya-vision-8b
 model:
   - torch_dtype: float16
-output_db: aya-vision.db
+output_db: output/aya-vision.db
 input_dir: ./data/
 prompt: "Describe the color in this image in one word."
 modules:

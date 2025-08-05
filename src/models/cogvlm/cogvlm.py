@@ -11,10 +11,11 @@ from transformers import AutoModelForCausalLM, LlamaTokenizer
 from src.models.base import ModelBase
 from src.models.config import Config
 
+
 class CogVLMModel(ModelBase):
     """CogVLM model implementation."""
 
-    def __init__(self, config: Config):
+    def __init__(self, config: Config) -> None:
         """Initialization of the CogVLM model.
 
         Args:
@@ -22,11 +23,11 @@ class CogVLMModel(ModelBase):
         """
         # initialize the parent class
         super().__init__(config)
-    
-    def _load_specific_model(self):
+
+    def _load_specific_model(self) -> None:
         """Overridden function to populate self.model."""
         self.model = AutoModelForCausalLM.from_pretrained(
-            self.model_path, 
+            self.model_path,
             torch_dtype=torch.bfloat16,
             low_cpu_mem_usage=self.config.model['low_cpu_mem_usage'],
             trust_remote_code=self.config.model['trust_remote_code']
@@ -38,7 +39,7 @@ class CogVLMModel(ModelBase):
                 trust_remote_code=True
             )
         )
-    
+
     def _init_processor(self) -> None:
         """Initialize the CogVLM processor.
 
@@ -50,16 +51,19 @@ class CogVLMModel(ModelBase):
             self.config.model['tokenizer_path'],
             legacy=self.config.model['legacy']
         )
-    
-    def _generate_prompt(self) -> str:
+
+    def _generate_prompt(self, prompt: str) -> str:
         """Generates the CogVLM model prompt which will not use the chat template.
+
+        Args:
+            prompt (str): The input prompt for the model.
 
         Returns:
             str: The prompt to return, set by the config.
         """
-        return self.config.prompt
-    
-    def _generate_processor_output(self, prompt, img_path) -> dict:
+        return prompt
+
+    def _generate_processor_output(self, prompt: str, img_path: str | None) -> dict:
         """Generate the processor outputs from the prompt and image path.
 
         Args:
@@ -72,7 +76,7 @@ class CogVLMModel(ModelBase):
         """
         if img_path is None:
             raise ValueError('Define input image directory in model config.')
-        
+
         image = Image.open(img_path).convert('RGB')
 
         # build input data
@@ -91,14 +95,14 @@ class CogVLMModel(ModelBase):
             'images': input_ids['images'][0].to(torch.bfloat16),
         }
 
-    def _forward(self, data: dict):
+    def _forward(self, data: dict) -> None:
         """Given some input data, performs a single forward pass.
 
         This function itself can be overriden, while _hook_and_eval
         should be left in tact.
 
         Args:
-            data (dict): The dictionary containing input data tensors.
+            data (dict): The given data tensor.
         """
         gen_kwargs = self.config.forward
 

@@ -52,8 +52,8 @@ def get_model(
         from models.molmo import MolmoModel
         return MolmoModel(config)
     elif model_arch == ModelSelection.PALIGEMMA:
-        from models.paligemma import PeligemmaModel
-        return PeligemmaModel(config)
+        from models.paligemma import PaligemmaModel
+        return PaligemmaModel(config)
     elif model_arch == ModelSelection.INTERNLM_XC:
         from models.internlm_xc import InternLMXComposerModel
         return InternLMXComposerModel(config)
@@ -72,6 +72,7 @@ def get_model(
     elif model_arch == ModelSelection.AYA_VISION:
         from models.aya_vision import AyaVisionModel
         return AyaVisionModel(config)
+
 
 if __name__ == '__main__':
     logging.getLogger().setLevel(logging.INFO)

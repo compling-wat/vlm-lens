@@ -8,10 +8,11 @@ from transformers import AutoModelForImageTextToText
 from src.models.base import ModelBase
 from src.models.config import Config
 
+
 class AyaVisionModel(ModelBase):
     """AyaVision model implementation."""
 
-    def __init__(self, config: Config):
+    def __init__(self, config: Config) -> None:
         """Initialization of the AyaVision model.
 
         Args:
@@ -20,9 +21,8 @@ class AyaVisionModel(ModelBase):
         # initialize the parent class
         super().__init__(config)
 
-    def _load_specific_model(self):
+    def _load_specific_model(self) -> None:
         """Load the AyaVision model with proper configuration."""
-
         self.model = AutoModelForImageTextToText.from_pretrained(
-            self.model_path, **getattr(self.config, "model", {})
+            self.model_path, **getattr(self.config, 'model', {})
         )

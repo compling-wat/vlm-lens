@@ -2,8 +2,8 @@ architecture: pixtral
 model_path: mistralai/Pixtral-12B-2409
 input_dir: ./data/
 prompt: "Describe the color in this image in one word."
-output_db: pixtral.db
+output_db: output/pixtral.db
 modules:
   - layers.19.attention_norm
   - layers.39.attention_norm
-download_path: "/path/to/your/dir" # CHANGE THIS. This is the path to store the downloaded model. This dir will be created.
+download_path: "/project/aip-fredashi/fredashi/huggingface/pixtral-12b" # CHANGE THIS. This is the path to store the downloaded model. This dir will be created.
