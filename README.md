@@ -27,7 +27,9 @@ There are some models that require different dependencies, and we recommend crea
 For such models, we have offered a separate `requirements.txt` file under `envs/<model_name>/requirements.txt`, which can be installed in the same way as above.
 All the model-specific environments are independent of the base environment, and can be installed individually.
 
-**Note**: There may be local constraints (e.g., issues caused by cluster regulations) that cause failure of the above commands. In such cases, you are encouraged to modify it whenever fit. We welcome issues and pull requests to help us keep the dependencies up to date.
+**Notes**:
+1. There may be local constraints (e.g., issues caused by cluster regulations) that cause failure of the above commands. In such cases, you are encouraged to modify it whenever fit. We welcome issues and pull requests to help us keep the dependencies up to date.
+2. Some models, due to the resources available at the development time, may not be fully supported on modern GPUs. While our released environments are tested on L40s GPUs, we recommend following the error messages to adjust the environment setups for your specific hardware.
 
 ## Example Usage: Extract Qwen2-VL-2B Embeddings with VLM-Lens
 

@@ -5,7 +5,7 @@ model:
   - attn_implementation: eager
 forward:
   - max_new_tokens: 1
-output_db: internlm.db
+output_db: output/internlm.db
 input_dir: ./data/
 prompt: "Describe the color in this image in one word."
 modules:
