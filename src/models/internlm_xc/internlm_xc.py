@@ -14,7 +14,7 @@ from src.models.config import Config
 class InternLMXComposerModel(ModelBase):
     """InternLM model implementation."""
 
-    def __init__(self, config: Config):
+    def __init__(self, config: Config) -> None:
         """Initialization of the InternLM model.
 
         Args:
@@ -23,7 +23,7 @@ class InternLMXComposerModel(ModelBase):
         # initialize the parent class
         super().__init__(config)
 
-    def _load_specific_model(self):
+    def _load_specific_model(self) -> None:
         """Overridden function to populate self.model."""
         self.model = AutoModel.from_pretrained(
             self.model_path,
@@ -36,18 +36,33 @@ class InternLMXComposerModel(ModelBase):
             )
         )
 
-    def _init_processor(self):
+    def _init_processor(self) -> None:
         """Overridden function to instantiate the model's processor."""
         self.processor = AutoProcessor.from_pretrained(
             self.model_path, trust_remote_code=True)
         self.model.tokenizer = self.processor
 
-    def _generate_prompt(self, prompt, add_generation_prompt=True):
-        """Overridden function to generate the prompt for the model."""
+    def _generate_prompt(self, prompt: str) -> str:
+        """Overridden function to generate the prompt for the model.
+
+        Args:
+            prompt (str): The input prompt to be processed.
+
+        Returns:
+            str: The formatted prompt ready for model input.
+        """
         return prompt
 
-    def _generate_processor_output(self, prompt, img_path) -> dict:
-        """Overridden function to generate the format the prompt for the processor."""
+    def _generate_processor_output(self, prompt: str, img_path: str) -> dict:
+        """Overridden function to generate the format the prompt for the processor.
+
+        Args:
+            prompt (str): The input prompt to be processed.
+            img_path (str): The path to the image to be processed.
+
+        Returns:
+            dict: The formatted inputs for the processor.
+        """
         logging.debug('Loading data...')
 
         # Manually format input as we do not need a processor
@@ -62,14 +77,17 @@ class InternLMXComposerModel(ModelBase):
         if self.config.has_images():
             inputs['query'] = f'<ImageHere>; {prompt}'
             inputs['image'] = [img_path]
-
         else:
             inputs['query'] = prompt
 
         return inputs
 
-    def _forward(self, data: dict):
-        """Overridden function to run the model forward pass."""
+    def _forward(self, data: dict) -> None:
+        """Overridden function to run the model forward pass.
+
+        Args:
+            data (dict): The input data for the model.
+        """
         device_type = str(self.config.device)
         logging.debug(f'DATA: {data}')
         with torch.autocast(device_type=device_type):
