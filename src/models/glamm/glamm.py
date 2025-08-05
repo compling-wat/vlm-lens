@@ -105,13 +105,13 @@ class GlammModel(ModelBase):
         }
         self.processor = processor
 
-    def _generate_prompt(self) -> str:
+    def _generate_prompt(self, prompt) -> str:
         """Generates the GLaMM model prompt which will not use the chat template.
 
         Returns:
             str: The prompt to return, set by the config.
         """
-        prompt = f"The {DEFAULT_IMAGE_TOKEN} provides an overview of the picture.\n{self.config.prompt}"
+        prompt = f"The {DEFAULT_IMAGE_TOKEN} provides an overview of the picture.\n{prompt}"
         if self.config.model['use_mm_start_end']:
             replace_token = DEFAULT_IM_START_TOKEN + DEFAULT_IMAGE_TOKEN + DEFAULT_IM_END_TOKEN
             prompt = prompt.replace(DEFAULT_IMAGE_TOKEN, replace_token)
