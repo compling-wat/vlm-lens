@@ -15,7 +15,7 @@ from src.models.config import Config
 class MolmoModel(ModelBase):
     """Molmo model implementation."""
 
-    def __init__(self, config: Config):
+    def __init__(self, config: Config) -> None:
         """Initialization of the molmo model.
 
         Args:
