@@ -12,7 +12,7 @@ from src.models.config import Config
 class JanusModel(ModelBase):
     """Janus model implementation."""
 
-    def __init__(self, config: Config):
+    def __init__(self, config: Config) -> None:
         """Initialize the Janus model.
 
         Args:
@@ -20,7 +20,7 @@ class JanusModel(ModelBase):
         """
         super().__init__(config)
 
-    def _load_specific_model(self):
+    def _load_specific_model(self) -> None:
         """Populate self.model with the specified Janus model."""
         # require this import to force the models script to load
         self.model = (
@@ -38,11 +38,18 @@ class JanusModel(ModelBase):
         """Initialize the Janus processor."""
         self.processor = JanusProcessor.from_pretrained(self.model_path)
 
-    def _generate_prompt(self, add_generation_prompt=True):
-        """Generates the prompt string with the input messages."""
-        return self.config.prompt  # We have to delay the process to _generate_processor_output, as we need image path here
+    def _generate_prompt(self, prompt: str) -> str:
+        """Generates the prompt string with the input messages.
 
-    def _generate_processor_output(self, prompt, img_path):
+        Args:
+            prompt (str): prompt content.
+
+        Returns:
+            str: Returns the prompt content as is.
+        """
+        return prompt
+
+    def _generate_processor_output(self, prompt: str, img_path: str) -> dict:
         """Override the base function to produce processor arguments for Janus."""
         # Do the _generate_prompt first
         messages = [
@@ -66,13 +73,13 @@ class JanusModel(ModelBase):
 
         return inputs
 
-    def _forward(self, data):
+    def _forward(self, data: dict) -> None:
         """Given some input data, performs a single forward pass.
 
         This function itself can be overriden, while _hook_and_eval
         should be left in tact.
 
         Args:
-            data: The given data tensor.
+            data (dict): The given data tensor.
         """
         _ = self.model.generate(**data, **self.config.forward)
