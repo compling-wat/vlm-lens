@@ -33,7 +33,7 @@ From: nvidia/cuda:11.7.1-cudnn8-devel-ubuntu22.04
     # Install Python requirements
     pip install --upgrade pip
     pip install packaging
-    pip install torch==1.13.1+cu117 torchvision==0.14.1+cu117 torchaudio==0.13.1 --extra-index-url https://download.pytorch.org/whl/cu117
+    pip install torch==1.13.1+cu117 torchvision==0.14.1+cu117 torchaudio==0.13.1 --extra-index-url https://download.pytorch.org/whl/cu117 datasets
     pip install -r envs/glamm/requirements.txt
     git clone https://github.com/open-mmlab/mmcv
     cd mmcv
@@ -49,9 +49,9 @@ From: nvidia/cuda:11.7.1-cudnn8-devel-ubuntu22.04
     export PYTHONIOENCODING=UTF-8
     export LC_ALL=C.UTF-8
     export LANG=C.UTF-8
-    export HF_HOME=/mnt/scratch/hf_cache
+    export HF_HOME=/project/aip-fredashi/fredashi/huggingface/
 
 %runscript
     echo "Running vlm-lens with Python 3.10 and CUDA 11.7"
     cd /opt/vlm-lens
-    python src/main.py --config glamm_container.yaml --debug --device cuda
+    python src/main.py --config envs/glamm/apptainer/glamm_apptainer.yaml --debug --device cuda
