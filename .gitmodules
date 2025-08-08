@@ -1,4 +1,4 @@
 [submodule "src/models/glamm/groundingLMM"]
 	path = src/models/glamm/groundingLMM
-	url = git@github.com:compling-wat/groundingLMM.git
+	url = https://github.com/compling-wat/groundingLMM.git
 	ignore = all

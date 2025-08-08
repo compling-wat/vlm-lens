@@ -1,0 +1,57 @@
+Bootstrap: docker
+From: nvidia/cuda:11.7.1-cudnn8-devel-ubuntu22.04
+
+%labels
+    Maintainer vlm-lens-user
+    Description Container with CUDA 11.7, Python 3.10, and vlm-lens setup
+
+%post
+    # Install basic tools and Python 3.10
+    apt-get update && apt-get install -y \
+        software-properties-common \
+        build-essential \
+        git \
+        wget \
+        curl \
+        vim \
+        ca-certificates \
+        python3.10 \
+        python3.10-venv \
+        python3.10-distutils \
+        python3-pip \
+        && apt-get clean
+
+    # Use python3.10 and pip explicitly
+    update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1
+    update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 1
+
+    # Clone the repo
+    cd /opt
+    git clone --branch shuyu-glamm-prompt --single-branch https://github.com/compling-wat/vlm-lens.git
+    cd vlm-lens
+    git submodule update --init --recursive
+    # Install Python requirements
+    pip install --upgrade pip
+    pip install packaging
+    pip install torch==1.13.1+cu117 torchvision==0.14.1+cu117 torchaudio==0.13.1 --extra-index-url https://download.pytorch.org/whl/cu117
+    pip install -r envs/glamm/requirements.txt
+    git clone https://github.com/open-mmlab/mmcv
+    cd mmcv
+    git checkout v1.4.7
+    MMCV_WITH_OPS=1 pip install -e .
+    pip install jmespath
+
+%environment
+    export PATH=/usr/local/cuda/bin:$PATH
+    export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+    export PYTHONUNBUFFERED=1
+    export PYTHONDONTWRITEBYTECODE=1
+    export PYTHONIOENCODING=UTF-8
+    export LC_ALL=C.UTF-8
+    export LANG=C.UTF-8
+    export HF_HOME=/mnt/scratch/huggingface/
+
+%runscript
+    echo "Running vlm-lens with Python 3.10 and CUDA 11.7"
+    cd /opt/vlm-lens
+    python src/main.py --config envs/glamm/apptainer/glamm_apptainer.yaml --debug --device cuda
