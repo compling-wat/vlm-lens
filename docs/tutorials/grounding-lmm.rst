@@ -4,12 +4,20 @@ Grounding-LMM
 
 This tutorial guides you through extracting hidden representations for Glamm (Grounding-LMM).
 
+We provide an Apptainer configuration. See the readme at envs/glamm/readme.md for details. Here we only show the normal approach.
+
 
 Dependency
 -------------------------------
 This model relies on `groundingLMM` submodule. We use our own version at https://github.com/compling-wat/groundingLMM.
 
-First, load the submodule by running `git submodule update --init src/models/glamm/groundingLMM` in the root directory.
+First, load the submodule by running
+
+.. code-block:: bash
+
+   git submodule update --init src/models/glamm/groundingLMM
+
+in the root directory.
 
 Next, create and activate a virtual environment using ``conda``:
 
@@ -18,11 +26,23 @@ Next, create and activate a virtual environment using ``conda``:
    conda create -n <env_name> python=3.10
    conda activate <env_name>
 
-Then, install the required dependencies via pip:
+Then, install the required dependencies via pip (must be done in order):
 
 .. code-block:: bash
 
+   pip install packaging
+   pip install torch==1.13.1+cu117 torchvision==0.14.1+cu117 torchaudio==0.13.1 --extra-index-url https://download.pytorch.org/whl/cu117
    pip install -r envs/glamm/requirements.txt
+
+Then we need to install mmcv from source
+
+.. code-block:: bash
+
+   git clone https://github.com/open-mmlab/mmcv
+   cd mmcv
+   git checkout v1.4.7
+   MMCV_WITH_OPS=1 pip install -e .
+   pip install jmespath
 
 .. Note::
 
