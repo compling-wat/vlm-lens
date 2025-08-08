@@ -27,7 +27,7 @@ From: nvidia/cuda:11.7.1-cudnn8-devel-ubuntu22.04
 
     # Clone the repo
     cd /opt
-    git clone --branch shuyu-glamm-prompt --single-branch https://github.com/compling-wat/vlm-lens.git
+    git clone https://github.com/compling-wat/vlm-lens.git
     cd vlm-lens
     git submodule update --init --recursive
     # Install Python requirements
