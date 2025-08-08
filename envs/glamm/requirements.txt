@@ -16,6 +16,7 @@ charset-normalizer==3.3.2
 click==8.1.7
 contourpy==1.2.0
 cycler==0.12.1
+datasets==2.19.1
 deepspeed==0.12.5
 diffusers==0.22.3
 einops==0.4.1
@@ -127,4 +128,3 @@ yapf==0.40.2
 yarl==1.9.4
 zipp==3.17.0
 flash-attn==2.3.6
-datasets
