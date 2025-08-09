@@ -36,7 +36,6 @@ class ModelSelection(str, Enum):
     INTERNVL = 'internvl'
     MINICPM = 'minicpm'
     COGVLM = 'cogvlm'
-    PLM = 'plm'
     PIXTRAL = 'pixtral'
     AYA_VISION = 'aya-vision'
     PERCEPTION_LM = 'perception-lm'

@@ -66,9 +66,6 @@ def get_model(
     elif model_arch == ModelSelection.COGVLM:
         from models.cogvlm import CogVLMModel
         return CogVLMModel(config)
-    elif model_arch == ModelSelection.PLM:
-        from models.plm import PlmModel
-        return PlmModel(config)
     elif model_arch == ModelSelection.PIXTRAL:
         from models.pixtral import PixtralModel
         return PixtralModel(config)
