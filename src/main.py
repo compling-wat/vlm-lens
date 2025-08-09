@@ -75,6 +75,9 @@ def get_model(
     elif model_arch == ModelSelection.AYA_VISION:
         from models.aya_vision import AyaVisionModel
         return AyaVisionModel(config)
+    elif model_arch == ModelSelection.PERCEPTION_LM:
+        from models.perception_lm import PerceptionLMModel
+        return PerceptionLMModel(config)
 
 
 if __name__ == '__main__':
