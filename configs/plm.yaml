@@ -9,5 +9,5 @@ output_db: output/plm.db
 input_dir: ./data/
 prompt: "Describe the color in this image in one word."
 modules:
-  - llm.lm_head
-  - vpm.encoder.layers.26
+  - model.language_model.layers.7.post_attention_layernorm
+  - model.language_model.layers.15.post_attention_layernorm
