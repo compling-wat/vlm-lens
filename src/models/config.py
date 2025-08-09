@@ -40,10 +40,10 @@ class ModelSelection(str, Enum):
     AYA_VISION = 'aya-vision'
 
 
-class Config():
+class Config:
     """Config class for both yaml and cli arguments."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Verifies the passed arguments while populating config fields."""
         # Initiate parser and parse arguments
         parser = argparse.ArgumentParser()
@@ -299,7 +299,7 @@ class Config():
                 return True
         return False
 
-    def set_prompt(self, prompt: str):
+    def set_prompt(self, prompt: str) -> None:
         """Sets the prompt for the specific config.
 
         Args:
@@ -307,7 +307,7 @@ class Config():
         """
         self.prompt = prompt
 
-    def set_modules(self, to_match_modules: List[str]):
+    def set_modules(self, to_match_modules: List[str]) -> None:
         """Sets the modules for the specific config.
 
         Args:
@@ -315,7 +315,7 @@ class Config():
         """
         self.modules = [re.compile(module) for module in to_match_modules]
 
-    def set_image_paths(self, input_dir: Optional[str]):
+    def set_image_paths(self, input_dir: Optional[str]) -> None:
         """Sets the images based on the input directory.
 
         Args:
