@@ -40,17 +40,6 @@ class PlmModel(ModelBase):
         """Initialize the self.processor by loading from the path."""
         self.processor = AutoProcessor.from_pretrained(self.model_path, use_fast=True)
 
-    # def _generate_prompt(self, prompt: str) -> str:
-    #     """Generates the PLM model prompt which will not use the chat template.
-
-    #     Args:
-    #         prompt (str): The input prompt to be processed.
-
-    #     Returns:
-    #         str: The prompt to return, set by the config.
-    #     """
-    #     return f'USER: <image>\n{prompt} ASSISTANT:'  # Taken directly from official doc
-
     def _forward(self, data: BatchFeature) -> None:
         """Given some input data, performs a single forward pass.
 
