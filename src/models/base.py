@@ -8,7 +8,8 @@ import logging
 import os
 import sqlite3
 from abc import ABC, abstractmethod
-from typing import List, Tuple
+from collections.abc import Iterator
+from typing import Callable, List, Optional, Tuple
 
 import torch
 from PIL import Image
@@ -23,7 +24,7 @@ ModelInput = Tuple[str, str, BatchFeature]
 class ModelBase(ABC):
     """Provides an abstract base class for everything to implement."""
 
-    def __init__(self, config: Config):
+    def __init__(self, config: Config) -> None:
         """Initialization of the model base class.
 
         Args:
@@ -46,7 +47,7 @@ class ModelBase(ABC):
         # load the processor
         self._init_processor()
 
-    def _log_named_modules(self):
+    def _log_named_modules(self) -> None:
         """Logs the named modules based on the loaded model."""
         file_path = 'logs/' + self.model_path + '.txt'
         directory_path = os.path.dirname(file_path)
@@ -70,7 +71,7 @@ class ModelBase(ABC):
             )
 
     @abstractmethod
-    def _load_specific_model(self):
+    def _load_specific_model(self) -> None:
         """Abstract method that loads the specific model."""
         pass
 
@@ -78,13 +79,15 @@ class ModelBase(ABC):
         """Initialize the self.processor by loading from the path."""
         self.processor = AutoProcessor.from_pretrained(self.model_path)
 
-    def _generate_state_hook(self, name: str, image_path: str, prompt: str):
+    def _generate_state_hook(self,
+                             name: str, image_path: str, prompt: str, label: Optional[str] = None) -> Callable[[torch.nn.Module, tuple, torch.Tensor], None]:
         """Generates the state hook depending on the embedding type.
 
         Args:
             name (str): The module name.
             image_path (str): The path to the image used for the specific pass.
             prompt (str): The prompt used for the specific pass.
+            label (str): Optional argument for the ground truth or classification label of an entry.
 
         Returns:
             hook function: The hook function to return.
@@ -97,36 +100,42 @@ class ModelBase(ABC):
             # properly providing an image path
             assert os.path.exists(image_path)
 
-        def generate_states_hook(module, input, output):
+        def generate_states_hook(module: torch.nn.Module, input: tuple, output: torch.Tensor) -> None:
             """Hook handle function that saves the embedding output to a tensor.
 
             This tensor will be saved within a SQL database, according to the
             connection that was initialized previously.
 
             Args:
-                module: The module that save its hook on.
-                input: The input used.
-                output: The embeddings to save.
+                module (torch.nn.Module): The module that save its hook on.
+                input (tuple): The input used.
+                output (torch.Tensor): The embeddings to save.
+
             """
             cursor = self.connection.cursor()
 
             # Convert the tensor to a binary blob
             tensor_blob = io.BytesIO()
-            torch.save(output, tensor_blob)
+            # It currently averages the output across the sequence length dimension, i.e., mean pooling
+            # TODO: add support for max and endpoint pooling
+            final_output = output.mean(
+                dim=1) if self.config.pooled_output else output
+            torch.save(final_output, tensor_blob)
 
             # Insert the tensor into the table
             cursor.execute(f"""
                     INSERT INTO {self.config.DB_TABLE_NAME}
-                    (name, architecture, image_path, prompt, layer, tensor)
-                    VALUES (?, ?, ?, ?, ?, ?);
+                    (name, architecture, image_path, prompt, label, layer, tensor)
+                    VALUES (?, ?, ?, ?, ?, ?, ?);
                 """, (
-                    self.model_path,
-                    self.config.architecture.value,
-                    image_path,
-                    prompt,
-                    name,
-                    tensor_blob.getvalue()
-                )
+                self.model_path,
+                self.config.architecture.value,
+                image_path,
+                prompt,
+                label,
+                name,
+                tensor_blob.getvalue()
+            )
             )
 
             self.connection.commit()
@@ -141,7 +150,8 @@ class ModelBase(ABC):
     def _register_module_hooks(
         self,
         image_path: str,
-        prompt: str
+        prompt: str,
+        label: Optional[str] = None,
     ) -> List[torch.utils.hooks.RemovableHandle]:
         """Register the generated hook function to the modules in the config.
 
@@ -151,6 +161,7 @@ class ModelBase(ABC):
         Args:
             image_path (str): The path to the image used for the specific pass.
             prompt (str): The prompt used for the specific pass.
+            label (str): Optional argument for the ground truth or classification label of an entry.
 
         Raises:
             RuntimeError: Calls a runtime error if no hooks were registered
@@ -171,7 +182,7 @@ class ModelBase(ABC):
         for name, module in self.model.named_modules():
             if self.config.matches_module(name):
                 hooks.append(module.register_forward_hook(
-                    self._generate_state_hook(name, image_path, prompt)
+                    self._generate_state_hook(name, image_path, prompt, label)
                 ))
                 logging.debug(f'Registered hook to {name}')
 
@@ -182,7 +193,7 @@ class ModelBase(ABC):
 
         return hooks
 
-    def _forward(self, data: BatchFeature):
+    def _forward(self, data: BatchFeature) -> None:
         """Given some input data, performs a single forward pass.
 
         This function itself can be overriden, while _hook_and_eval
@@ -196,7 +207,7 @@ class ModelBase(ABC):
             _ = self.model(**data)
         logging.debug('Completed forward pass...')
 
-    def _hook_and_eval(self, input: ModelInput):
+    def _hook_and_eval(self, input: ModelInput) -> None:
         """Given some input, performs a single forward pass.
 
         Args:
@@ -206,10 +217,14 @@ class ModelBase(ABC):
         logging.debug('Starting forward pass')
         self.model.eval()
 
-        image_path, prompt, data = input
+        label = None
+        if len(input) == 4:
+            image_path, prompt, label, data = input
+        else:
+            image_path, prompt, data = input
 
         # now set up the modules to register the hook to
-        hooks = self._register_module_hooks(image_path, prompt)
+        hooks = self._register_module_hooks(image_path, prompt, label)
 
         # then ensure that the data is correct
         self._forward(data)
@@ -218,7 +233,7 @@ class ModelBase(ABC):
             hook.remove()
         logging.debug('Unregistered all hooks..')
 
-    def _initialize_db(self):
+    def _initialize_db(self) -> None:
         """Initializes a database based on config."""
         # Connect to the database, creating it if it doesn't exist
         self.connection = sqlite3.connect(self.config.output_db)
@@ -236,6 +251,7 @@ class ModelBase(ABC):
                     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
                     image_path TEXT NOT NULL,
                     prompt TEXT NOT NULL,
+                    label TEXT NULL,
                     layer TEXT NOT NULL,
                     tensor BLOB NOT NULL
                 );
@@ -243,11 +259,11 @@ class ModelBase(ABC):
         )
         self.connection.commit()
 
-    def _cleanup(self):
+    def _cleanup(self) -> None:
         """Cleanups the database by closing the connection."""
         self.connection.close()
 
-    def _generate_processor_output(self, prompt, img_path) -> dict:
+    def _generate_processor_output(self, prompt: str, img_path: str) -> dict:
         """Generate the processor outputs from the prompt and image path.
 
         Args:
@@ -271,10 +287,11 @@ class ModelBase(ABC):
             }
         ))
 
-    def _generate_prompt(self, add_generation_prompt: bool = True) -> str:
+    def _generate_prompt(self, prompt: str, add_generation_prompt: bool = True) -> str:
         """Generates the prompt string with the input messages.
 
         Args:
+            prompt (str): The input prompt string.
             add_generation_prompt (bool): Whether to add a start token of a bot
                 response.
             TODO: move `add_generation_prompt` to the config.
@@ -283,7 +300,6 @@ class ModelBase(ABC):
             str: The generated prompt with the input text and the image labels.
         """
         logging.debug('Loading data...')
-
         # build the input dict for the chat template
         input_msgs_formatted = [{
             'role': 'user',
@@ -297,10 +313,10 @@ class ModelBase(ABC):
             })
 
         # add the prompt if it exists
-        if hasattr(self.config, 'prompt'):
+        if prompt:
             input_msgs_formatted[0]['content'].append({
                 'type': 'text',
-                'text': self.config.prompt
+                'text': prompt
             })
 
         # apply the chat template to get the prompt
@@ -309,7 +325,7 @@ class ModelBase(ABC):
             add_generation_prompt=add_generation_prompt
         )
 
-    def _load_input_data(self) -> List[ModelInput]:
+    def _load_input_data(self) -> Iterator[ModelInput]:
         """From a configuration, loads the input image and text data.
 
         For each prompt and input image, create a separate batch feature that
@@ -322,27 +338,51 @@ class ModelBase(ABC):
         """
         # by default use the processor, which may not exist for each model
         logging.debug('Generating embeddings through its processor...')
-        if not self.config.has_images():
-            return [(
-                self.config.NO_IMG_PROMPT,
-                self.config.prompt,
-                self._generate_processor_output(
-                    prompt=self._generate_prompt(),
-                    img_path=None
-                )
-            )]
+        if self.config.dataset:
+            # Use the dataset to load input data, which includes (id, prompt, image_path)
+            for row in self.config.dataset:
+                if 'label' in self.config.dataset.column_names:
+                    yield (
+                        row['image_path'],
+                        row['prompt'],
+                        row['label'],
+                        self._generate_processor_output(
+                            prompt=self._generate_prompt(row['prompt']),
+                            img_path=row['image_path']
+                        )
+                    )
 
-        return [
-            (
-                img_path,
-                self.config.prompt,
-                self._generate_processor_output(
-                    prompt=self._generate_prompt(),
-                    img_path=img_path
+                else:
+
+                    yield (
+                        row['image_path'],
+                        row['prompt'],
+                        self._generate_processor_output(
+                            prompt=self._generate_prompt(row['prompt']),
+                            img_path=row['image_path']
+                        )
+                    )
+
+        else:
+            if not self.config.has_images():
+                yield (
+                    self.config.NO_IMG_PROMPT,
+                    self.config.prompt,
+                    self._generate_processor_output(
+                        prompt=self._generate_prompt(self.config.prompt),
+                        img_path=None
+                    )
                 )
-            )
-            for img_path in self.config.image_paths
-        ]
+            else:
+                for img_path in self.config.image_paths:
+                    yield (
+                        img_path,
+                        self.config.prompt,
+                        self._generate_processor_output(
+                            prompt=self._generate_prompt(self.config.prompt),
+                            img_path=img_path
+                        )
+                    )
 
     def run(self) -> None:
         """Get the hidden states from the model and saving them."""
@@ -352,9 +392,17 @@ class ModelBase(ABC):
         # then convert to gpu
         self.model.to(self.config.device)
 
+        # then reset the starting point in tracking maximum GPU memory, if using cuda
+        if self.config.device.type == 'cuda':
+            torch.cuda.reset_peak_memory_stats(self.config.device)
+
         # then run everything else
         for input in self._load_input_data():
             self._hook_and_eval(input)
+
+        # then output peak memory usage, if using cuda
+        if self.config.device.type == 'cuda':
+            logging.debug(f'Peak GPU memory allocated: {torch.cuda.max_memory_allocated(self.config.device) / 1e6:.2f} MB')
 
         # finally clean up, closing database connection, etc.
         self._cleanup()

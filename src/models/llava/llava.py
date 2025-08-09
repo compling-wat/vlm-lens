@@ -11,7 +11,7 @@ from src.models.config import Config
 class LlavaModel(ModelBase):
     """Llava model implementation."""
 
-    def __init__(self, config: Config):
+    def __init__(self, config: Config) -> None:
         """Initialization of the llava model.
 
         Args:
@@ -20,7 +20,7 @@ class LlavaModel(ModelBase):
         # initialize the parent class
         super().__init__(config)
 
-    def _load_specific_model(self):
+    def _load_specific_model(self) -> None:
         """Overridden function to populate self.model."""
         self.model = LlavaForConditionalGeneration.from_pretrained(
             self.model_path, **self.config.model

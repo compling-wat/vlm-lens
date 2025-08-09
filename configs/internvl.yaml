@@ -6,7 +6,7 @@ model:
 forward:
   - max_new_tokens: 1
   - do_sample: True
-output_db: internvl.db
+output_db: output/internvl.db
 input_dir: ./data/
 prompt: "Describe the color in this image in one word."
 modules:

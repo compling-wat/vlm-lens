@@ -12,7 +12,7 @@ from src.models.config import Config
 class Blip2Model(ModelBase):
     """Blip-2 model implementation."""
 
-    def __init__(self, config: Config):
+    def __init__(self, config: Config) -> None:
         """Initialization of the Blip-2 model.
 
         Args:
@@ -21,7 +21,7 @@ class Blip2Model(ModelBase):
         # initialize the parent class
         super().__init__(config)
 
-    def _load_specific_model(self):
+    def _load_specific_model(self) -> None:
         """Overridden function to populate self.model."""
         self.model = Blip2ForConditionalGeneration.from_pretrained(
             self.model_path, **self.config.model
@@ -31,10 +31,13 @@ class Blip2Model(ModelBase):
             )
         )
 
-    def _generate_prompt(self) -> str:
+    def _generate_prompt(self, prompt: str) -> str:
         """Generates the BLIP-2 model prompt which will not use the chat template.
+
+        Args:
+            prompt (str): The input prompt to be processed.
 
         Returns:
             str: The prompt to return, set by the config.
         """
-        return self.config.prompt
+        return prompt

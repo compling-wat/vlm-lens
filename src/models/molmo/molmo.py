@@ -15,7 +15,7 @@ from src.models.config import Config
 class MolmoModel(ModelBase):
     """Molmo model implementation."""
 
-    def __init__(self, config: Config):
+    def __init__(self, config: Config) -> None:
         """Initialization of the molmo model.
 
         Args:
@@ -24,7 +24,7 @@ class MolmoModel(ModelBase):
         # initialize the parent class
         super().__init__(config)
 
-    def _load_specific_model(self):
+    def _load_specific_model(self) -> None:
         """Overridden function to populate self.model."""
         self.model = AutoModelForCausalLM.from_pretrained(
             self.model_path,
@@ -46,15 +46,18 @@ class MolmoModel(ModelBase):
             device_map='auto'
         )
 
-    def _generate_prompt(self) -> str:
+    def _generate_prompt(self, prompt: str) -> str:
         """Generates the Molmo model prompt which will not use the chat template.
+
+        Args:
+            prompt (str): The prompt to return, set by the config.
 
         Returns:
             str: The prompt to return, set by the config.
         """
-        return self.config.prompt
+        return prompt
 
-    def _generate_processor_output(self, prompt, img_path) -> dict:
+    def _generate_processor_output(self, prompt: str, img_path: str) -> dict:
         """Generate the processor argument to be input into the processor.
 
         Args:
@@ -81,19 +84,20 @@ class MolmoModel(ModelBase):
             for k, v in data_inputs.items()
         }
 
-    def _forward(self, data):
+    def _forward(self, data: dict) -> None:
         """Given some input data, performs a single forward pass.
 
         This function itself can be overriden, while _hook_and_eval
         should be left in tact.
 
         Args:
-            data: The given data tensor.
+            data (dict): The given data tensor.
         """
+        generation_config = self.config.forward
         with torch.no_grad():
             _ = self.model.generate_from_batch(
                 data,
-                GenerationConfig(max_new_tokens=200, stop_strings='<|endoftext|>'),
+                GenerationConfig(**generation_config),
                 tokenizer=self.processor.tokenizer
             )
         logging.debug('Completed forward pass...')

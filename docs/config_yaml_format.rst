@@ -1,4 +1,5 @@
 .. _config_format:
+
 Config YAML Format
 ================================
 
@@ -34,3 +35,4 @@ Example:
     modules:
         - llm.lm_head
         - vpm.encoder.layers.26
+    

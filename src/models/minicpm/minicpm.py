@@ -17,7 +17,7 @@ from src.models.config import Config
 class MiniCPMModel(ModelBase):
     """MiniCPM model implementation."""
 
-    def __init__(self, config: Config):
+    def __init__(self, config: Config) -> None:
         """Initialization of the MiniCPM model.
 
         Args:
@@ -26,26 +26,29 @@ class MiniCPMModel(ModelBase):
         # initialize the parent class
         super().__init__(config)
 
-    def _load_specific_model(self):
+    def _load_specific_model(self) -> None:
         """Overridden function to populate self.model."""
         self.model = AutoModel.from_pretrained(
             self.model_path, **getattr(self.config, 'model', {})
         )
 
-    def _generate_prompt(self) -> str:
+    def _generate_prompt(self, prompt: str) -> str:
         """Generates the MiniCPM model prompt which will not use the chat template.
+
+        Args:
+            prompt (str): The prompt content.
 
         Returns:
             str: The prompt to return, set by the config.
         """
-        return self.config.prompt
+        return prompt
 
     def _init_processor(self) -> None:
-        """Initialize the MiniCPM Tokenizer"""
+        """Initialize the MiniCPM tokenizer."""
         self.processor = None  # no intended processor here
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_path, trust_remote_code=True)
 
-    def _generate_processor_output(self, prompt, img_path) -> dict:
+    def _generate_processor_output(self, prompt: str, img_path: str) -> dict:
         """Generate the processor outputs from the prompt and image path.
 
         Args:
@@ -60,7 +63,7 @@ class MiniCPMModel(ModelBase):
         image = Image.open(img_path).convert('RGB')
         return {'msgs': msgs, 'image': image}
 
-    def _forward(self, data: BatchFeature):
+    def _forward(self, data: BatchFeature) -> None:
         """Given some input data, performs a single forward pass.
 
         This function itself can be overriden, while _hook_and_eval

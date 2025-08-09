@@ -1,5 +1,7 @@
 """Helper functions from official huggingface library of InternVL."""
 
+from typing import List, Tuple
+
 import torch
 import torchvision.transforms as T
 from PIL import Image
@@ -9,8 +11,15 @@ IMAGENET_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_STD = (0.229, 0.224, 0.225)
 
 
-def build_transform(input_size):
-    """Helper function that transform image."""
+def build_transform(input_size: int = 448) -> T.Compose:
+    """Helper function that transform image.
+
+    Args:
+        input_size (int, optional): The input size. Defaults to 448.
+
+    Returns:
+        T.Compose: The composed transform.
+    """
     MEAN, STD = IMAGENET_MEAN, IMAGENET_STD
     return T.Compose([
         T.Lambda(lambda img: img.convert('RGB') if img.mode != 'RGB' else img),
@@ -20,8 +29,21 @@ def build_transform(input_size):
     ])
 
 
-def find_closest_aspect_ratio(aspect_ratio, target_ratios, width, height, image_size):
-    """Helper function that find closest aspect ratio."""
+def find_closest_aspect_ratio(
+        aspect_ratio: float, target_ratios: List[Tuple[float, float]],
+        width: int, height: int, image_size: int) -> Tuple[int, int]:
+    """Helper function that find closest aspect ratio.
+
+    Args:
+        aspect_ratio (float): The existing image aspect ratio.
+        target_ratios (list): The target aspect ratios.
+        width (int): The original image width.
+        height (int): The original image height.
+        image_size (int): The target image size.
+
+    Returns:
+        tuple: The closest aspect ratio.
+    """
     best_ratio_diff = float('inf')
     best_ratio = (1, 1)
     area = width * height
@@ -37,8 +59,21 @@ def find_closest_aspect_ratio(aspect_ratio, target_ratios, width, height, image_
     return best_ratio
 
 
-def dynamic_preprocess(image, min_num=1, max_num=12, image_size=448, use_thumbnail=False):
-    """Helper function."""
+def dynamic_preprocess(
+        image: Image, min_num: int = 1, max_num: int = 12,
+        image_size: int = 448, use_thumbnail: bool = False) -> List[Image]:
+    """Helper function.
+
+    Args:
+        image (Image): The input image.
+        min_num (int, optional): The minimum number of image patches. Defaults to 1.
+        max_num (int, optional): The maximum number of image patches. Defaults to 12.
+        image_size (int, optional): The target image size. Defaults to 448.
+        use_thumbnail (bool, optional): Whether to use thumbnail. Defaults to False.
+
+    Returns:
+        list: The processed images.
+    """
     orig_width, orig_height = image.size
     aspect_ratio = orig_width / orig_height
 
@@ -81,8 +116,17 @@ def dynamic_preprocess(image, min_num=1, max_num=12, image_size=448, use_thumbna
     return processed_images
 
 
-def load_image(image_file, input_size=448, max_num=12):
-    """Load image to pixal values."""
+def load_image(image_file: str, input_size: int = 448, max_num: int = 12) -> torch.Tensor:
+    """Load image to pixel values.
+
+    Args:
+        image_file (str): The image file path.
+        input_size (int, optional): The input size. Defaults to 448.
+        max_num (int, optional): The max number of image patches. Defaults to 12.
+
+    Returns:
+        torch.Tensor: The corresponding pixel values.
+    """
     image = Image.open(image_file).convert('RGB')
     transform = build_transform(input_size=input_size)
     images = dynamic_preprocess(image, image_size=input_size, use_thumbnail=True, max_num=max_num)

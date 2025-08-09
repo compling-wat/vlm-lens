@@ -1,8 +1,10 @@
-Tutorials
-=========
+Model Tutorials
+================================
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    :hidden:
 
    minicpm-o
+   cogvlm
+   grounding-lmm

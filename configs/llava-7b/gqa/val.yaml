@@ -1,0 +1,15 @@
+architecture: llava
+model_path: llava-hf/llava-1.5-7b-hf
+dataset:
+  - text_dataset_path: compling/GQA_dataset_binary
+  - image_dataset_path: /path/to/GQA/images  # downloaded using configs/dataset/gqa.yaml
+  - text_split: val
+  - prompt_column: question
+  - label_column: answer
+  - image_column: id
+  - image_regex: "{id}.jpg"
+output_db: llava_gqa.db
+pooled_output: True
+modules:
+  - language_model.model.layers.16.post_attention_layernorm
+  - language_model.model.layers.31.post_attention_layernorm
