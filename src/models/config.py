@@ -38,6 +38,7 @@ class ModelSelection(str, Enum):
     COGVLM = 'cogvlm'
     PIXTRAL = 'pixtral'
     AYA_VISION = 'aya-vision'
+    PLM = 'plm'
 
 
 class Config:
