@@ -9,7 +9,7 @@ import os
 import sqlite3
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
-from typing import List, Optional, Tuple
+from typing import Callable, List, Optional, Tuple
 
 import torch
 from PIL import Image
@@ -24,7 +24,7 @@ ModelInput = Tuple[str, str, BatchFeature]
 class ModelBase(ABC):
     """Provides an abstract base class for everything to implement."""
 
-    def __init__(self, config: Config):
+    def __init__(self, config: Config) -> None:
         """Initialization of the model base class.
 
         Args:
@@ -47,7 +47,7 @@ class ModelBase(ABC):
         # load the processor
         self._init_processor()
 
-    def _log_named_modules(self):
+    def _log_named_modules(self) -> None:
         """Logs the named modules based on the loaded model."""
         file_path = 'logs/' + self.model_path + '.txt'
         directory_path = os.path.dirname(file_path)
@@ -71,7 +71,7 @@ class ModelBase(ABC):
             )
 
     @abstractmethod
-    def _load_specific_model(self):
+    def _load_specific_model(self) -> None:
         """Abstract method that loads the specific model."""
         pass
 
@@ -79,7 +79,8 @@ class ModelBase(ABC):
         """Initialize the self.processor by loading from the path."""
         self.processor = AutoProcessor.from_pretrained(self.model_path)
 
-    def _generate_state_hook(self, name: str, image_path: str, prompt: str, label: Optional[str] = None):
+    def _generate_state_hook(self,
+                             name: str, image_path: str, prompt: str, label: Optional[str] = None) -> Callable[[torch.nn.Module, tuple, torch.Tensor], None]:
         """Generates the state hook depending on the embedding type.
 
         Args:
@@ -99,21 +100,23 @@ class ModelBase(ABC):
             # properly providing an image path
             assert os.path.exists(image_path)
 
-        def generate_states_hook(module, input, output):
+        def generate_states_hook(module: torch.nn.Module, input: tuple, output: torch.Tensor) -> None:
             """Hook handle function that saves the embedding output to a tensor.
 
             This tensor will be saved within a SQL database, according to the
             connection that was initialized previously.
 
             Args:
-                module: The module that save its hook on.
-                input: The input used.
-                output: The embeddings to save.
+                module (torch.nn.Module): The module that save its hook on.
+                input (tuple): The input used.
+                output (torch.Tensor): The embeddings to save.
+
             """
             cursor = self.connection.cursor()
 
             # Convert the tensor to a binary blob
             tensor_blob = io.BytesIO()
+            # It currently averages the output across the sequence length dimension, i.e., mean pooling
             # TODO: add support for max and endpoint pooling
             final_output = output.mean(
                 dim=1) if self.config.pooled_output else output
@@ -190,7 +193,7 @@ class ModelBase(ABC):
 
         return hooks
 
-    def _forward(self, data: BatchFeature):
+    def _forward(self, data: BatchFeature) -> None:
         """Given some input data, performs a single forward pass.
 
         This function itself can be overriden, while _hook_and_eval
@@ -204,7 +207,7 @@ class ModelBase(ABC):
             _ = self.model(**data)
         logging.debug('Completed forward pass...')
 
-    def _hook_and_eval(self, input: ModelInput):
+    def _hook_and_eval(self, input: ModelInput) -> None:
         """Given some input, performs a single forward pass.
 
         Args:
@@ -230,7 +233,7 @@ class ModelBase(ABC):
             hook.remove()
         logging.debug('Unregistered all hooks..')
 
-    def _initialize_db(self):
+    def _initialize_db(self) -> None:
         """Initializes a database based on config."""
         # Connect to the database, creating it if it doesn't exist
         self.connection = sqlite3.connect(self.config.output_db)
@@ -256,11 +259,11 @@ class ModelBase(ABC):
         )
         self.connection.commit()
 
-    def _cleanup(self):
+    def _cleanup(self) -> None:
         """Cleanups the database by closing the connection."""
         self.connection.close()
 
-    def _generate_processor_output(self, prompt, img_path) -> dict:
+    def _generate_processor_output(self, prompt: str, img_path: str) -> dict:
         """Generate the processor outputs from the prompt and image path.
 
         Args:
@@ -284,10 +287,11 @@ class ModelBase(ABC):
             }
         ))
 
-    def _generate_prompt(self, prompt, add_generation_prompt: bool = True) -> str:
+    def _generate_prompt(self, prompt: str, add_generation_prompt: bool = True) -> str:
         """Generates the prompt string with the input messages.
 
         Args:
+            prompt (str): The input prompt string.
             add_generation_prompt (bool): Whether to add a start token of a bot
                 response.
             TODO: move `add_generation_prompt` to the config.
