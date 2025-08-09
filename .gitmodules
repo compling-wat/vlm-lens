@@ -1,3 +1,7 @@
+[submodule "src/models/plm/Plm"]
+	path = src/models/plm/Plm
+	url = https://github.com/facebookresearch/perception_models.git
+
 [submodule "src/models/glamm/groundingLMM"]
 	path = src/models/glamm/groundingLMM
 	url = https://github.com/compling-wat/groundingLMM.git
