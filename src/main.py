@@ -70,6 +70,9 @@ def get_model(
     elif model_arch == ModelSelection.AYA_VISION:
         from models.aya_vision import AyaVisionModel
         return AyaVisionModel(config)
+    elif model_arch == ModelSelection.PLM:
+        from models.plm import PlmModel
+        return PlmModel(config)
 
 
 if __name__ == '__main__':
