@@ -73,6 +73,9 @@ class CogVLMModel(ModelBase):
 
         Returns:
             dict: The corresponding processor output per image and prompt.
+
+        Raises:
+            ValueError: If the image path is not defined.
         """
         if img_path is None:
             raise ValueError('Define input image directory in model config.')

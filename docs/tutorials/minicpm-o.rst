@@ -30,7 +30,7 @@ Configuration
 -------------------------------
 The main configuration file for MiniCPM-o is located at ``configs/minicpm-o.yaml``.
 Refer to :ref:`Config Format <config_format>` for detailed explanation of all config options.
-  
+
 You can specify which modules or layers to register hooks for extraction.
 A comprehensive list of available modules is provided in the log file: ``logs/openbmb/MiniCPM-o-2_6.txt``.
 
@@ -56,5 +56,3 @@ After successful execution, extracted layer outputs are saved as PyTorch tensors
 For the default config, the database is named ``minicpm-o.db``.
 
 You can retrieve these tensors using the script ``scripts/read_tensor.py``, which lets you load and analyze the extracted data as needed.
-
-

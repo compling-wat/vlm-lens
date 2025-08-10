@@ -1,3 +1,6 @@
 [flake8]
 docstring-convention = google
-extend-ignore = E501, E731, ANN101
+max-line-length = 160
+extend-ignore = E731, ANN101
+enable-extensions = DAR
+exclude = .git,__pycache__,build,dist

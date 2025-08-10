@@ -35,10 +35,10 @@ def map_text_to_images(
         label_column (Optional[str]): The column name for the classification label/answer entry in text_dataset.
         image_regex (Optional[str]): The regex pattern to convert image_column -> image filename.
         save_path (Optional[str]): The location to save the dataset.
-        map_function (Optional[callable]): A custom mapping function.
+        map_fn (Optional[callable]): A custom mapping function.
 
     Returns:
-        datasets.Dataset: A new dataset with text and images mapped together.
+        Dataset: A new dataset with text and images mapped together.
     """
     # Create a lookup of filename -> full path
     filename_to_path = {
@@ -58,8 +58,18 @@ def map_text_to_images(
             'label', text_dataset[label_column]
         )
 
-    def resolve_filename(row):
-        """Helper function to define the mapping method for the image id to its path."""
+    def resolve_filename(row: dict) -> dict:
+        """Helper function to define the mapping method for the image id to its path.
+
+        Args:
+            row (dict): The input row from the text dataset.
+
+        Returns:
+            dict: A dictionary containing the resolved image path.
+
+        Raises:
+            ValueError: If the mapping function encounters an error.
+        """
         if map_fn:
             # Use custom map function is provided
             try:
@@ -86,7 +96,7 @@ def map_text_to_images(
     return mapped_dataset
 
 
-def load_function_from_file(file_path, fn_name) -> callable:
+def load_function_from_file(file_path: str, fn_name: str) -> callable:
     """Loads a function from an input file_path.
 
     Args:
@@ -103,7 +113,7 @@ def load_function_from_file(file_path, fn_name) -> callable:
     return getattr(map_module, fn_name)
 
 
-def main(config_path: str):
+def main(config_path: str) -> None:
     """Main function to run the dataset mapper.
 
     Args:

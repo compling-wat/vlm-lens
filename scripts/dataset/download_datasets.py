@@ -21,6 +21,9 @@ def process_path(path: str, to_str: bool = False) -> pathlib.Path | str:
     Args:
         path (str): The relative path.
         to_str (bool): Whether to convert it to str type.
+
+    Returns:
+        pathlib.Path | str: The processed path.
     """
     target = PROJECT_ROOT / path
     if to_str:
@@ -36,6 +39,9 @@ def get_text_dataset(hf_path: str, split: str | List[str], save_path: Optional[s
         hf_path (str): The huggingface path of the dataset.
         split (str | List[str]): The split name or a list of split name.
         save_path (str | None): the disk location to save the dataset. If is None, do not save it locally.
+
+    Returns:
+        datasets.Dataset | datasets.DatasetDict: The loaded dataset.
     """
     dataset_dict = datasets.load_dataset(hf_path)
     if isinstance(split, str):
@@ -60,7 +66,7 @@ def download_file(url: str, dst_path: str) -> None:
     wget.download(url, out=dst_path)
 
 
-def main(yaml_path: str):
+def main(yaml_path: str) -> None:
     """Main function.
 
     Args:

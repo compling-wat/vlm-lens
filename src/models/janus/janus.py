@@ -50,7 +50,15 @@ class JanusModel(ModelBase):
         return prompt
 
     def _generate_processor_output(self, prompt: str, img_path: str) -> dict:
-        """Override the base function to produce processor arguments for Janus."""
+        """Override the base function to produce processor arguments for Janus.
+
+        Args:
+            prompt (str): The input prompt to be processed.
+            img_path (str): The path to the image to be processed.
+
+        Returns:
+            dict: The formatted inputs for the processor.
+        """
         # Do the _generate_prompt first
         messages = [
             {

@@ -30,12 +30,12 @@ The following are specific config fields for CogVLM:
 
 .. Note::
 
-    We recommend adhering to the default values for other CogVLM specific config fields 
-    (e.g. ``trust_remote_code``, ``tokenizer_path``) as per the 
-    `HuggingFace quickstart tutorial for CogVLM 
+    We recommend adhering to the default values for other CogVLM specific config fields
+    (e.g. ``trust_remote_code``, ``tokenizer_path``) as per the
+    `HuggingFace quickstart tutorial for CogVLM
     <https://huggingface.co/THUDM/cogvlm-chat-hf#%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B%EF%BC%88qiuckstart%EF%BC%89>`_.
 
-To view which modules (or layers) are available for representation extraction, 
+To view which modules (or layers) are available for representation extraction,
 a comprehensive list of modules for CogVLM is provided in the log file ``logs/THUDM/cogvlm-chat-hf.txt``.
 
 General Usage

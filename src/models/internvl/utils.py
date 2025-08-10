@@ -1,6 +1,6 @@
 """Helper functions from official huggingface library of InternVL."""
 
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import torch
 import torchvision.transforms as T
@@ -11,7 +11,7 @@ IMAGENET_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_STD = (0.229, 0.224, 0.225)
 
 
-def build_transform(input_size: int = 448) -> T.Compose:
+def build_transform(input_size: Optional[int] = 448) -> T.Compose:
     """Helper function that transform image.
 
     Args:
@@ -60,8 +60,8 @@ def find_closest_aspect_ratio(
 
 
 def dynamic_preprocess(
-        image: Image, min_num: int = 1, max_num: int = 12,
-        image_size: int = 448, use_thumbnail: bool = False) -> List[Image]:
+        image: Image, min_num: Optional[int] = 1, max_num: Optional[int] = 12,
+        image_size: Optional[int] = 448, use_thumbnail: Optional[bool] = False) -> List[Image]:
     """Helper function.
 
     Args:
@@ -116,7 +116,7 @@ def dynamic_preprocess(
     return processed_images
 
 
-def load_image(image_file: str, input_size: int = 448, max_num: int = 12) -> torch.Tensor:
+def load_image(image_file: str, input_size: Optional[int] = 448, max_num: Optional[int] = 12) -> torch.Tensor:
     """Load image to pixel values.
 
     Args:

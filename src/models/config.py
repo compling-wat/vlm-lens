@@ -45,7 +45,11 @@ class Config:
     """Config class for both yaml and cli arguments."""
 
     def __init__(self) -> None:
-        """Verifies the passed arguments while populating config fields."""
+        """Verifies the passed arguments while populating config fields.
+
+        Raises:
+            ValueError: If any required argument is missing.
+        """
         # Initiate parser and parse arguments
         parser = argparse.ArgumentParser()
         parser.add_argument(
