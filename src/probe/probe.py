@@ -11,7 +11,7 @@ import logging
 import os
 import random
 import sqlite3
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional
 
 import torch
 import torch.nn as nn
@@ -25,8 +25,12 @@ from torch.utils.data import DataLoader, Dataset, Subset, TensorDataset
 class ProbeConfig:
     """Configuration class for the probe."""
 
-    def __init__(self):
-        """Initialize the configuration."""
+    def __init__(self) -> None:
+        """Initialize the configuration.
+
+        Raises:
+            ValueError: If the configuration file is not found.
+        """
         parser = argparse.ArgumentParser()
         parser.add_argument(
             '-c', '--config', type=str, help='Path to the probe configuration file'
@@ -154,7 +158,7 @@ class Probe(nn.Module):
         # Intialize the model
         self.build_model()
 
-    def build_model(self):
+    def build_model(self) -> None:
         """Builds the probe model from scratch."""
         # Intialize probe model
         layers = list()
@@ -182,12 +186,26 @@ class Probe(nn.Module):
         self.model = nn.Sequential(*layers)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Forward pass of the probe model."""
+        """Forward pass of the probe model.
+
+        Args:
+            x (torch.Tensor): Input tensor.
+
+        Returns:
+            torch.Tensor: Output tensor.
+        """
         logging.debug('Forward pass with input: %s', x.shape)
         return self.model(x)
 
     def load_data(self, shuffle: bool = False) -> TensorDataset:
-        """Load tensors from the database."""
+        """Load tensors from the database.
+
+        Args:
+            shuffle (bool): Whether to shuffle the data.
+
+        Returns:
+            TensorDataset: A dataset containing the loaded tensors.
+        """
         logging.debug('Loading tensors from the database...')
         # Connect to database
         connection = sqlite3.connect(self.config.data['input_db'])
@@ -255,8 +273,17 @@ class Probe(nn.Module):
 
         return TensorDataset(X, Y)
 
-    def cross_validate(self, config: dict, data: Dataset, nfolds: int = 5) -> float:
-        """Trains the model using the config hyperparameters across k folds."""
+    def cross_validate(self, config: dict, data: Dataset, nfolds: Optional[int] = 5) -> float:
+        """Trains the model using the config hyperparameters across k folds.
+
+        Args:
+            config (dict): The configuration dictionary.
+            data (Dataset): The dataset to train on.
+            nfolds (Optional[int]): The number of folds for cross-validation.
+
+        Returns:
+            float: The average validation loss across all folds.
+        """
         kf = KFold(n_splits=nfolds, shuffle=True, random_state=42)
         val_losses = []
         for fold, (train_idx, val_idx) in enumerate(kf.split(range(len(data)))):
@@ -272,8 +299,17 @@ class Probe(nn.Module):
         # Return the mean validation loss across all folds
         return sum(val_losses) / len(data)
 
-    def train(self, train_config: dict, train_set: Dataset, val_set: Dataset = None) -> dict:
-        """Train the probe model."""
+    def train(self, train_config: dict, train_set: Dataset, val_set: Optional[Dataset] = None) -> dict:
+        """Train the probe model.
+
+        Args:
+            train_config (dict): The training configuration.
+            train_set (Dataset): The training dataset.
+            val_set (Dataset, optional): The validation dataset.
+
+        Returns:
+            dict: The training results, including validation loss and accuracy.
+        """
         logging.debug(
             f'Training the probe model with config {train_config}...')
 
@@ -339,8 +375,15 @@ class Probe(nn.Module):
         # TODO: Return train details here
         return {}
 
-    def evaluate(self, test_set: Dataset) -> Tuple[int]:
-        """Evaluate the probe model on the input test set."""
+    def evaluate(self, test_set: Dataset) -> dict:
+        """Evaluate the probe model on the input test set.
+
+        Args:
+            test_set (Dataset): The test dataset.
+
+        Returns:
+            dict: The evaluation results, including loss and accuracy.
+        """
         self.model.eval()
 
         device = torch.device(self.config.device)
@@ -380,7 +423,11 @@ class Probe(nn.Module):
                 'preds': all_preds}
 
     def save_model(self, metadata: Optional[dict] = None) -> None:
-        """Saves the trained model to a user-specified path."""
+        """Saves the trained model to a user-specified path.
+
+        Args:
+            metadata (Optional[dict]): Metadata to save alongside the model.
+        """
         save_dir = self.config.model.get('save_dir') or 'probe_output'
         os.makedirs(save_dir, exist_ok=True)
 
@@ -401,7 +448,7 @@ class Probe(nn.Module):
                 logging.error(f'Failed to save metadata: {e}')
 
 
-def main():
+def main() -> None:
     """Main function to run the probe."""
     config = ProbeConfig()
     probe = Probe(config)

@@ -22,13 +22,11 @@ def get_model(
     """Returns the model based on the selection enum chosen.
 
     Args:
-        model_arch (ModelSelection): ModelSelection enum chosen for the specific
-        architecture.
-        model_path (str): The specific model within the family architecture of
-        model_arch.
+        model_arch (ModelSelection): ModelSelection enum chosen for the specific architecture.
+        config (Config): The configuration object.
 
     Returns:
-        base.ModelBase: A model of type ModelBase which implements the runtime
+        ModelBase: A model of type ModelBase which implements the runtime
     """
     if model_arch == ModelSelection.LLAVA:
         from models.llava import LlavaModel

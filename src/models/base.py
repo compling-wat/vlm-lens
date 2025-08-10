@@ -290,11 +290,12 @@ class ModelBase(ABC):
     def _generate_prompt(self, prompt: str, add_generation_prompt: bool = True) -> str:
         """Generates the prompt string with the input messages.
 
+        TODO: move `add_generation_prompt` to the config.
+
         Args:
             prompt (str): The input prompt string.
             add_generation_prompt (bool): Whether to add a start token of a bot
                 response.
-            TODO: move `add_generation_prompt` to the config.
 
         Returns:
             str: The generated prompt with the input text and the image labels.
@@ -331,7 +332,7 @@ class ModelBase(ABC):
         For each prompt and input image, create a separate batch feature that
         will be ran separately and saved separately within the database.
 
-        Returns:
+        Yields:
             List[ModelInput]: List of input data, this input data is made of
                 a tuple of strings (first an image path, then a prompt) and
                 a batch feature which is either a torch.Tensor or a dictionary.

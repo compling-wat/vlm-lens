@@ -11,9 +11,11 @@ from typing import List, Tuple
 
 import torch
 
+from src.models.config import Config
+
 
 def retrieve_tensors(
-    config,
+    config: Config,
     layer: str,
     query_img_path: List[str]
 ) -> List[Tuple[str, torch.Tensor]]:
@@ -77,11 +79,14 @@ def retrieve_tensors(
     return tensors
 
 
-def get_unique_layers(config):
+def get_unique_layers(config: Config) -> List[str]:
     """Retrieve a all unique layers states saved based on its config.
 
     Args:
         config (Config): The path to the configuration itself.
+
+    Returns:
+        List[str]: A list of unique layer names.
     """
     # Connect to the database
     connection = sqlite3.connect(config.output_db)

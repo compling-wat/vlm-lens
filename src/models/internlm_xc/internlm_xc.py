@@ -62,6 +62,9 @@ class InternLMXComposerModel(ModelBase):
 
         Returns:
             dict: The formatted inputs for the processor.
+
+        Raises:
+            ValueError: If no prompt is provided when required.
         """
         logging.debug('Loading data...')
 
@@ -70,7 +73,7 @@ class InternLMXComposerModel(ModelBase):
 
         # Text prompts are required for this model
         if not prompt:
-            raise RuntimeError(
+            raise ValueError(
                 'No input prompt was provided for the InternLM-XC model')
 
         # If there are images, load them and add image token to prompt

@@ -14,7 +14,7 @@ from models.config import Config
 class FilterConfig():
     """Config class for using different prompts during filtering."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Constructs the different filters and sets self.filters."""
         parser = argparse.ArgumentParser()
         parser.add_argument(
@@ -31,7 +31,7 @@ class FilterConfig():
             self.filter_data = yaml.safe_load(filter_file)
 
 
-def run_filters(base_config: Config, filter_config: FilterConfig):
+def run_filters(base_config: Config, filter_config: FilterConfig) -> None:
     """Read through each filter config, modify config accordingly, and execute.
 
     This will save a different set of tensors for each filter given.

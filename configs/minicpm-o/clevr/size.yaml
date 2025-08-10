@@ -19,4 +19,3 @@ pooled_output: True
 modules:
   - llm.model.layers.13.post_attention_layernorm
   - llm.model.layers.27.post_attention_layernorm
-

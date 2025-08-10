@@ -67,6 +67,9 @@ class MolmoModel(ModelBase):
 
         Returns:
             dict: The corresponding processor arguments per image and prompt.
+
+        Raises:
+            ValueError: If no prompt is provided when required.
         """
         if img_path is None:
             raise ValueError('Molmo cannot have text-only generation.')
