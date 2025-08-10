@@ -10,6 +10,7 @@
 - [Example Usage: Extract Qwen2-VL-2B Embeddings with VLM-Lens](#example-usage-extract-qwen2-vl-2b-embeddings-with-vlm-lens)
   - [General Command-Line Demo](#general-command-line-demo)
   - [Run Qwen2-VL-2B Embeddings Extraction](#run-qwen2-vl-2b-embeddings-extraction)
+- [Contributing to VLM-Lens](#contributing-to-vlm-lens)
 
 ## Environment Setup
 We recommend using a virtual environment to manage your dependencies. You can create one using the following command to create a virtual environment under
@@ -69,6 +70,18 @@ python src/main.py \
   --device cuda \
   --debug
 ```
+
+## Contributing to VLM-Lens
+
+We welcome contributions to VLM-Lens! If you have suggestions, improvements, or bug fixes, please consider submitting a pull request, and we are actively reviewing them.
+
+We generally follow the [Google Python Styles](https://google.github.io/styleguide/pyguide.html) to ensure readability, with a few exceptions stated in `.flake8`.
+We use pre-commit hooks to ensure code quality and consistency---please make sure to run the following scripts before committing:
+```python
+pip install pre-commit
+pre-commit install
+```
+
 
 ### Matching Layers
 To automatically set up which layers to find/use, one should use the Unix style strings, where you can use `*` to denote wildcards.
