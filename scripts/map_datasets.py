@@ -9,7 +9,7 @@ from typing import List, Optional
 import yaml
 from datasets import Dataset, load_dataset
 
-# go up two levels: dataset -> scripts -> root
+# go up one level: scripts -> root
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.append(str(ROOT))
 from project_root import PROJECT_ROOT  # noqa: E402
@@ -141,6 +141,8 @@ def main(config_path: str) -> None:
             os.listdir(image_dir)
         )
     ]
+
+    # Set custom function if it exists
     custom_map_fn = None
     if 'custom_mapping' in config:
         file_path = config['custom_mapping'].get('file', None)
@@ -152,7 +154,7 @@ def main(config_path: str) -> None:
 
         custom_map_fn = load_function_from_file(file_path, fn_name)
 
-        # Map text datasets to image paths
+    # Map text datasets to image paths
     map_text_to_images(
         text_dataset,
         image_paths,

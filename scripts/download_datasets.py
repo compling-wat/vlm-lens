@@ -9,8 +9,8 @@ import datasets
 import wget
 import yaml
 
-# go up two levels: dataset -> scripts -> root
-ROOT = pathlib.Path(__file__).resolve().parents[2]
+# go up one level: scripts -> root
+ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.append(str(ROOT))
 from project_root import PROJECT_ROOT  # noqa: E402
 
