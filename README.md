@@ -10,6 +10,9 @@
 - [Example Usage: Extract Qwen2-VL-2B Embeddings with VLM-Lens](#example-usage-extract-qwen2-vl-2b-embeddings-with-vlm-lens)
   - [General Command-Line Demo](#general-command-line-demo)
   - [Run Qwen2-VL-2B Embeddings Extraction](#run-qwen2-vl-2b-embeddings-extraction)
+- [Retrieving a Model's Named Modules](#retrieving-a-models-named-modules)
+- [Feature Extraction using Datasets](#feature-extraction-using-datasets)
+- [Output Database](#output-database)
 - [Contributing to VLM-Lens](#contributing-to-vlm-lens)
 
 ## Environment Setup
@@ -71,17 +74,13 @@ python src/main.py \
   --debug
 ```
 
-## Contributing to VLM-Lens
+## Model Layers
+### Retrieving all Named Modules
+Unfortunately there is no way to find which layers to potentially match to without loading the model. This can take quite a bit of system time figuring out.
 
-We welcome contributions to VLM-Lens! If you have suggestions, improvements, or bug fixes, please consider submitting a pull request, and we are actively reviewing them.
+Instead, we offer some cached results under `logs/` for each model, which were generated through including the `-l` or `--log_named_modules` flag.
 
-We generally follow the [Google Python Styles](https://google.github.io/styleguide/pyguide.html) to ensure readability, with a few exceptions stated in `.flake8`.
-We use pre-commit hooks to ensure code quality and consistency---please make sure to run the following scripts before committing:
-```python
-pip install pre-commit
-pre-commit install
-```
-
+When running this flag, it is not necessary to set modules or anything besides the architecture and HuggingFace model path.
 
 ### Matching Layers
 To automatically set up which layers to find/use, one should use the Unix style strings, where you can use `*` to denote wildcards.
@@ -91,18 +90,65 @@ For example, if one wanted to match with all the attention layer's query project
 modules:
   - model.layers.*.self_attn.q_proj
 ```
+## Feature extraction using datasets
+To using `vlm-lens` with either hosted or local datasets, there are multiple methods you can use depending on the location of the input images.
 
-#### Printing out Named Modules
-Unfortunately there is no way to find which layers to potentially match to without loading the model. This can take quite a bit of system time figuring out.
+First, your dataset must be standardized to a format that includes the attributes of `prompt`, `label` and `image_path`. Here is a snippet of the `compling/coco-val2017-obj-qa-categories` dataset, adjusted with the former attributes:
 
-Instead, we offer some cached results under `logs/` for each model, which were generated through including the `-l` or `--log_named_modules` flag.
+| prompt | label | image_path |
+|---|---|---|
+| Is this A photo of a dining table on the bottom | yes | /path/to/397133.png
+| Is this A photo of a dining table on the top | no | /path/to/37777.png
 
-When running this flag, it is not necessary to set modules or anything besides the architecture and HuggingFace model path.
+This can be achieved manually or using the helper script in `scripts/map_datasets.py`.
 
-### Using a Cache
-To use a specific cache, one should set the `HF_HOME` environment variable as so:
+### Method 1: Using hosted datasets
+If you are using datasets hosted on a platform such as HuggingFace, you will either use images that are also *hosted*, or ones that are *downloaded locally* with an identifier to map back to the hosted dataset (e.g., filename).
+
+Regardless, you must use the `dataset_path` attribute in your configuration file with the appropriate `dataset_split`:
+
+
+#### 1(a): Hosted Dataset with Hosted Images
+
+```yaml
+dataset:
+  - dataset_path: compling/coco-val2017-obj-qa-categories
+  - dataset_split: val2017
 ```
-HF_HOME=./cache/ python src/main.py --config configs/clip-base.yaml --debug
+
+#### 1(b): Hosted Dataset with Local Images
+
+```yaml
+dataset:
+  - dataset_path: compling/coco-val2017-obj-qa-categories
+  - dataset_split: val2017
+  - image_dataset_path: /path/to/local/images  # downloaded using configs/dataset/download-coco.yaml
+  - image_split: val2017
+
+```
+
+> 🚨 **NOTE**: The `image_path` attribute in the dataset must contain either filenames or relative paths, such that a cell value of `train/00023.png` can be joined with `image_dataset_path` to form the full absolute path: `/path/to/local/images/train/00023.png`.
+
+### Method 2: Using local datasets
+#### 2(a): Local Dataset containing Image Files
+
+```yaml
+dataset:
+  - local_dataset_path: /path/to/local/COCO
+  - dataset_split: train
+```
+
+#### 2(b): Local Dataset with Separate Input Image Directory
+
+> 🚨 **NOTE**: The `image_path` attribute in the dataset must contain either filenames or relative paths, such that a cell value of `train/00023.png` can be joined with `image_dataset_path` to form the full absolute path: `/path/to/local/images/train/00023.png`.
+
+```yaml
+dataset:
+  - local_dataset_path: /path/to/local/COCO
+  - dataset_split: train
+  - image_dataset_path: /path/to/local/COCOimages
+  - image_split: train
+
 ```
 
 ### Output Database
@@ -118,6 +164,29 @@ where each column is:
 5. `Layer` is the matched layer from `model.named_modules()`
 6. `Tensor` is the embedding saved.
 
+
+## Contributing to VLM-Lens
+
+We welcome contributions to VLM-Lens! If you have suggestions, improvements, or bug fixes, please consider submitting a pull request, and we are actively reviewing them.
+
+We generally follow the [Google Python Styles](https://google.github.io/styleguide/pyguide.html) to ensure readability, with a few exceptions stated in `.flake8`.
+We use pre-commit hooks to ensure code quality and consistency---please make sure to run the following scripts before committing:
+```python
+pip install pre-commit
+pre-commit install
+```
+
+
+
+
+### Using a Cache
+To use a specific cache, one should set the `HF_HOME` environment variable as so:
+```
+HF_HOME=./cache/ python src/main.py --config configs/clip-base.yaml --debug
+```
+
+
+
 ### Using specific models
 #### Glamm
 For Glamm (GroundingLMM), one needs to clone the separate submodules, which can be done with the following command:
@@ -126,9 +195,3 @@ git submodule update --recursive --init
 ```
 
 See [our document](https://compling-wat.github.io/vlm-lens/tutorials/grounding-lmm.html) for details on the installation.
-
-## Running with different filters
-We also provide a separate script that relies on the main functionality to run on multiple different filters, which can override the specific layer, prompt and input image directories, defaulting to the original layer, prompt and input image directories. This is specified through configs with the `-fc` or `--filter-config` flags as:
-```
-python src/run_filters.py --config configs/clip-base.yaml --filter-config configs/clip-base-filter.yaml --debug
-```

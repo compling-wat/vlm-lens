@@ -203,6 +203,7 @@ class ModelBase(ABC):
             data (BatchFeature): The given data tensor.
         """
         data.to(self.config.device)
+        logging.debug(data)
         with torch.no_grad():
             _ = self.model(**data)
         logging.debug('Completed forward pass...')

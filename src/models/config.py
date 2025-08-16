@@ -14,12 +14,10 @@ from typing import List, Optional
 import regex as re
 import torch
 import yaml
-from datasets import load_dataset
+from datasets import load_dataset, load_from_disk
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]  # models -> src -> root
 sys.path.append(str(PROJECT_ROOT))
-
-from scripts.dataset.map_datasets import map_text_to_images  # noqa: E402
 
 
 class ModelSelection(str, Enum):
@@ -192,7 +190,6 @@ class Config:
         assert hasattr(self, 'modules') and self.modules is not None, (
             'Must declare at least one module.'
         )
-        self.default_modules = self.modules
         self.set_modules(self.modules)
 
         # make sure only one of dataset or input_dir is set
@@ -209,57 +206,60 @@ class Config:
             for mapping in self.dataset:
                 ds_mapping = {**ds_mapping, **mapping}
 
+            dataset_path = ds_mapping.get('dataset_path', None)
+            local_dataset_path = ds_mapping.get('local_dataset_path', None)
+
+            # Check that the user uses either a local or hosted dataset (not both)
+            assert ((dataset_path and not local_dataset_path) or
+                    (not dataset_path and local_dataset_path)), (
+                'One of `dataset_path` (for hosted datasets) or `local_dataset_path` (for local datasets)'
+                'must be set.'
+            )
+
+            dataset = None
+            dataset_split = ds_mapping.get('dataset_split', None)
+            if dataset_path:
+                # Dataset is hosted
+                logging.debug(f'Loading dataset from {dataset_path} with split={dataset_split}...')
+                dataset = load_dataset(dataset_path)
+                if dataset_split:
+                    dataset = dataset[dataset_split]
+
+            elif local_dataset_path:
+                # Dataset is local
+                logging.debug(f'Loading dataset from {local_dataset_path} with split={dataset_split}...')
+                dataset = load_from_disk(local_dataset_path)
+                if dataset_split:
+                    dataset = dataset[dataset_split]
+
             # Load image dataset
             img_dir = ds_mapping.get('image_dataset_path', None)
             img_split = ds_mapping.get('image_split', None)
-            if img_dir and img_split:
-                img_dir = os.path.join(
-                    img_dir,
-                    img_split
-                )
-            logging.debug(
-                f'Locating image dataset from {img_dir} with split {img_split}')
+            if img_dir:
+                logging.debug(
+                    f'Locating image dataset from {img_dir} with split={img_split}...')
+                if img_split:
+                    img_dir = os.path.join(
+                        img_dir,
+                        img_split
+                    )
 
-            # Set default input directory in case we use filters
-            self.default_input_dir = (img_dir)
-            self.set_image_paths(self.default_input_dir)
+                # Accounts for mapping relative paths as well as filenames
+                dataset = dataset.map(
+                    lambda row: {'image_path': os.path.join(img_dir, row['image_path'])})
+            logging.debug(dataset['image_path'])
 
-            # Load text dataset
-            logging.debug(
-                f"Loading text dataset from {ds_mapping['text_dataset_path']} with split {ds_mapping['text_split']}")
-            text_dataset = load_dataset(
-                ds_mapping['text_dataset_path']
-            )[ds_mapping['text_split']]
-
-            # Map text dataset to image dataset
-            logging.debug(
-                'Mapping text prompts to their corresponding images...')
-            self.dataset = map_text_to_images(
-                text_dataset,
-                self.image_paths,
-                image_column=ds_mapping['image_column'],
-                prompt_column=ds_mapping['prompt_column'],
-                label_column=ds_mapping.get('label_column', None),
-                image_regex=ds_mapping.get('image_regex', '{id}'),
-            )
-
-            self.default_prompt = None
+            self.dataset = dataset
 
         else:
-            self.default_input_dir = (
-                self.input_dir
-                if hasattr(self, 'input_dir') else
-                None
-            )
-
-            # now set the default prompt to be used in filters
-            self.default_prompt = self.prompt
             self.dataset = None
 
-        self.set_image_paths(self.default_input_dir)
+            self.set_image_paths(self.input_dir
+                                 if hasattr(self, 'input_dir') else
+                                 None)
 
         # check if there is no input data
-        if not (self.has_images() or hasattr(self, 'prompt')):
+        if not (self.dataset or self.has_images() or hasattr(self, 'prompt')):
             raise ValueError(
                 'Input directory was either not provided or empty '
                 'and no prompt was provided'
@@ -332,10 +332,8 @@ class Config:
         # and add those paths to image_paths
         image_exts = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff']
         self.image_paths = [
-            os.path.join(input_dir, img_path)
-            for img_path in filter(
-                lambda file_path:
-                    os.path.splitext(file_path)[1].lower() in image_exts,
-                os.listdir(input_dir)
-            )
+            os.path.join(root, file_path)
+            for root, _, files in os.walk(input_dir)
+            for file_path in files
+            if os.path.splitext(file_path)[1].lower() in image_exts
         ]
