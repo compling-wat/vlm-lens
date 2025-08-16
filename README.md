@@ -103,19 +103,21 @@ First, your dataset must be standardized to a format that includes the attribute
 This can be achieved manually or using the helper script in `scripts/map_datasets.py`.
 
 ### Method 1: Using hosted datasets
-If you are using datasets hosted on a platform such as HuggingFace, you will either use images that are also *hosted*, or ones that are *downloaded locally* with an identifier to map back to the hosted dataset (e.g., filename).
+<!-- If you are using datasets hosted on a platform such as HuggingFace, you will either use images that are also *hosted*, or ones that are *downloaded locally* with an identifier to map back to the hosted dataset (e.g., filename). -->
 
-Regardless, you must use the `dataset_path` attribute in your configuration file with the appropriate `dataset_split` (if it exists, otherwise leave it out).
+You must use the `dataset_path` attribute in your configuration file with the appropriate `dataset_split` (if it exists, otherwise leave it out).
 
-#### 1(a): Hosted Dataset with Hosted Images
+<!-- #### 1(a): Hosted Dataset with Hosted Images
 
 ```yaml
 dataset:
   - dataset_path: compling/coco-val2017-obj-qa-categories
   - dataset_split: val2017
-```
+``` -->
 
-#### 1(b): Hosted Dataset with Local Images
+#### 1(a): Hosted Dataset with Local Images
+
+> 🚨 **NOTE**: The `image_path` attribute in the dataset must contain either filenames or relative paths, such that a cell value of `train/00023.png` can be joined with `image_dataset_path` to form the full absolute path: `/path/to/local/images/train/00023.png`. If the `image_path` attribute does not require any additional path joining, you can leave out the `image_dataset_path` attribute.
 
 ```yaml
 dataset:
@@ -126,42 +128,43 @@ dataset:
 
 ```
 
-> 🚨 **NOTE**: The `image_path` attribute in the dataset must contain either filenames or relative paths, such that a cell value of `train/00023.png` can be joined with `image_dataset_path` to form the full absolute path: `/path/to/local/images/train/00023.png`.
 
 ### Method 2: Using local datasets
-#### 2(a): Local Dataset containing Image Files
+<!-- #### 2(a): Local Dataset containing Image Files
 
 ```yaml
 dataset:
   - local_dataset_path: /path/to/local/COCO
-  - dataset_split: train
-```
+  - dataset_split: train # leave out if unspecified
+``` -->
 
-#### 2(b): Local Dataset with Separate Input Image Directory
+#### 2(a): Local Dataset with Separate Input Image Directory
 
-> 🚨 **NOTE**: The `image_path` attribute in the dataset must contain either filenames or relative paths, such that a cell value of `train/00023.png` can be joined with `image_dataset_path` to form the full absolute path: `/path/to/local/images/train/00023.png`.
+> 🚨 **NOTE**: The `image_path` attribute in the dataset must contain either filenames or relative paths, such that a cell value of `train/00023.png` can be joined with `image_dataset_path` to form the full absolute path: `/path/to/local/images/train/00023.png`. If the `image_path` attribute does not require any additional path joining, you can leave out the `image_dataset_path` attribute.
 
 ```yaml
 dataset:
   - local_dataset_path: /path/to/local/COCO
-  - dataset_split: train
+  - dataset_split: train # leave out if unspecified
   - image_dataset_path: /path/to/local/COCOimages
-  - image_split: train
+  - image_split: train # leave out if unspecified
 
 ```
 
 ### Output Database
 Specified by the `-o` and `--output-db` flags, this specifies the specific output database we want. From this, in SQL we have a single table under the name `tensors` with the following columns:
 ```
-Name, Architecture, Timestamp, Image Path, Layer, Tensor
+name, architecture, timestamp, image_path, prompt, label, layer, tensor
 ```
-where each column is:
-1. `Name` represents the model path from HuggingFace.
-2. `Architecture` is the supported flags above.
-3. `Timestamp` is the specific time that the model was ran.
-4. `Image path` is the absolute path to the image.
-5. `Layer` is the matched layer from `model.named_modules()`
-6. `Tensor` is the embedding saved.
+where each column contains:
+1. `name` represents the model path from HuggingFace.
+2. `architecture` is the supported flags above.
+3. `timestamp` is the specific time that the model was ran.
+4. `image_path` is the absolute path to the image.
+5. `prompt` stores the prompt used in that instance.
+6. `label` is an optional cell that stores the "ground-truth" answer, which is helpful in use cases such as classification.
+7. `layer` is the matched layer from `model.named_modules()`
+8. `tensor` is the embedding saved.
 
 
 ## Contributing to VLM-Lens
