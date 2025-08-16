@@ -105,8 +105,7 @@ This can be achieved manually or using the helper script in `scripts/map_dataset
 ### Method 1: Using hosted datasets
 If you are using datasets hosted on a platform such as HuggingFace, you will either use images that are also *hosted*, or ones that are *downloaded locally* with an identifier to map back to the hosted dataset (e.g., filename).
 
-Regardless, you must use the `dataset_path` attribute in your configuration file with the appropriate `dataset_split`:
-
+Regardless, you must use the `dataset_path` attribute in your configuration file with the appropriate `dataset_split` (if it exists, otherwise leave it out).
 
 #### 1(a): Hosted Dataset with Hosted Images
 

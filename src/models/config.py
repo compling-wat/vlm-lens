@@ -222,15 +222,13 @@ class Config:
                 # Dataset is hosted
                 logging.debug(f'Loading dataset from {dataset_path} with split={dataset_split}...')
                 dataset = load_dataset(dataset_path)
-                if dataset_split:
-                    dataset = dataset[dataset_split]
 
             elif local_dataset_path:
                 # Dataset is local
                 logging.debug(f'Loading dataset from {local_dataset_path} with split={dataset_split}...')
                 dataset = load_from_disk(local_dataset_path)
-                if dataset_split:
-                    dataset = dataset[dataset_split]
+
+            dataset = dataset[dataset_split] if dataset_split else dataset
 
             # Load image dataset
             img_dir = ds_mapping.get('image_dataset_path', None)
@@ -247,8 +245,8 @@ class Config:
                 # Accounts for mapping relative paths as well as filenames
                 dataset = dataset.map(
                     lambda row: {'image_path': os.path.join(img_dir, row['image_path'])})
-            logging.debug(dataset['image_path'])
 
+                self.image_paths = dataset['image_path']  # for debug purposes
             self.dataset = dataset
 
         else:
