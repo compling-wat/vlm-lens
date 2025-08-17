@@ -9,7 +9,7 @@ import os
 import sqlite3
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, List, Optional, TypedDict
 
 import torch
 from PIL import Image
@@ -18,7 +18,21 @@ from transformers.feature_extraction_utils import BatchFeature
 
 from .config import Config
 
-ModelInput = Tuple[str, str, BatchFeature]
+
+class ModelInput(TypedDict):
+    """Definition for the general model input dictionary."""
+    image_path: str
+    prompt: str
+    data: BatchFeature
+
+
+class DatasetModelInput(TypedDict):
+    """Definition for the dataset-specific model input dictionary."""
+    image_path: str | Image.Image
+    prompt: str
+    label: Optional[str]
+    data: BatchFeature
+    row_id: str
 
 
 class ModelBase(ABC):
@@ -80,20 +94,26 @@ class ModelBase(ABC):
         self.processor = AutoProcessor.from_pretrained(self.model_path)
 
     def _generate_state_hook(self,
-                             name: str, image_path: str, prompt: str, label: Optional[str] = None) -> Callable[[torch.nn.Module, tuple, torch.Tensor], None]:
+                             name: str,
+                             model_input: ModelInput | DatasetModelInput
+                             ) -> Callable[[torch.nn.Module, tuple, torch.Tensor], None]:
         """Generates the state hook depending on the embedding type.
 
         Args:
             name (str): The module name.
-            image_path (str): The path to the image used for the specific pass.
-            prompt (str): The prompt used for the specific pass.
-            label (str): Optional argument for the ground truth or classification label of an entry.
+            model_input (ModelInput | DatasetModelInput): The input dictionary
+                containing the image path, prompt, label (if applicable) and
+                the data itself.
 
         Returns:
             hook function: The hook function to return.
         """
-        # first, let's modify image path to be an absolute path
-        if image_path != self.config.NO_IMG_PROMPT:
+        image_path, prompt = model_input['image_path'], model_input['prompt']
+        label = model_input.get('label', None)
+        row_id = model_input.get('row_id', None)
+
+        # Modify image path to be an absolute path if necessary
+        if isinstance(image_path, str) and image_path != self.config.NO_IMG_PROMPT:
             image_path = os.path.abspath(image_path)
 
             # this image path should already exist, error out if someone isn't
@@ -116,6 +136,7 @@ class ModelBase(ABC):
 
             # Convert the tensor to a binary blob
             tensor_blob = io.BytesIO()
+
             # It currently averages the output across the sequence length dimension, i.e., mean pooling
             # TODO: add support for max and endpoint pooling
             final_output = output.mean(
@@ -123,20 +144,34 @@ class ModelBase(ABC):
             torch.save(final_output, tensor_blob)
 
             # Insert the tensor into the table
-            cursor.execute(f"""
+            if self.config.dataset:
+                cursor.execute(f"""
                     INSERT INTO {self.config.DB_TABLE_NAME}
-                    (name, architecture, image_path, prompt, label, layer, tensor)
+                    (name, architecture, image_id, prompt, label, layer, tensor)
                     VALUES (?, ?, ?, ?, ?, ?, ?);
                 """, (
-                self.model_path,
-                self.config.architecture.value,
-                image_path,
-                prompt,
-                label,
-                name,
-                tensor_blob.getvalue()
-            )
-            )
+                    self.model_path,
+                    self.config.architecture.value,
+                    row_id,
+                    prompt,
+                    label,
+                    name,
+                    tensor_blob.getvalue())
+                )
+
+            else:
+                cursor.execute(f"""
+                        INSERT INTO {self.config.DB_TABLE_NAME}
+                        (name, architecture, image_path, prompt, layer, tensor)
+                        VALUES (?, ?, ?, ?, ?, ?, ?);
+                    """, (
+                    self.model_path,
+                    self.config.architecture.value,
+                    image_path,
+                    prompt,
+                    name,
+                    tensor_blob.getvalue())
+                )
 
             self.connection.commit()
 
@@ -147,21 +182,18 @@ class ModelBase(ABC):
 
         return generate_states_hook
 
-    def _register_module_hooks(
-        self,
-        image_path: str,
-        prompt: str,
-        label: Optional[str] = None,
-    ) -> List[torch.utils.hooks.RemovableHandle]:
+    def _register_module_hooks(self,
+                               model_input: ModelInput | DatasetModelInput
+                               ) -> List[torch.utils.hooks.RemovableHandle]:
         """Register the generated hook function to the modules in the config.
 
         At the same time, we need to add in the image path itself and the prompt
         which will be used for the database input.
 
         Args:
-            image_path (str): The path to the image used for the specific pass.
-            prompt (str): The prompt used for the specific pass.
-            label (str): Optional argument for the ground truth or classification label of an entry.
+            model_input (ModelInput | DatasetModelInput): The input dictionary
+                containing the image path, prompt, label (if applicable) and
+                the data itself.
 
         Raises:
             RuntimeError: Calls a runtime error if no hooks were registered
@@ -171,18 +203,17 @@ class ModelBase(ABC):
                 can remove after the forward pass.
         """
         logging.debug(
-            f'Registering module hook for {image_path} using prompt "{prompt}"'
+            f'Registering module hook for {model_input["image_path"]} using prompt "{model_input["prompt"]}"'
         )
 
         # a list of hooks to remove after the forward pass
         hooks = []
 
-        # for each module, register the state hook, which will save the output
-        # state from the module to a sql database, according to above
+        # for each module, register the state hook and save the output to database
         for name, module in self.model.named_modules():
             if self.config.matches_module(name):
                 hooks.append(module.register_forward_hook(
-                    self._generate_state_hook(name, image_path, prompt, label)
+                    self._generate_state_hook(name, model_input)
                 ))
                 logging.debug(f'Registered hook to {name}')
 
@@ -203,32 +234,24 @@ class ModelBase(ABC):
             data (BatchFeature): The given data tensor.
         """
         data.to(self.config.device)
-        logging.debug(data)
         with torch.no_grad():
             _ = self.model(**data)
         logging.debug('Completed forward pass...')
 
-    def _hook_and_eval(self, input: ModelInput) -> None:
+    def _hook_and_eval(self, model_input: ModelInput | DatasetModelInput) -> None:
         """Given some input, performs a single forward pass.
 
         Args:
-            input (ModelInput): The tuple of the image path, prompt and
-                input data dictionary.
+            model_input (ModelInput | DatasetModelInput): The given input dictionary.
         """
         logging.debug('Starting forward pass')
         self.model.eval()
 
-        label = None
-        if len(input) == 4:
-            image_path, prompt, label, data = input
-        else:
-            image_path, prompt, data = input
-
         # now set up the modules to register the hook to
-        hooks = self._register_module_hooks(image_path, prompt, label)
+        hooks = self._register_module_hooks(model_input)
 
         # then ensure that the data is correct
-        self._forward(data)
+        self._forward(model_input['data'])
 
         for hook in hooks:
             hook.remove()
@@ -242,51 +265,67 @@ class ModelBase(ABC):
 
         cursor = self.connection.cursor()
 
-        # Create a table
-        cursor.execute(
-            f"""
-                CREATE TABLE IF NOT EXISTS {self.config.DB_TABLE_NAME} (
-                    id INTEGER PRIMARY KEY,
-                    name TEXT NOT NULL,
-                    architecture TEXT NOT NULL,
-                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    image_path TEXT NOT NULL,
-                    prompt TEXT NOT NULL,
-                    label TEXT NULL,
-                    layer TEXT NOT NULL,
-                    tensor BLOB NOT NULL
-                );
-            """
-        )
+        if self.config.dataset:
+            # Create a table for dataset attributes
+            cursor.execute(
+                f"""
+                    CREATE TABLE IF NOT EXISTS {self.config.DB_TABLE_NAME} (
+                        id INTEGER PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        architecture TEXT NOT NULL,
+                        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        image_id INTEGER NOT NULL,
+                        prompt TEXT NOT NULL,
+                        label TEXT NULL,
+                        layer TEXT NOT NULL,
+                        tensor BLOB NOT NULL
+                    );
+                """
+            )
+
+        else:
+            # Create a table
+            cursor.execute(
+                f"""
+                    CREATE TABLE IF NOT EXISTS {self.config.DB_TABLE_NAME} (
+                        id INTEGER PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        architecture TEXT NOT NULL,
+                        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        image_path TEXT NOT NULL,
+                        prompt TEXT NOT NULL,
+                        layer TEXT NOT NULL,
+                        tensor BLOB NOT NULL
+                    );
+                """
+            )
         self.connection.commit()
 
     def _cleanup(self) -> None:
         """Cleanups the database by closing the connection."""
         self.connection.close()
 
-    def _generate_processor_output(self, prompt: str, img_path: str) -> dict:
+    def _generate_processor_output(self, prompt: str, img_path: str | Image.Image) -> dict:
         """Generate the processor outputs from the prompt and image path.
 
         Args:
             prompt (str): The generated prompt string with the input text and
                 the image labels.
-            img_path (str): The specified image path.
+            img_path (str | Image.Image): The specified input image path or image object.
 
         Returns:
             dict: The corresponding processor output per image and prompt.
         """
-        return self.processor(**(
-            {
-                'text': prompt,
-                'return_tensors': 'pt'
-            }
-            if img_path is None else
-            {
-                'text': prompt,
-                'images': [Image.open(img_path).convert('RGB')],
-                'return_tensors': 'pt'
-            }
-        ))
+        data = {
+            'text': prompt,
+            'return_tensors': 'pt'
+        }
+
+        if img_path:
+            img = Image.open(img_path) if isinstance(img_path, str) else img_path
+            data['images'] = [img.convert('RGB')]
+
+        return self.processor(**data)
 
     def _generate_prompt(self, prompt: str, add_generation_prompt: bool = True) -> str:
         """Generates the prompt string with the input messages.
@@ -343,48 +382,42 @@ class ModelBase(ABC):
         if self.config.dataset:
             # Use the dataset to load input data, which includes (id, prompt, image_path)
             for row in self.config.dataset:
-                if 'label' in self.config.dataset.column_names:
-                    yield (
-                        row['image_path'],
-                        row['prompt'],
-                        row['label'],
-                        self._generate_processor_output(
-                            prompt=self._generate_prompt(row['prompt']),
-                            img_path=row['image_path']
-                        )
-                    )
+                prompt = self._generate_prompt(row['prompt'])
+                data = self._generate_processor_output(
+                    prompt=prompt,
+                    img_path=row['image_path']
+                )
 
-                else:
-
-                    yield (
-                        row['image_path'],
-                        row['prompt'],
-                        self._generate_processor_output(
-                            prompt=self._generate_prompt(row['prompt']),
-                            img_path=row['image_path']
-                        )
-                    )
+                yield {
+                    'image_path': row['image_path'],
+                    'prompt': row['prompt'],
+                    'label': row['label'] if 'label' in self.config.dataset.column_names else None,
+                    'data': data,
+                    'row_id': row['id'],
+                }
 
         else:
             if not self.config.has_images():
-                yield (
-                    self.config.NO_IMG_PROMPT,
-                    self.config.prompt,
-                    self._generate_processor_output(
-                        prompt=self._generate_prompt(self.config.prompt),
+                yield {
+                    'image_path': self.config.NO_IMG_PROMPT,  # TODO: Check this?
+                    'prompt': self.config.prompt,
+                    'data': self._generate_processor_output(
+                        prompt=self._generate_prompt(),
                         img_path=None
                     )
-                )
+                }
             else:
+                prompt = self._generate_prompt(self.config.prompt)
                 for img_path in self.config.image_paths:
-                    yield (
-                        img_path,
-                        self.config.prompt,
-                        self._generate_processor_output(
-                            prompt=self._generate_prompt(self.config.prompt),
-                            img_path=img_path
-                        )
+                    data = self._generate_processor_output(
+                        prompt=prompt,
+                        img_path=img_path
                     )
+                    yield {
+                        'image_path': img_path,
+                        'prompt': self.config.prompt,
+                        'data': data
+                    }
 
     def run(self) -> None:
         """Get the hidden states from the model and saving them."""
@@ -399,8 +432,8 @@ class ModelBase(ABC):
             torch.cuda.reset_peak_memory_stats(self.config.device)
 
         # then run everything else
-        for input in self._load_input_data():
-            self._hook_and_eval(input)
+        for sample in self._load_input_data():
+            self._hook_and_eval(sample)
 
         # then output peak memory usage, if using cuda
         if self.config.device.type == 'cuda':

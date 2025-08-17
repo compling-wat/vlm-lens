@@ -95,27 +95,26 @@ To using `vlm-lens` with either hosted or local datasets, there are multiple met
 
 First, your dataset must be standardized to a format that includes the attributes of `prompt`, `label` and `image_path`. Here is a snippet of the `compling/coco-val2017-obj-qa-categories` dataset, adjusted with the former attributes:
 
-| prompt | label | image_path |
-|---|---|---|
-| Is this A photo of a dining table on the bottom | yes | /path/to/397133.png
-| Is this A photo of a dining table on the top | no | /path/to/37777.png
+| id | prompt | label | image_path |
+|---|---|---|---|
+| 397,133 | Is this A photo of a dining table on the bottom | yes | /path/to/397133.png
+| 37,777 | Is this A photo of a dining table on the top | no | /path/to/37777.png
 
 This can be achieved manually or using the helper script in `scripts/map_datasets.py`.
 
 ### Method 1: Using hosted datasets
-<!-- If you are using datasets hosted on a platform such as HuggingFace, you will either use images that are also *hosted*, or ones that are *downloaded locally* with an identifier to map back to the hosted dataset (e.g., filename). -->
+If you are using datasets hosted on a platform such as HuggingFace, you will either use images that are also *hosted*, or ones that are *downloaded locally* with an identifier to map back to the hosted dataset (e.g., filename).
 
 You must use the `dataset_path` attribute in your configuration file with the appropriate `dataset_split` (if it exists, otherwise leave it out).
 
-<!-- #### 1(a): Hosted Dataset with Hosted Images
-
+#### 1(a): Hosted Dataset with Hosted Images
 ```yaml
 dataset:
   - dataset_path: compling/coco-val2017-obj-qa-categories
   - dataset_split: val2017
-``` -->
+```
 
-#### 1(a): Hosted Dataset with Local Images
+#### 1(b): Hosted Dataset with Local Images
 
 > 🚨 **NOTE**: The `image_path` attribute in the dataset must contain either filenames or relative paths, such that a cell value of `train/00023.png` can be joined with `image_dataset_path` to form the full absolute path: `/path/to/local/images/train/00023.png`. If the `image_path` attribute does not require any additional path joining, you can leave out the `image_dataset_path` attribute.
 
@@ -130,15 +129,14 @@ dataset:
 
 
 ### Method 2: Using local datasets
-<!-- #### 2(a): Local Dataset containing Image Files
-
+#### 2(a): Local Dataset containing Image Files
 ```yaml
 dataset:
   - local_dataset_path: /path/to/local/COCO
   - dataset_split: train # leave out if unspecified
-``` -->
+```
 
-#### 2(a): Local Dataset with Separate Input Image Directory
+#### 2(b): Local Dataset with Separate Input Image Directory
 
 > 🚨 **NOTE**: The `image_path` attribute in the dataset must contain either filenames or relative paths, such that a cell value of `train/00023.png` can be joined with `image_dataset_path` to form the full absolute path: `/path/to/local/images/train/00023.png`. If the `image_path` attribute does not require any additional path joining, you can leave out the `image_dataset_path` attribute.
 
