@@ -152,11 +152,12 @@ class ModelBase(ABC):
             if self.config.dataset:
                 cursor.execute(f"""
                     INSERT INTO {self.config.DB_TABLE_NAME}
-                    (name, architecture, image_path, prompt, label, layer, tensor_dim, tensor)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+                    (name, architecture, image_id, prompt, label, layer, tensor)
+                    VALUES (?, ?, ?, ?, ?, ?, ?);
                 """, (
                     self.model_path,
                     self.config.architecture.value,
+<<<<<<< HEAD
                     image_path,
                     prompt,
                     label,
@@ -164,6 +165,27 @@ class ModelBase(ABC):
                     output_dim,
                     tensor_blob.getvalue()
                 )
+=======
+                    row_id,
+                    prompt,
+                    label,
+                    name,
+                    tensor_blob.getvalue())
+                )
+
+            else:
+                cursor.execute(f"""
+                        INSERT INTO {self.config.DB_TABLE_NAME}
+                        (name, architecture, image_path, prompt, layer, tensor)
+                        VALUES (?, ?, ?, ?, ?, ?, ?);
+                    """, (
+                    self.model_path,
+                    self.config.architecture.value,
+                    image_path,
+                    prompt,
+                    name,
+                    tensor_blob.getvalue())
+>>>>>>> 043200f ([feat] support for in-dataset images in feature extraction)
                 )
 
             self.connection.commit()
@@ -258,23 +280,40 @@ class ModelBase(ABC):
 
         cursor = self.connection.cursor()
 
-        # Create a table
-        cursor.execute(
-            f"""
-                CREATE TABLE IF NOT EXISTS {self.config.DB_TABLE_NAME} (
-                    id INTEGER PRIMARY KEY,
-                    name TEXT NOT NULL,
-                    architecture TEXT NOT NULL,
-                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    image_path TEXT NOT NULL,
-                    prompt TEXT NOT NULL,
-                    label TEXT NULL,
-                    layer TEXT NOT NULL,
-                    tensor_dim INTEGER NOT NULL,
-                    tensor BLOB NOT NULL
-                );
-            """
-        )
+        if self.config.dataset:
+            # Create a table for dataset attributes
+            cursor.execute(
+                f"""
+                    CREATE TABLE IF NOT EXISTS {self.config.DB_TABLE_NAME} (
+                        id INTEGER PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        architecture TEXT NOT NULL,
+                        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        image_id INTEGER NOT NULL,
+                        prompt TEXT NOT NULL,
+                        label TEXT NULL,
+                        layer TEXT NOT NULL,
+                        tensor BLOB NOT NULL
+                    );
+                """
+            )
+
+        else:
+            # Create a table
+            cursor.execute(
+                f"""
+                    CREATE TABLE IF NOT EXISTS {self.config.DB_TABLE_NAME} (
+                        id INTEGER PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        architecture TEXT NOT NULL,
+                        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        image_path TEXT NOT NULL,
+                        prompt TEXT NOT NULL,
+                        layer TEXT NOT NULL,
+                        tensor BLOB NOT NULL
+                    );
+                """
+            )
         self.connection.commit()
 
     def _cleanup(self) -> None:
@@ -358,25 +397,20 @@ class ModelBase(ABC):
         if self.config.dataset:
             # Use the dataset to load input data, which includes (id, prompt, image_path)
             for row in self.config.dataset:
-                if 'label' in self.config.dataset.column_names:
-                    yield (
-                        row['image'],
-                        row['prompt'],
-                        row['label'],
-                        self._generate_processor_output(
-                            prompt=self._generate_prompt(row['prompt']),
-                            img_path=row['image']
-                        )
-                    )
-                else:
-                    yield (
-                        row['image'],
-                        row['prompt'],
-                        self._generate_processor_output(
-                            prompt=self._generate_prompt(row['prompt']),
-                            img_path=row['image']
-                        )
-                    )
+                prompt = self._generate_prompt(row['prompt'])
+                data = self._generate_processor_output(
+                    prompt=prompt,
+                    img_path=row['image_path']
+                )
+
+                yield {
+                    'image_path': row['image_path'],
+                    'prompt': row['prompt'],
+                    'label': row['label'] if 'label' in self.config.dataset.column_names else None,
+                    'data': data,
+                    'row_id': row['id'],
+                }
+
         else:
             if not self.config.has_images():
                 yield {
