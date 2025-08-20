@@ -189,7 +189,7 @@ def calculate_image_hash(image: Image.Image) -> str:
     return ''.join(str(bit) for bit in binary.flatten())
 
 
-def images_are_similar(hash1: str, hash2: str, threshold: int = 10) -> bool:
+def images_are_similar(hash1: str, hash2: str, threshold: int = 5) -> bool:
     """Check if two image hashes are similar.
 
     Args:
@@ -325,7 +325,8 @@ def download_image(
                 # Check for duplicates
                 for existing_hash in existing_hashes:
                     if images_are_similar(image_hash, existing_hash):
-                        print(f'❌ Skipping {filename}: similar image already exists')
+                        print(f'❌ Skipping {filename}: similar image already exists '
+                              f'(hamming distance: {sum(c1 != c2 for c1, c2 in zip(image_hash, existing_hash))})')
                         return False, None
 
                 if normalize and normalize > 0:
@@ -356,7 +357,7 @@ def download_image(
         return False, None
 
 
-def search_creative_commons_images(query: str, num_images: int = 10, retrieve: int = 5) -> List[str]:
+def search_creative_commons_images(query: str, num_images: int = 10, retrieve: int = 10) -> List[str]:
     """Search Google Images for Creative Commons licensed images.
 
     Args:
@@ -422,9 +423,10 @@ def search_creative_commons_images(query: str, num_images: int = 10, retrieve: i
 
         # Final URL deduplication
         urls = list(dict.fromkeys(urls))
-        urls = urls[: max(num_images * retrieve, num_images)]
+        # Return more URLs than requested to account for duplicates/failures
+        max_urls = max(num_images * retrieve, len(urls))
         print(f'✓ Found {len(urls)} potential direct image URLs')
-        return urls[:num_images]
+        return urls[:max_urls]
 
     except Exception as e:
         print(f'❌ Error searching images: {e}')
@@ -487,11 +489,11 @@ def download_with_fallback(query: str, num_images: int = 10, normalize: int = -1
         Path to download folder or None if no images downloaded.
     """
     print('🎯 Attempting Google Images first...')
-    urls = search_creative_commons_images(query, num_images)
+    urls = search_creative_commons_images(query, num_images, retrieve=10)
 
-    if len(urls) < num_images // 2:  # If we get very few results
+    if len(urls) < num_images * 3:  # If we don't have enough buffer
         print('⚡ Trying Bing as backup...')
-        bing_urls = search_bing_creative_commons(query, num_images)
+        bing_urls = search_bing_creative_commons(query, num_images * 5)
         urls.extend(bing_urls)
         # URL deduplication
         urls = list(dict.fromkeys(urls))
@@ -500,12 +502,16 @@ def download_with_fallback(query: str, num_images: int = 10, normalize: int = -1
         print('❌ No images found with either method')
         return None
 
+    print(f'📋 Total URLs to try: {len(urls)}')
+
     # Proceed with download
     folder = create_download_folder(query)
     downloaded_count = 0
+    skipped_similar = 0
+    skipped_errors = 0
     image_hashes: Set[str] = set()  # For RGB-level deduplication
 
-    for i, url in enumerate(urls[:num_images * 2]):  # Try up to double the requested amount
+    for i, url in enumerate(urls):
         if downloaded_count >= num_images:
             break
 
@@ -517,11 +523,27 @@ def download_with_fallback(query: str, num_images: int = 10, normalize: int = -1
         if success and img_hash:
             downloaded_count += 1
             image_hashes.add(img_hash)
+        elif 'similar image already exists' in str(success):
+            skipped_similar += 1
+        else:
+            skipped_errors += 1
+
+        # Progress indicator
+        if (i + 1) % 10 == 0:
+            print(f'📊 Progress: {downloaded_count}/{num_images} downloaded, '
+                  f'{skipped_similar} similar, {skipped_errors} errors, '
+                  f'{len(urls) - i - 1} URLs remaining')
 
         time.sleep(random.uniform(0.5, 1.5))
 
     print(f"\n🎉 Downloaded {downloaded_count} images to \'{folder}\' folder")
-    return folder
+    print(f'📈 Summary: {downloaded_count} downloaded, {skipped_similar} similar, {skipped_errors} errors')
+
+    if downloaded_count < num_images:
+        print(f'⚠️  Only found {downloaded_count}/{num_images} unique images from {len(urls)} URLs')
+        print('💡 Try a more specific search term or different query for more variety')
+
+    return folder if downloaded_count > 0 else None
 
 
 def example_usage() -> None:
