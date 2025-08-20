@@ -4,10 +4,12 @@ This module provides functionality to download Creative Commons licensed images
 from Google Images and Bing, with URL and RGB-level deduplication capabilities.
 """
 
+import json
 import os
 import random
 import re
 import time
+from glob import glob
 from io import BytesIO
 from typing import List, Optional, Set, Tuple
 from urllib.parse import parse_qs, quote, unquote
@@ -19,7 +21,7 @@ from PIL import Image, ImageFile, ImageOps, UnidentifiedImageError
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 _DIRECT_IMG_EXT = ('.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.tiff')
-_DATA_DIR = './images'
+_DATA_DIR = './data/concepts/images'
 
 
 def create_download_folder(query: str) -> str:
@@ -587,15 +589,44 @@ if __name__ == '__main__':
     # Example usage
     example_usage()
 
-    query = 'red'
+    colors = [
+        'red', 'blue', 'yellow', 'green',
+        # 'orange', 'purple', 'white', 'black',
+        # 'gray', 'silver', 'gold', 'pink', 'brown',
+        # 'beige', 'crimson', 'maroon', 'cyan',
+        # 'turquoise', 'violet', 'magenta'
+    ]
     num_images = 10
-    print(f"\n🔍 Searching for \'{query}\' with {num_images} images...")
-    folder = download_with_fallback(query, num_images, normalize=256)
 
-    if folder:
-        print(f'Images downloaded to: {folder}')
-    else:
-        print('No images were downloaded.')
+    # Dictionary to store query -> image paths mapping
+    download_results = {}
+
+    for query in colors:
+        print(f"\n🔍 Searching for '{query}' with {num_images} images...")
+        folder = download_with_fallback(query, num_images, normalize=256)
+
+        if folder:
+            # Get list of downloaded images for this query
+            image_pattern = os.path.join(folder, f'{query.replace(" ", "_")}_*.jpg')
+            downloaded_images = glob(image_pattern)
+            downloaded_images.sort()  # Sort for consistent ordering
+
+            download_results[query] = downloaded_images
+            print(f'Images downloaded to: {folder}')
+            print(f'Files: {[os.path.basename(img) for img in downloaded_images]}')
+        else:
+            download_results[query] = []
+            print('No images were downloaded.')
+
+    # Save results to JSON file
+    results_file = os.path.join(_DATA_DIR, 'concepts.json')
+    with open(results_file, 'w') as f:
+        json.dump(download_results, f, indent=2)
+
+    print(f'\nDownload results saved to: {results_file}')
+    print('Summary:')
+    for query, images in download_results.items():
+        print(f'  {query}: {len(images)} images')
 
     # Uncomment to run interactive mode in Colab
     # interactive_download()
