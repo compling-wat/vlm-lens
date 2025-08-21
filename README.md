@@ -14,6 +14,7 @@
 - [Feature Extraction using Datasets](#feature-extraction-using-datasets)
 - [Output Database](#output-database)
 - [Contributing to VLM-Lens](#contributing-to-vlm-lens)
+- [Miscellaneous](#miscellaneous)
 
 ## Environment Setup
 We recommend using a virtual environment to manage your dependencies. You can create one using the following command to create a virtual environment under
@@ -68,18 +69,15 @@ modules:  # List of modules to extract embeddings from
 ```
 
 To run the extraction on available GPU, use the following command:
-```base
-python src/main.py \
-  --config configs/qwen-2b.yaml \
-  --device cuda \
-  --debug
+```bash
+python src/main.py --config configs/qwen-2b.yaml --device cuda --debug
 ```
 
-## Model Layers
-### Retrieving all Named Modules
+## Layers of Interest in a VLM
+### Retrieving All Named Modules
 Unfortunately there is no way to find which layers to potentially match to without loading the model. This can take quite a bit of system time figuring out.
 
-Instead, we offer some cached results under `logs/` for each model, which were generated through including the `-l` or `--log_named_modules` flag.
+Instead, we offer some cached results under `logs/` for each model, which were generated through including the `-l` or `--log_named_modules` flag when running `python src/main.py`.
 
 When running this flag, it is not necessary to set modules or anything besides the architecture and HuggingFace model path.
 
@@ -91,8 +89,8 @@ For example, if one wanted to match with all the attention layer's query project
 modules:
   - model.layers.*.self_attn.q_proj
 ```
-## Feature extraction using datasets
-To using `vlm-lens` with either hosted or local datasets, there are multiple methods you can use depending on the location of the input images.
+## Feature Extraction using Huggingface Datasets
+To using VLM-Lens with either hosted or local datasets, there are multiple methods you can use depending on the location of the input images.
 
 First, your dataset must be standardized to a format that includes the attributes of `prompt`, `label` and `image_path`. Here is a snippet of the `compling/coco-val2017-obj-qa-categories` dataset, adjusted with the former attributes:
 
@@ -180,7 +178,7 @@ pre-commit install
 ```
 
 
-
+## Miscellaneous
 
 ### Using a Cache
 To use a specific cache, one should set the `HF_HOME` environment variable as so:
@@ -190,7 +188,7 @@ HF_HOME=./cache/ python src/main.py --config configs/clip-base.yaml --debug
 
 
 
-### Using specific models
+### Using Submodule-Based Models
 #### Glamm
 For Glamm (GroundingLMM), one needs to clone the separate submodules, which can be done with the following command:
 ```
