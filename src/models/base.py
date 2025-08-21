@@ -12,6 +12,7 @@ from collections.abc import Iterator
 from typing import Callable, List, Optional, TypedDict
 
 import torch
+import tqdm
 from PIL import Image
 from transformers import AutoProcessor
 from transformers.feature_extraction_utils import BatchFeature
@@ -357,20 +358,25 @@ class ModelBase(ABC):
         if self.config.dataset:
             # Use the dataset to load input data, which includes (id, prompt, image_path)
             for row in self.config.dataset:
-                prompt = self._generate_prompt(row['prompt'])
-                data = self._generate_processor_output(
-                    prompt=prompt,
-                    img_path=row['image_path']
-                )
-
-                yield {
-                    'image_path': row['image_path'],
-                    'prompt': row['prompt'],
-                    'label': row['label'] if 'label' in self.config.dataset.column_names else None,
-                    'data': data,
-                    'row_id': row['id'],
-                }
-
+                if 'label' in self.config.dataset.column_names:
+                    yield (
+                        row['image_path'],
+                        row['prompt'],
+                        row['label'],
+                        self._generate_processor_output(
+                            prompt=self._generate_prompt(row['prompt']),
+                            img_path=row['image_path']
+                        )
+                    )
+                else:
+                    yield (
+                        row['image_path'],
+                        row['prompt'],
+                        self._generate_processor_output(
+                            prompt=self._generate_prompt(row['prompt']),
+                            img_path=row['image_path']
+                        )
+                    )
         else:
             if not self.config.has_images():
                 yield {
@@ -394,6 +400,21 @@ class ModelBase(ABC):
                         'data': data
                     }
 
+    @property
+    def _data_size(self) -> int:
+        """Returns the total number of data points.
+
+        Returns:
+            int: The total number of data points.
+        """
+        if self.config.dataset:
+            return len(self.config.dataset)
+        else:
+            if not self.config.has_images():
+                return 1
+            else:
+                return len(self.config.image_paths)
+
     def run(self) -> None:
         """Get the hidden states from the model and saving them."""
         # let's first initialize a database connection
@@ -407,8 +428,8 @@ class ModelBase(ABC):
             torch.cuda.reset_peak_memory_stats(self.config.device)
 
         # then run everything else
-        for sample in self._load_input_data():
-            self._hook_and_eval(sample)
+        for item in tqdm.tqdm(self._load_input_data(), desc='Running forward hooks on data', total=self._data_size):
+            self._hook_and_eval(item)
 
         # then output peak memory usage, if using cuda
         if self.config.device.type == 'cuda':
