@@ -130,8 +130,11 @@ class ModelBase(ABC):
                 module (torch.nn.Module): The module that save its hook on.
                 input (tuple): The input used.
                 output (torch.Tensor): The embeddings to save.
-
             """
+            if not isinstance(output, torch.Tensor):
+                logging.warning(f'Output type of {str(type(module))} is not a tensor, skipped.')
+                return
+
             cursor = self.connection.cursor()
 
             # Convert the tensor to a binary blob
@@ -141,36 +144,25 @@ class ModelBase(ABC):
             # TODO: add support for max and endpoint pooling
             final_output = output.mean(
                 dim=1) if self.config.pooled_output else output
+            output_dim = final_output.shape[-1]
             torch.save(final_output, tensor_blob)
 
             # Insert the tensor into the table
             if self.config.dataset:
                 cursor.execute(f"""
                     INSERT INTO {self.config.DB_TABLE_NAME}
-                    (name, architecture, image_id, prompt, label, layer, tensor)
-                    VALUES (?, ?, ?, ?, ?, ?, ?);
+                    (name, architecture, image_path, prompt, label, layer, tensor_dim, tensor)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?);
                 """, (
-                    self.model_path,
-                    self.config.architecture.value,
-                    row_id,
-                    prompt,
-                    label,
-                    name,
-                    tensor_blob.getvalue())
-                )
-
-            else:
-                cursor.execute(f"""
-                        INSERT INTO {self.config.DB_TABLE_NAME}
-                        (name, architecture, image_path, prompt, layer, tensor)
-                        VALUES (?, ?, ?, ?, ?, ?, ?);
-                    """, (
                     self.model_path,
                     self.config.architecture.value,
                     image_path,
                     prompt,
+                    label,
                     name,
-                    tensor_blob.getvalue())
+                    output_dim,
+                    tensor_blob.getvalue()
+                )
                 )
 
             self.connection.commit()
@@ -265,40 +257,23 @@ class ModelBase(ABC):
 
         cursor = self.connection.cursor()
 
-        if self.config.dataset:
-            # Create a table for dataset attributes
-            cursor.execute(
-                f"""
-                    CREATE TABLE IF NOT EXISTS {self.config.DB_TABLE_NAME} (
-                        id INTEGER PRIMARY KEY,
-                        name TEXT NOT NULL,
-                        architecture TEXT NOT NULL,
-                        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-                        image_id INTEGER NOT NULL,
-                        prompt TEXT NOT NULL,
-                        label TEXT NULL,
-                        layer TEXT NOT NULL,
-                        tensor BLOB NOT NULL
-                    );
-                """
-            )
-
-        else:
-            # Create a table
-            cursor.execute(
-                f"""
-                    CREATE TABLE IF NOT EXISTS {self.config.DB_TABLE_NAME} (
-                        id INTEGER PRIMARY KEY,
-                        name TEXT NOT NULL,
-                        architecture TEXT NOT NULL,
-                        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-                        image_path TEXT NOT NULL,
-                        prompt TEXT NOT NULL,
-                        layer TEXT NOT NULL,
-                        tensor BLOB NOT NULL
-                    );
-                """
-            )
+        # Create a table
+        cursor.execute(
+            f"""
+                CREATE TABLE IF NOT EXISTS {self.config.DB_TABLE_NAME} (
+                    id INTEGER PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    architecture TEXT NOT NULL,
+                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    image_path TEXT NOT NULL,
+                    prompt TEXT NOT NULL,
+                    label TEXT NULL,
+                    layer TEXT NOT NULL,
+                    tensor_dim INTEGER NOT NULL,
+                    tensor BLOB NOT NULL
+                );
+            """
+        )
         self.connection.commit()
 
     def _cleanup(self) -> None:
