@@ -184,4 +184,8 @@ cython_debug/
 *.sif
 
 # Downloaded Data
-data/
+data/concepts/images
+
+# Notebooks
+*.ipynb_checkpoints
+notebooks/debug.ipynb

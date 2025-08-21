@@ -1,6 +1,6 @@
 # <img src="imgs/logo.png" alt="VLM-Lens Logo" height="48" style="vertical-align:middle; margin-right:50px;"/> VLM-Lens
 
-[![python](https://img.shields.io/badge/Python-3.11%2B-blue.svg?logo=python&style=flat-square)](https://www.python.org/downloads/release/python-31012/)
+[![python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&style=flat-square)](https://www.python.org/downloads/release/python-31012/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](https://www.apache.org/licenses/LICENSE-2.0)
 [![Documentation](https://img.shields.io/badge/Documentation-Online-blue.svg?style=flat-square)](https://compling-wat.github.io/vlm-lens/)
 
@@ -18,12 +18,13 @@
 ## Environment Setup
 We recommend using a virtual environment to manage your dependencies. You can create one using the following command to create a virtual environment under
 ```bash
-virtualenv --no-download "venv/vlm-lens-base" --prompt "vlm-lens-base"
+virtualenv --no-download "venv/vlm-lens-base" --prompt "vlm-lens-base"  # Or "python3.10 -m venv venv/vlm-lens-base"
 source venv/vlm-lens-base/bin/activate
 ```
 
 Then, install the required dependencies:
 ```bash
+pip install --upgrade pip
 pip install -r envs/base/requirements.txt
 ```
 
