@@ -232,26 +232,20 @@ class Config:
 
             # Load image dataset
             img_dir = ds_mapping.get('image_dataset_path', None)
-            img_split = ds_mapping.get('image_split', None)
             if img_dir:
                 logging.debug(
-                    f'Locating image dataset from {img_dir} with split={img_split}...')
-                if img_split:
-                    img_dir = os.path.join(
-                        img_dir,
-                        img_split
-                    )
+                    f'Locating image dataset from {img_dir}...')
 
                 # Accounts for mapping relative paths as well as filenames
                 dataset = dataset.map(
                     lambda row: {'image': os.path.join(img_dir, row['image'])})
 
                 self.image_paths = dataset['image']  # for debug purposes
+
             self.dataset = dataset
 
         else:
             self.dataset = None
-
             self.set_image_paths(self.input_dir
                                  if hasattr(self, 'input_dir') else
                                  None)
