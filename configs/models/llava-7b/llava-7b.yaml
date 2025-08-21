@@ -5,3 +5,5 @@ prompt: "Describe the color in this image in one word."
 output_db: output/llava.db
 modules:
   - vision_tower.vision_model
+  - vision_tower.vision_model.encoder.layers.23.layer_norm2
+  - language_model.model.layers.31.post_attention_layernorm

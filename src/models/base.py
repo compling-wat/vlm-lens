@@ -110,8 +110,11 @@ class ModelBase(ABC):
                 module (torch.nn.Module): The module that save its hook on.
                 input (tuple): The input used.
                 output (torch.Tensor): The embeddings to save.
-
             """
+            if not isinstance(output, torch.Tensor):
+                logging.warning(f'Output type of {str(type(module))} is not a tensor, skipped.')
+                return
+
             cursor = self.connection.cursor()
 
             # Convert the tensor to a binary blob
@@ -120,13 +123,14 @@ class ModelBase(ABC):
             # TODO: add support for max and endpoint pooling
             final_output = output.mean(
                 dim=1) if self.config.pooled_output else output
+            output_dim = final_output.shape[-1]
             torch.save(final_output, tensor_blob)
 
             # Insert the tensor into the table
             cursor.execute(f"""
                     INSERT INTO {self.config.DB_TABLE_NAME}
-                    (name, architecture, image_path, prompt, label, layer, tensor)
-                    VALUES (?, ?, ?, ?, ?, ?, ?);
+                    (name, architecture, image_path, prompt, label, layer, tensor_dim, tensor)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?);
                 """, (
                 self.model_path,
                 self.config.architecture.value,
@@ -134,6 +138,7 @@ class ModelBase(ABC):
                 prompt,
                 label,
                 name,
+                output_dim,
                 tensor_blob.getvalue()
             )
             )
@@ -254,6 +259,7 @@ class ModelBase(ABC):
                     prompt TEXT NOT NULL,
                     label TEXT NULL,
                     layer TEXT NOT NULL,
+                    tensor_dim INTEGER NOT NULL,
                     tensor BLOB NOT NULL
                 );
             """
