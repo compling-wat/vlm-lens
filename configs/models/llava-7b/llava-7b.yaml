@@ -1,6 +1,6 @@
 architecture: llava
 model_path: llava-hf/llava-1.5-7b-hf
-input_dir: ./data/
+input_dir: ./data/test-images/
 prompt: "Describe the color in this image in one word."
 output_db: output/llava.db
 modules:

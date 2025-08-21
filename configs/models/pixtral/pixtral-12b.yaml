@@ -1,6 +1,6 @@
 architecture: pixtral
 model_path: mistralai/Pixtral-12B-2409
-input_dir: ./data/
+input_dir: ./data/test-images/
 prompt: "Describe the color in this image in one word."
 output_db: output/pixtral.db
 modules:

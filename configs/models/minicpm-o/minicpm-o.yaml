@@ -7,7 +7,7 @@ model:
 forward:
   - max_new_tokens: 1
 output_db: output/minicpm-o.db
-input_dir: ./data/
+input_dir: ./data/test-images/
 prompt: "Describe the color in this image in one word."
 modules:
   - llm.lm_head

@@ -3,7 +3,7 @@ model_path: CohereLabs/aya-vision-8b
 model:
   - torch_dtype: float16
 output_db: output/aya-vision.db
-input_dir: ./data/
+input_dir: ./data/test-images/
 prompt: "Describe the color in this image in one word."
 modules:
   - language_model.model.layers.15.input_layernorm
