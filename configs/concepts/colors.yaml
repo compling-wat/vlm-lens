@@ -4,7 +4,7 @@
 # Basic Settings
 num_images: 10
 normalize_size: 256
-data_dir: "./data/concepts/images"
+data_dir: "./data/images/colors/"
 results_filename: "colors.json"
 
 # Search Provider Configuration
@@ -37,8 +37,8 @@ queries:
   - "green"
   # - "orange"
   # - "purple"
-  # - "white"
-  # - "black"
+  - "white"
+  - "black"
   # - "gray"
   # - "silver"
   # - "gold"
