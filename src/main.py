@@ -1,6 +1,6 @@
 """main.py.
 
-This module here is the entrypoint to the VLM Competence toolkit.
+This module here is the entrypoint to the VLM Lens toolkit.
 """
 import logging
 import os
