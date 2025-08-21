@@ -244,9 +244,9 @@ class Config:
 
                 # Accounts for mapping relative paths as well as filenames
                 dataset = dataset.map(
-                    lambda row: {'image_path': os.path.join(img_dir, row['image_path'])})
+                    lambda row: {'image': os.path.join(img_dir, row['image'])})
 
-                self.image_paths = dataset['image_path']  # for debug purposes
+                self.image_paths = dataset['image']  # for debug purposes
             self.dataset = dataset
 
         else:
