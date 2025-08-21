@@ -3,7 +3,7 @@ model_path: Qwen/Qwen2-VL-2B-Instruct
 model:
   - torch_dtype: auto
 output_db: output/qwen.db
-input_dir: ./data/
+input_dir: ./data/test-images/
 prompt: "Describe the color in this image in one word."
 modules:
   - lm_head

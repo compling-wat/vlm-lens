@@ -10,7 +10,7 @@ forward:
   - max_new_tokens: 2048
   - do_sample: False
 output_db: output/cogvlm.db
-input_dir: ./data/
+input_dir: ./data/test-images/
 prompt: "Describe the color in this image in one word."
 modules:
   - model.vision.transformer.layers.62

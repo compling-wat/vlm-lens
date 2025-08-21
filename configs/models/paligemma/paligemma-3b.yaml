@@ -4,7 +4,7 @@ model:
   - torch_dtype: auto
   - token: <HUGGINGFACE_TOKEN>
 output_db: output/paligemma.db
-input_dir: ./data/
+input_dir: ./data/test-images/
 prompt: "Describe the color in this image in one word."
 modules:
   - language_model.lm_head
