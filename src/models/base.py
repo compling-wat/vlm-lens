@@ -353,11 +353,11 @@ class ModelBase(ABC):
                 prompt = self._generate_prompt(row['prompt'])
                 data = self._generate_processor_output(
                     prompt=prompt,
-                    img_path=row['image_path']
+                    img_path=row['image']
                 )
 
                 yield {
-                    'image_path': row['image_path'],
+                    'image': row['image'],
                     'prompt': row['prompt'],
                     'label': row['label'] if 'label' in self.config.dataset.column_names else None,
                     'data': data,
