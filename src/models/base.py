@@ -352,21 +352,21 @@ class ModelBase(ABC):
             for row in self.config.dataset:
                 if 'label' in self.config.dataset.column_names:
                     yield (
-                        row['image_path'],
+                        row['image'],
                         row['prompt'],
                         row['label'],
                         self._generate_processor_output(
                             prompt=self._generate_prompt(row['prompt']),
-                            img_path=row['image_path']
+                            img_path=row['image']
                         )
                     )
                 else:
                     yield (
-                        row['image_path'],
+                        row['image'],
                         row['prompt'],
                         self._generate_processor_output(
                             prompt=self._generate_prompt(row['prompt']),
-                            img_path=row['image_path']
+                            img_path=row['image']
                         )
                     )
         else:
