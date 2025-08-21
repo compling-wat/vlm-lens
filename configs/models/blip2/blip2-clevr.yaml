@@ -1,11 +1,9 @@
 architecture: blip2
 model_path: Salesforce/blip2-opt-2.7b
 dataset:
-  - dataset_path: compling/CLEVR_val_categories
+  - dataset_path: compling/CLEVR_categories
   - dataset_split: color
-  - image_dataset_path: /path/to/CLEVR_v1.0/images  # downloaded using configs/dataset/download-clevr.yaml
-  - image_split: val
-output_db: blip2_clevr.db
+output_db: blip2-clevr.db
 pooled_output: True
 modules:
   - language_model.model.decoder.layers.16.self_attn_layer_norm
