@@ -185,3 +185,7 @@ cython_debug/
 
 # Downloaded Data
 data/concepts/images
+
+# Notebooks
+*.ipynb_checkpoints
+notebooks/debug.ipynb
