@@ -1,0 +1,16 @@
+architecture: internvl
+model_path: OpenGVLab/InternVL2_5-8B
+dataset:
+  - dataset_path: compling/CLEVR_categories
+  - dataset_split: color
+output_db: internvl-clevr.db
+model:
+  - torch_dtype: bfloat16
+  - trust_remote_code: True
+forward:
+  - max_new_tokens: 1
+  - do_sample: True
+pooled_output: True
+modules:
+  - language_model.model.layers.16
+  - language_model.model.layers.31

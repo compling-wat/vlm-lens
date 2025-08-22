@@ -7,10 +7,10 @@ import sys
 from typing import List, Optional
 
 import yaml
-from datasets import Dataset, load_dataset
+from datasets import Dataset, DatasetDict, load_dataset
 
 # go up one level: scripts -> root
-ROOT = pathlib.Path(__file__).resolve().parents[2]
+ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.append(str(ROOT))
 from project_root import PROJECT_ROOT  # noqa: E402
 
@@ -124,13 +124,10 @@ def main(config_path: str) -> None:
         config = yaml.safe_load(file)
 
     # Load text_dataset
-    text_dataset = load_dataset(config['text_dataset_path'])[
-        config['text_split']]
+    text_dataset = load_dataset(config['text_dataset_path'])
 
     # Locate image dataset dir
     image_dir = config.get('image_dataset_path', None)
-    if image_dir and config.get('image_split', None):
-        image_dir = os.path.join(image_dir, config['image_split'])
 
     image_exts = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff']
     image_paths = [
@@ -154,17 +151,36 @@ def main(config_path: str) -> None:
 
         custom_map_fn = load_function_from_file(file_path, fn_name)
 
-    # Map text datasets to image paths
-    map_text_to_images(
-        text_dataset,
-        image_paths,
-        image_column=config['image_column'],
-        prompt_column=config['prompt_column'],
-        label_column=config.get('label_column', None),
-        image_regex=config.get('image_regex', '{id}'),
-        save_path=config.get('save_path', None),
-        map_fn=custom_map_fn,
-    )
+    if isinstance(text_dataset, dict):
+        # convert it by split
+        mapped_datasets = DatasetDict()
+        for k in text_dataset:
+            mapped_datasets[k] = map_text_to_images(
+                text_dataset[k],
+                image_paths,
+                image_column=config['image_column'],
+                prompt_column=config['prompt_column'],
+                label_column=config.get('label_column', None),
+                image_regex=config.get('image_regex', '{id}'),
+                save_path=None,
+                map_fn=custom_map_fn,
+            )
+        save_path = config.get('save_path', None)
+        if save_path:
+            mapped_datasets.save_to_disk(save_path)
+
+    else:
+        # Map text datasets to image paths
+        map_text_to_images(
+            text_dataset,
+            image_paths,
+            image_column=config['image_column'],
+            prompt_column=config['prompt_column'],
+            label_column=config.get('label_column', None),
+            image_regex=config.get('image_regex', '{id}'),
+            save_path=config.get('save_path', None),
+            map_fn=custom_map_fn,
+        )
 
 
 if __name__ == '__main__':
