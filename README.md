@@ -181,7 +181,13 @@ python data/concepts/download.py --config configs/concepts/colors.yaml
 Run the LLaVA model to obtain embeddings of the concept images:
 
 ```bash
-python src/main.py --config configs/models/llava-7b/llava-7b-concepts-colors.yaml
+python src/main.py --config configs/models/llava-7b/llava-7b-concepts-colors.yaml --device cuda
+```
+
+Also, run the LLaVA model to obtain embeddings of the test images:
+
+```bash
+python src/main.py --config configs/models/llava-7b/llava-7b.yaml --device cuda
 ```
 
 ### Run PCA
