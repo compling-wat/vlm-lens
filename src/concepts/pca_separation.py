@@ -315,7 +315,7 @@ def create_concept_separation_analysis(
 if __name__ == '__main__':
     # Configuration
     target_db_path = 'output/llava.db'
-    concept_db_path = 'output/llava-7b-concepts-colors.db'
+    concept_db_path = 'output/llava-concepts-colors.db'
 
     # Visualization parameters
     layer_names = None  # None for all layers, or specify: ['layer_name1', 'layer_name2']
