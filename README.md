@@ -172,6 +172,7 @@ where each column contains:
 Download license-free images for primitive concepts (e.g., colors):
 
 ```bash
+pip install -r data/concepts/requirements.txt
 python data/concepts/download.py --config configs/concepts/colors.yaml
 ```
 
@@ -187,6 +188,7 @@ python src/main.py --config configs/models/llava-7b/llava-7b-concepts-colors.yam
 
 Several PCA-based analysis scripts are provided:
 ```bash
+pip install -r src/concepts/requirements.txt
 python src/concepts/pca.py
 python src/concepts/pca_knn.py
 python src/concepts/pca_separation.py
