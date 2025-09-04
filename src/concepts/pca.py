@@ -554,7 +554,8 @@ def plot_pca_sensitivity_analysis(
     layer_names: Optional[list[str]] = None,
     max_components: int = 50,
     device: str = 'cpu',
-    output_dir: str = 'output'
+    output_dir: str = 'output',
+    raw_data_dir: Optional[str] = None
 ) -> None:
     """Plot centroid similarity vs number of PCA components for interpretability analysis.
 
@@ -565,6 +566,7 @@ def plot_pca_sensitivity_analysis(
         max_components: Maximum number of PCA components to test
         device: PyTorch device
         output_dir: Directory to save plots
+        raw_data_dir: Directory to save raw data, and will not plot if set
     """
     print(f'\n{"=" * 50}')
     print('PCA SENSITIVITY ANALYSIS')
@@ -653,6 +655,14 @@ def plot_pca_sensitivity_analysis(
                         target_results[target_name]['concept_similarities'][concept_name].append(similarity)
 
             print(' done')
+
+        if raw_data_dir is not None:
+            raw_data_path = f'{raw_data_dir}/raw.json'
+            import json
+            with open(raw_data_path, 'w') as fp:
+                json.dump(target_results, fp)
+            print('We do not plot if saving raw data.')
+            return
 
         # Create plots for this layer
         if target_results:
