@@ -657,7 +657,7 @@ def plot_pca_sensitivity_analysis(
             print(' done')
 
         if raw_data_dir is not None:
-            raw_data_path = f'{raw_data_dir}/raw.json'
+            raw_data_path = f'{raw_data_dir}/raw_{layer}.json'
             import json
             with open(raw_data_path, 'w') as fp:
                 json.dump(target_results, fp)
