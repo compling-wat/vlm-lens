@@ -1,14 +1,8 @@
 architecture: minicpm
 model_path: openbmb/MiniCPM-o-2_6
 dataset:
-  - text_dataset_path: compling/coco-val2017-obj-qa-categories
-  - image_dataset_path: /path/to/your/COCO   # downloaded using configs/dataset/coco.yaml
-  - text_split: val2017
-  - image_split: val2017
-  - prompt_column: question
-  - label_column: answer
-  - image_column: image_id
-  - image_regex: "{id:0>12}.jpg"
+  - dataset_path: compling/CLEVR_categories
+  - dataset_split: color
 forward:
   - max_new_tokens: 1
 output_db: minicpm-o-coco.db
