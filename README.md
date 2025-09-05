@@ -165,6 +165,40 @@ where each column contains:
 7. `layer` is the matched layer from `model.named_modules()`
 8. `tensor` is the embedding saved.
 
+## Principal Component Analysis over Primitive Concept
+
+### Data Collection
+
+Download license-free images for primitive concepts (e.g., colors):
+
+```bash
+pip install -r data/concepts/requirements.txt
+python data/concepts/download.py --config configs/concepts/colors.yaml
+```
+
+### Embedding Extraction
+
+Run the LLaVA model to obtain embeddings of the concept images:
+
+```bash
+python src/main.py --config configs/models/llava-7b/llava-7b-concepts-colors.yaml --device cuda
+```
+
+Also, run the LLaVA model to obtain embeddings of the test images:
+
+```bash
+python src/main.py --config configs/models/llava-7b/llava-7b.yaml --device cuda
+```
+
+### Run PCA
+
+Several PCA-based analysis scripts are provided:
+```bash
+pip install -r src/concepts/requirements.txt
+python src/concepts/pca.py
+python src/concepts/pca_knn.py
+python src/concepts/pca_separation.py
+```
 
 ## Contributing to VLM-Lens
 

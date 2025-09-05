@@ -91,8 +91,8 @@ if __name__ == '__main__':
     parser.add_argument(
         '--config',
         type=str,
-        default='colors.yaml',
-        help='Path to YAML configuration file (default: colors.yaml)'
+        default='configs/concepts/colors.yaml',
+        help='Path to YAML configuration file (default: configs/concepts/colors.yaml)'
     )
 
     args = parser.parse_args()
