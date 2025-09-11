@@ -77,7 +77,7 @@ python src/main.py --config configs/qwen-2b.yaml --device cuda --debug
 ### Retrieving All Named Modules
 Unfortunately there is no way to find which layers to potentially match to without loading the model. This can take quite a bit of system time figuring out.
 
-Instead, we offer some cached results under `logs/` for each model, which were generated through including the `-l` or `--log_named_modules` flag when running `python src/main.py`.
+Instead, we offer some cached results under `logs/` for each model, which were generated through including the `-l` or `--log-named-modules` flag when running `python src/main.py`.
 
 When running this flag, it is not necessary to set modules or anything besides the architecture and HuggingFace model path.
 

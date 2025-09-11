@@ -81,7 +81,7 @@ class Config:
         )
         parser.add_argument(
             '-l',
-            '--log_named_modules',
+            '--log-named-modules',
             default=None,
             action='store_true',
             help='Logs the named modules for the specified model'
@@ -104,7 +104,8 @@ class Config:
         parser.add_argument(
             '--device',
             type=str,
-            default='cpu',
+            default='cuda',
+            choices=['cuda', 'cpu'],
             help='Specify the device to send tensors and the model to'
         )
         parser.add_argument(
@@ -260,7 +261,7 @@ class Config:
         # now sets the specific device, first does a check to make sure that if
         # the user wants to use cuda that it is available
         if 'cuda' in self.device and not torch.cuda.is_available():
-            raise ValueError('No GPU found for this machine')
+            raise ValueError('Device set to cuda but no GPU found for this machine')
 
         self.device = torch.device(self.device)
         self.DB_TABLE_NAME = 'tensors'
