@@ -163,8 +163,9 @@ where each column contains:
 5. `prompt` stores the prompt used in that instance.
 6. `label` is an optional cell that stores the "ground-truth" answer, which is helpful in use cases such as classification.
 7. `layer` is the matched layer from `model.named_modules()`
-8. `tensor_dim` is the dimension of the tensor saved.
-9. `tensor` is the embedding saved.
+8. `pooling_method` is the pooling method used for aggregating token embeddings over tokens.
+9. `tensor_dim` is the dimension of the tensor saved.
+10. `tensor` is the embedding saved.
 
 ## Principal Component Analysis over Primitive Concept
 
