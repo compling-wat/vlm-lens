@@ -56,8 +56,6 @@ Outputs
 Extracted tensor outputs are saved as PyTorch tensors inside a SQL database file.
 In the default config file, the output database is ``cogvlm.db``.
 
-You can retrieve these tensors using ``scripts/read_tensor.py``, which lets you load and analyze the extracted data as needed.
-
 Additional Links
 -------------------------------
 | `CogVLM: Visual Expert for Pretrained Language Models <https://arxiv.org/abs/2311.03079>`_

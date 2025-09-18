@@ -54,5 +54,3 @@ Results
 
 After successful execution, extracted layer outputs are saved as PyTorch tensors inside a SQL database file.
 For the default config, the database is named ``minicpm-o.db``.
-
-You can retrieve these tensors using the script ``scripts/read_tensor.py``, which lets you load and analyze the extracted data as needed.
