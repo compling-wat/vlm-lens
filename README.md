@@ -63,6 +63,7 @@ model:  # Model configuration, i.e., arguments to pass to the model
 output_db: output/qwen.db  # Output database file to store embeddings
 input_dir: ./data/  # Directory containing images to process
 prompt: "Describe the color in this image in one word."  # Textual prompt
+pooling_method: None  # Pooling method to use for aggregating token embeddings over tokens (options: None, mean, max)
 modules:  # List of modules to extract embeddings from
   - lm_head
   - visual.blocks.31

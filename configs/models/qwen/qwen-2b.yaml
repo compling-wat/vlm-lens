@@ -5,6 +5,7 @@ model:
 output_db: output/qwen.db
 input_dir: ./data/test-images/
 prompt: "Describe the color in this image in one word."
+pooling_method: None
 modules:
   - lm_head
   - visual.blocks.31
