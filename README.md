@@ -50,10 +50,10 @@ python src/main.py \
 with an optional debug flag to see more detailed outputs.
 
 Note that the config file should be in yaml format, and that any arguments you want to send to the huggingface API should be under the `model` key.
-See `configs/qwen-2b.yaml` as an example.
+See `configs/models/qwen/qwen-2b.yaml` as an example.
 
 ### Run Qwen2-VL-2B Embeddings Extraction
-The file `configs/qwen-2b.yaml` contains the configuration for running the Qwen2-VL-2B model.
+The file `configs/models/qwen/qwen-2b.yaml` contains the configuration for running the Qwen2-VL-2B model.
 
 ```yaml
 architecture: qwen  # Architecture of the model, see more options in src/models/configs.py
@@ -70,7 +70,12 @@ modules:  # List of modules to extract embeddings from
 
 To run the extraction on available GPU, use the following command:
 ```bash
-python src/main.py --config configs/qwen-2b.yaml --device cuda --debug
+python src/main.py --config configs/models/qwen/qwen-2b.yaml --debug
+```
+
+If there is no GPU available, you can run it on CPU with:
+```bash
+python src/main.py --config configs/models/qwen/qwen-2b.yaml --device cpu --debug
 ```
 
 ## Layers of Interest in a VLM
@@ -89,8 +94,8 @@ For example, if one wanted to match with all the attention layer's query project
 modules:
   - model.layers.*.self_attn.q_proj
 ```
-## Feature Extraction using Huggingface Datasets
-To using VLM-Lens with either hosted or local datasets, there are multiple methods you can use depending on the location of the input images.
+## Feature Extraction using HuggingFace Datasets
+To use VLM-Lens with either hosted or local datasets, there are multiple methods you can use depending on the location of the input images.
 
 First, your dataset must be standardized to a format that includes the attributes of `prompt`, `label` and `image_path`. Here is a snippet of the `compling/coco-val2017-obj-qa-categories` dataset, adjusted with the former attributes:
 
@@ -122,8 +127,6 @@ dataset:
   - dataset_path: compling/coco-val2017-obj-qa-categories
   - dataset_split: val2017
   - image_dataset_path: /path/to/local/images  # downloaded using configs/dataset/download-coco.yaml
-  - image_split: val2017
-
 ```
 
 
@@ -131,7 +134,7 @@ dataset:
 #### 2(a): Local Dataset containing Image Files
 ```yaml
 dataset:
-  - local_dataset_path: /path/to/local/COCO
+  - local_dataset_path: /path/to/local/CLEVR
   - dataset_split: train # leave out if unspecified
 ```
 
@@ -141,17 +144,15 @@ dataset:
 
 ```yaml
 dataset:
-  - local_dataset_path: /path/to/local/COCO
+  - local_dataset_path: /path/to/local/CLEVR
   - dataset_split: train # leave out if unspecified
-  - image_dataset_path: /path/to/local/COCOimages
-  - image_split: train # leave out if unspecified
-
+  - image_dataset_path: /path/to/local/CLEVR/images
 ```
 
 ### Output Database
 Specified by the `-o` and `--output-db` flags, this specifies the specific output database we want. From this, in SQL we have a single table under the name `tensors` with the following columns:
 ```
-name, architecture, timestamp, image_path, prompt, label, layer, tensor
+name, architecture, timestamp, image_path, prompt, label, layer, tensor_dim, tensor
 ```
 where each column contains:
 1. `name` represents the model path from HuggingFace.
@@ -161,7 +162,8 @@ where each column contains:
 5. `prompt` stores the prompt used in that instance.
 6. `label` is an optional cell that stores the "ground-truth" answer, which is helpful in use cases such as classification.
 7. `layer` is the matched layer from `model.named_modules()`
-8. `tensor` is the embedding saved.
+8. `tensor_dim` is the dimension of the tensor saved.
+9. `tensor` is the embedding saved.
 
 ## Principal Component Analysis over Primitive Concept
 
@@ -215,12 +217,14 @@ pre-commit install
 ### Using a Cache
 To use a specific cache, one should set the `HF_HOME` environment variable as so:
 ```
-HF_HOME=./cache/ python src/main.py --config configs/clip-base.yaml --debug
+HF_HOME=./cache/ python src/main.py --config configs/models/clip/clip-base.yaml --debug
 ```
 
 
-
 ### Using Submodule-Based Models
+There are some models that require separate submodules to be cloned, such as Glamm.
+To use these models, please follow the instructions below to download the submodules.
+
 #### Glamm
 For Glamm (GroundingLMM), one needs to clone the separate submodules, which can be done with the following command:
 ```

@@ -5,7 +5,7 @@ model:
 dataset:
   - dataset_path: compling/CLEVR_categories
   - dataset_split: color
-output_db: clip-clevr.db
+output_db: output/clip-clevr.db
 pooled_output: True
 modules:
   - text_model.encoder.layers.5.layer_norm1

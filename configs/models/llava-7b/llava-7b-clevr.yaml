@@ -3,7 +3,7 @@ model_path: llava-hf/llava-1.5-7b-hf
 dataset:
   - dataset_path: compling/CLEVR_categories
   - dataset_split: color
-output_db: llava-clevr.db
+output_db: output/llava-clevr.db
 pooled_output: True
 modules:
   - language_model.model.layers.16.post_attention_layernorm

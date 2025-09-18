@@ -5,7 +5,7 @@ dataset:
   - dataset_split: color
 forward:
   - max_new_tokens: 1
-output_db: minicpm-o-coco.db
+output_db: output/minicpm-o-clevr.db
 model:
   - torch_dtype: auto
   - trust_remote_code: True

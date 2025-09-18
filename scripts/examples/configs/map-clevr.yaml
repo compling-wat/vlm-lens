@@ -1,6 +1,0 @@
-text_dataset_path: compling/CLEVR_val_categories
-image_dataset_path: data/CLEVR/CLEVR_v1.0/images/val # downloaded using configs/dataset/clevr.yaml
-prompt_column: Q
-label_column: A
-image_column: image_filename
-save_path: CLEVR_categories

@@ -3,7 +3,7 @@ model_path: /model-weights/Qwen2-VL-7B-Instruct
 dataset:
   - dataset_path: compling/CLEVR_categories
   - dataset_split: color
-output_db: /projects/compling/hsheta/qwen_coco.db
+output_db: output/qwen_clevr.db
 pooled_output: True
 modules:
   - model.layers.13.post_attention_layernorm

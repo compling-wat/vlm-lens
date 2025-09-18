@@ -3,7 +3,7 @@ model_path: OpenGVLab/InternVL2_5-8B
 dataset:
   - dataset_path: compling/CLEVR_categories
   - dataset_split: color
-output_db: internvl-clevr.db
+output_db: output/internvl-clevr.db
 model:
   - torch_dtype: bfloat16
   - trust_remote_code: True
