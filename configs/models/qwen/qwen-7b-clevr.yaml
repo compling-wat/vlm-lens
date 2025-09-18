@@ -4,7 +4,7 @@ dataset:
   - dataset_path: compling/CLEVR_categories
   - dataset_split: color
 output_db: output/qwen_clevr.db
-pooled_output: True
+pooling_method: mean
 modules:
   - model.layers.13.post_attention_layernorm
   - model.layers.27.post_attention_layernorm

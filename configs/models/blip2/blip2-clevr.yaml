@@ -4,7 +4,7 @@ dataset:
   - dataset_path: compling/CLEVR_categories
   - dataset_split: color
 output_db: output/blip2-clevr.db
-pooled_output: True
+pooling_method: mean
 modules:
   - language_model.model.decoder.layers.16.self_attn_layer_norm
   - language_model.model.decoder.layers.31.self_attn_layer_norm

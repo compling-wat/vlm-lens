@@ -9,7 +9,7 @@ model:
 forward:
   - max_new_tokens: 1
 output_db: output/minicpm-V2-clevr.db
-pooled_output: True
+pooling_method: mean
 modules:
   - llm.model.layers.19.post_attention_layernorm
   - llm.model.layers.39.post_attention_layernorm

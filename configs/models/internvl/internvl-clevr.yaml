@@ -10,7 +10,7 @@ model:
 forward:
   - max_new_tokens: 1
   - do_sample: True
-pooled_output: True
+pooling_method: mean
 modules:
   - language_model.model.layers.16
   - language_model.model.layers.31

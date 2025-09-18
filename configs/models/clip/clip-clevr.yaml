@@ -6,7 +6,7 @@ dataset:
   - dataset_path: compling/CLEVR_categories
   - dataset_split: color
 output_db: output/clip-clevr.db
-pooled_output: True
+pooling_method: mean
 modules:
   - text_model.encoder.layers.5.layer_norm1
   - text_model.encoder.layers.11.layer_norm1

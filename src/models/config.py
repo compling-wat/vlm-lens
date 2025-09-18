@@ -113,6 +113,13 @@ class Config:
             type=str,
             help='The path where downloaded models should be stored'
         )
+        parser.add_argument(
+            '--pooling-method',
+            type=str,
+            default=None,
+            choices=['mean', 'max'],
+            help='The type of pooling to use for the output embeddings'
+        )
 
         # only parse the args that we know, and throw out what we don't know
         args = parser.parse_known_args()[0]
@@ -125,7 +132,6 @@ class Config:
         config_keys.append('modules')
         config_keys.append('forward')
         config_keys.append('dataset')
-        config_keys.append('pooled_output')
 
         # first read the config file and set the current attributes to it
         # then parse through the other arguments as that's what we want use to
@@ -270,9 +276,6 @@ class Config:
         # if there is no output database set, use embeddings.db as the default
         if not hasattr(self, 'output_db'):
             self.output_db = 'embeddings.db'
-
-        self.pooled_output = self.pooled_output if hasattr(
-            self, 'pooled_output') else False
 
     def has_images(self) -> bool:
         """Returns a boolean for whether or not the input directory has images.

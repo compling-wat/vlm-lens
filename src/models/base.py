@@ -135,17 +135,16 @@ class ModelBase(ABC):
             tensor_blob = io.BytesIO()
 
             # It currently averages the output across the sequence length dimension, i.e., mean pooling
-            # TODO: add support for max and endpoint pooling
-            final_output = output.mean(
-                dim=1) if self.config.pooled_output else output
+            # WARNING: When contributing new models, ensure that dim 1 is always the sequence length dimension
+            final_output = getattr(output, self.config.pooling_method)(dim=1) if hasattr(self.config, 'pooling_method') else output
             output_dim = final_output.shape[-1]
             torch.save(final_output, tensor_blob)
 
             # Insert the tensor into the table
             cursor.execute(f"""
                 INSERT INTO {self.config.DB_TABLE_NAME}
-                (name, architecture, image_path, image_id, prompt, label, layer, tensor_dim, tensor)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+                (name, architecture, image_path, image_id, prompt, label, layer, pooling_method, tensor_dim, tensor)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
             """, (
                 self.model_path,
                 self.config.architecture.value,
@@ -154,6 +153,7 @@ class ModelBase(ABC):
                 prompt,
                 label,
                 name,
+                self.config.pooling_method if hasattr(self.config, 'pooling_method') else None,
                 output_dim,
                 tensor_blob.getvalue())
             )
@@ -263,6 +263,7 @@ class ModelBase(ABC):
                     prompt TEXT NOT NULL,
                     label TEXT NULL,
                     layer TEXT NOT NULL,
+                    pooling_method TEXT NULL,
                     tensor_dim INTEGER NOT NULL,
                     tensor BLOB NOT NULL
                 );
