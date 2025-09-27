@@ -5,6 +5,10 @@
 [![Documentation](https://img.shields.io/badge/Documentation-Online-green.svg?style=flat-square)](https://compling-wat.github.io/vlm-lens/)
 [![Guide](https://img.shields.io/badge/Guide-Online-orange.svg?style=flat-square)](tutorial-notebooks/guide.ipynb)
 
+<p align="center">
+  <img src="imgs/teaser.png" alt="VLM-Lens Teaser" width="100%" />
+</p>
+
 ## Table of Contents
 
 - [Environment Setup](#environment-setup)
