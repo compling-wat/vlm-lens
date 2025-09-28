@@ -189,3 +189,6 @@ data/images/
 # Notebooks
 *.ipynb_checkpoints
 notebooks/debug.ipynb
+
+# Gradio
+demo/.gradio/
