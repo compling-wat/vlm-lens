@@ -13,6 +13,6 @@ test:
   - batch_size: 32
   - loss: CrossEntropyLoss
 data:
-  - input_db: llava/llava_boolean.db
+  - input_db: output/llava-boolean.db
   - db_name: tensors
   - input_layer: language_model.model.layers.16.post_attention_layernorm

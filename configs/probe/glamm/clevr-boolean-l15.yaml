@@ -13,6 +13,6 @@ test:
   - batch_size: 32
   - loss: CrossEntropyLoss
 data:
-  - input_db: glamm/glamm_boolean.db
+  - input_db: glamm/glamm-boolean.db
   - db_name: tensors
   - input_layer: language_model.model.layers.15.post_attention_layernorm

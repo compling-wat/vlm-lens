@@ -13,6 +13,6 @@ test:
   - batch_size: 32
   - loss: CrossEntropyLoss
 data:
-  - input_db: minicpm-V2/minicpm-V2-boolean.db
+  - input_db: output/minicpm-V2-boolean.db
   - db_name: tensors
   - input_layer: llm.model.layers.19.post_attention_layernorm

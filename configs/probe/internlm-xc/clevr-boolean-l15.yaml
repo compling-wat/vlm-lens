@@ -13,6 +13,6 @@ test:
   - batch_size: 32
   - loss: CrossEntropyLoss
 data:
-  - input_db: interlm-xc/boolean.db
+  - input_db: output/internlm-xc-boolean.db
   - db_name: tensors
   - input_layer: model.layers.15.attention_norm

@@ -13,6 +13,6 @@ test:
   - batch_size: 32
   - loss: CrossEntropyLoss
 data:
-  - input_db: blip2/blip2_boolean.db
+  - input_db: blip2/blip2-boolean.db
   - db_name: tensors
   - input_layer: language_model.model.decoder.layers.16.self_attn_layer_norm

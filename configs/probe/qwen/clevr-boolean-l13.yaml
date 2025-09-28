@@ -13,6 +13,6 @@ test:
   - batch_size: 32
   - loss: CrossEntropyLoss
 data:
-  - input_db: qwen/qwen_boolean.db
+  - input_db: output/qwen-boolean.db
   - db_name: tensors
   - input_layer: model.layers.13.post_attention_layernorm

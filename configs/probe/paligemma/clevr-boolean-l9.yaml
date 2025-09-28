@@ -13,6 +13,6 @@ test:
   - batch_size: 32
   - loss: CrossEntropyLoss
 data:
-  - input_db: paligemma/paligemma_boolean.db
+  - input_db: output/paligemma-boolean.db
   - db_name: tensors
   - input_layer: language_model.model.layers.9.post_attention_layernorm
