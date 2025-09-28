@@ -47,7 +47,7 @@ class ProbeConfig:
             '-d',
             '--device',
             type=str,
-            default='cpu',
+            default='cuda' if torch.cuda.is_available() else 'cpu',
             help='The device to send the model and tensors to',
         )
 
