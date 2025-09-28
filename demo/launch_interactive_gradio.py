@@ -1,24 +1,101 @@
 """Gradio demo for visualizing VLM first token probability distributions."""
 
-import os
-import sys
 from typing import Any, Dict, List, Optional, Tuple
 
 import gradio as gr
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-from lookup import get_model_info
 from matplotlib.figure import Figure
 from PIL import Image
-from transformers import LlavaForConditionalGeneration, LlavaProcessor
+from transformers import (AutoProcessor, LlavaForConditionalGeneration,
+                          Qwen2VLForConditionalGeneration)
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
-from models.config import ModelSelection  # noqa: E402
+from demo.lookup import get_model_info
+from src.models.config import ModelSelection  # noqa: E402
 
 models_cache: Dict[str, Any] = {}
 processors_cache: Dict[str, Any] = {}
 current_model_selection: Optional[ModelSelection] = None
+
+
+def read_layer_spec(spec_file_path: str) -> List[str]:
+    """Read available layers from the model spec file.
+
+    Args:
+        spec_file_path: Path to the model specification file.
+
+    Returns:
+        List of available layer names, skipping blank lines.
+    """
+    try:
+        with open(spec_file_path, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+
+        # Filter out blank lines and strip whitespace
+        layers = [line.strip() for line in lines if line.strip()]
+        return layers
+
+    except FileNotFoundError:
+        print(f'Spec file not found: {spec_file_path}')
+        return ['Default layer (spec file not found)']
+    except Exception as e:
+        print(f'Error reading spec file: {str(e)}')
+        return ['Default layer (error reading spec)']
+
+
+def update_layer_choices(model_choice: str) -> Tuple[gr.Dropdown, gr.Button]:
+    """Update layer dropdown choices based on selected model.
+
+    Args:
+        model_choice: Selected model name.
+
+    Returns:
+        Updated dropdown component and button visibility.
+    """
+    if not model_choice:
+        return gr.Dropdown(choices=[], visible=False), gr.Button(visible=False)
+
+    try:
+        # Convert string choice to ModelSelection enum
+        model_selection = ModelSelection(model_choice.lower())
+
+        # Get model info and read layer spec
+        model_path, model_spec_path = get_model_info(model_selection)
+        layers = read_layer_spec(model_spec_path)
+
+        # Return updated dropdown with layer choices and make button visible
+        return (
+            gr.Dropdown(
+                choices=layers,
+                label=f'Select Layer for {model_choice}',
+                value=layers[0] if layers else None,
+                visible=True,
+                interactive=True
+            ),
+            gr.Button('Analyze', variant='primary', visible=True)
+        )
+
+    except ValueError:
+        return (
+            gr.Dropdown(
+                choices=['Model not implemented'],
+                label='Select Layer',
+                visible=True,
+                interactive=False
+            ),
+            gr.Button('Analyze', variant='primary', visible=False)
+        )
+    except Exception as e:
+        return (
+            gr.Dropdown(
+                choices=[f'Error: {str(e)}'],
+                label='Select Layer',
+                visible=True,
+                interactive=False
+            ),
+            gr.Button('Analyze', variant='primary', visible=False)
+        )
 
 
 def load_model(model_selection: ModelSelection) -> Tuple[Any, Any]:
@@ -31,7 +108,7 @@ def load_model(model_selection: ModelSelection) -> Tuple[Any, Any]:
         Tuple containing the loaded model and processor.
 
     Raises:
-        NotImplementedError: If model loading fails.
+        NotImplementedError: If the model is not implemented.
     """
     global models_cache, processors_cache, current_model_selection
 
@@ -51,8 +128,16 @@ def load_model(model_selection: ModelSelection) -> Tuple[Any, Any]:
 
         if model_selection == ModelSelection.LLAVA:
             # Load LLaVA model
-            processor = LlavaProcessor.from_pretrained(model_path)
+            processor = AutoProcessor.from_pretrained(model_path)
             model = LlavaForConditionalGeneration.from_pretrained(
+                model_path,
+                torch_dtype=torch.float16,
+                low_cpu_mem_usage=True,
+                device_map='auto'
+            )
+        elif model_selection == ModelSelection.QWEN:
+            processor = AutoProcessor.from_pretrained(model_path)
+            model = Qwen2VLForConditionalGeneration.from_pretrained(
                 model_path,
                 torch_dtype=torch.float16,
                 low_cpu_mem_usage=True,
@@ -78,31 +163,45 @@ def load_model(model_selection: ModelSelection) -> Tuple[Any, Any]:
 def get_first_token_probabilities(
     instruction: str,
     image: Image.Image,
-    model_selection: ModelSelection
+    model_selection: ModelSelection,
+    selected_layer: str
 ) -> Tuple[List[str], np.ndarray]:
     """Process the instruction and image through the selected VLM and return first token probabilities.
 
     Args:
         instruction: Text instruction for the model.
         image: PIL Image to process.
-        model_selection: The VLM model to use.
+        model_selection: The VLM to use.
+        selected_layer: The selected layer for analysis.
 
     Returns:
         Tuple containing list of top tokens and their probabilities.
 
     Raises:
-        NotImplementedError: If processing fails.
+        NotImplementedError: If the model is not implemented.
     """
     try:
         # Load model if not already loaded or if different model selected
         model, processor = load_model(model_selection)
 
-        if model_selection == ModelSelection.LLAVA:
-            # LLaVA-specific processing
-            prompt = f'USER: <image>\n{instruction}\nASSISTANT:'
-            inputs = processor(text=prompt, images=image, return_tensors='pt').to(model.device)
+        print(f'Using layer: {selected_layer}')
 
-            # Generate with output_scores=True to get logits
+        if model_selection in [ModelSelection.LLAVA, ModelSelection.QWEN]:
+
+            messages = [{
+                'role': 'user',
+                'content': [{'type': 'image'}, {'type': 'text', 'text': instruction}],
+            }]
+            text = processor.apply_chat_template(
+                messages, tokenize=False, add_generation_prompt=True
+            )
+            inputs = processor(
+                text=[text],
+                images=[image],
+                return_tensors='pt',
+                padding=True,
+            ).to(model.device)
+
             with torch.no_grad():
                 outputs = model.generate(
                     **inputs,
@@ -137,7 +236,8 @@ def get_first_token_probabilities(
 def create_probability_plot(
     tokens: List[str],
     probabilities: np.ndarray,
-    model_name: str
+    model_name: str,
+    layer_name: str
 ) -> Figure:
     """Create a matplotlib plot of token probabilities.
 
@@ -145,6 +245,7 @@ def create_probability_plot(
         tokens: List of token strings.
         probabilities: Array of probability values.
         model_name: Name of the model for the plot title.
+        layer_name: Name of the selected layer.
 
     Returns:
         Matplotlib Figure object.
@@ -168,7 +269,7 @@ def create_probability_plot(
     # Customize the plot
     ax.set_xlabel('Tokens', fontsize=12)
     ax.set_ylabel('Probability', fontsize=12)
-    ax.set_title(f'First Token Probability Distribution ({model_name.upper()})',
+    ax.set_title(f'First Token Probability Distribution\n{model_name.upper()} - Layer: {layer_name}',
                  fontsize=14, fontweight='bold')
 
     # Set x-axis labels
@@ -192,6 +293,7 @@ def create_probability_plot(
 
 def process_inputs(
     model_choice: str,
+    selected_layer: str,
     instruction: str,
     image: Optional[Image.Image]
 ) -> Tuple[Optional[Figure], str]:
@@ -199,6 +301,7 @@ def process_inputs(
 
     Args:
         model_choice: String name of the selected model.
+        selected_layer: String name of the selected layer.
         instruction: Text instruction for the model.
         image: PIL Image to process, can be None.
 
@@ -214,25 +317,27 @@ def process_inputs(
     if not model_choice:
         return None, 'Please select a model.'
 
+    if not selected_layer:
+        return None, 'Please select a layer.'
+
     try:
         # Convert string choice to ModelSelection enum
         model_selection = ModelSelection(model_choice.lower())
 
-        # Check if model is implemented
-        if model_selection != ModelSelection.LLAVA:
-            return None, f'Model {model_choice} is not yet implemented. Only LLaVA is currently supported.'
-
         # Get token probabilities
-        tokens, probabilities = get_first_token_probabilities(instruction, image, model_selection)
+        tokens, probabilities = get_first_token_probabilities(
+            instruction, image, model_selection, selected_layer
+        )
 
         if len(tokens) == 0:
             return None, 'Error: Could not process the inputs. Please check the model loading.'
 
         # Create plot
-        plot = create_probability_plot(tokens, probabilities, model_choice)
+        plot = create_probability_plot(tokens, probabilities, model_choice, selected_layer)
 
         # Create info text
         info_text = f'Model: {model_choice.upper()}\n'
+        info_text += f'Layer: {selected_layer}\n'
         info_text += f"Instruction: \'{instruction}\'\n"
         info_text += f"Top token: \'{tokens[0]}\' (probability: {probabilities[0]:.4f})"
 
@@ -251,7 +356,10 @@ def get_available_models() -> List[str]:
         List of model names as strings.
     """
     # For now, only return implemented models
-    implemented_models = [ModelSelection.LLAVA.value]
+    implemented_models = [
+        ModelSelection.LLAVA.value,
+        ModelSelection.QWEN.value
+    ]
     return [model.capitalize() for model in implemented_models]
 
 
@@ -270,9 +378,10 @@ def create_demo() -> gr.Blocks:
 
         **Instructions:**
         1. Select a VLM model from the dropdown
-        2. Upload an image
-        3. Enter your instruction/question about the image
-        4. Click "Analyze" to see the first token probability distribution
+        2. Select a layer from the available embedding layers
+        3. Upload an image
+        4. Enter your instruction/question about the image
+        5. Click "Analyze" to see the first token probability distribution
 
         **Note:** Currently only LLaVA is implemented. Other models will be added soon.
         """)
@@ -281,10 +390,18 @@ def create_demo() -> gr.Blocks:
             with gr.Column():
                 model_dropdown = gr.Dropdown(
                     choices=get_available_models(),
-                    label='Select VLM Model',
-                    value='Llava',
+                    label='Select VLM',
+                    value=None,
                     interactive=True
                 )
+
+                layer_dropdown = gr.Dropdown(
+                    choices=[],
+                    label='Select Layer',
+                    visible=False,
+                    interactive=True
+                )
+
                 instruction_input = gr.Textbox(
                     label='Instruction',
                     placeholder='Describe what you see in this image...',
@@ -294,31 +411,37 @@ def create_demo() -> gr.Blocks:
                     label='Upload Image',
                     type='pil'
                 )
-                analyze_btn = gr.Button('Analyze', variant='primary')
+                analyze_btn = gr.Button('Analyze', variant='primary', visible=False)
 
             with gr.Column():
                 plot_output = gr.Plot(label='First Token Probability Distribution')
                 info_output = gr.Textbox(
                     label='Analysis Info',
-                    lines=4,
+                    lines=5,
                     interactive=False
                 )
 
-        # Set up the event handler
+        # Set up event handlers
+        model_dropdown.change(
+            fn=update_layer_choices,
+            inputs=[model_dropdown],
+            outputs=[layer_dropdown, analyze_btn]
+        )
+
         analyze_btn.click(
             fn=process_inputs,
-            inputs=[model_dropdown, instruction_input, image_input],
+            inputs=[model_dropdown, layer_dropdown, instruction_input, image_input],
             outputs=[plot_output, info_output]
         )
 
         # Add examples
         gr.Examples(
             examples=[
-                ['Llava', 'What is in this image?', None],
-                ['Llava', 'Describe the main object in the picture.', None],
-                ['Llava', 'What color is the dominant object?', None],
+                ['What is in this image? Describe in one word.', None],
+                ['Describe the main object in the picture in one word.', None],
+                ['What color is the dominant object? Describe in one word.', None],
             ],
-            inputs=[model_dropdown, instruction_input, image_input]
+            inputs=[instruction_input, image_input]
         )
 
     return demo

@@ -191,4 +191,4 @@ data/images/
 notebooks/debug.ipynb
 
 # Gradio
-demo/.gradio/
+**/.gradio/
