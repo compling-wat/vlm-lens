@@ -1,86 +1,118 @@
-"""Gradio demo for visualizing LLaVA first token probability distributions."""
+"""Gradio demo for visualizing VLM first token probability distributions."""
 
-from typing import List, Optional, Tuple
+import os
+import sys
+from typing import Any, Dict, List, Optional, Tuple
 
 import gradio as gr
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+from lookup import get_model_info
 from matplotlib.figure import Figure
 from PIL import Image
-from transformers import LlavaNextForConditionalGeneration, LlavaNextProcessor
+from transformers import LlavaForConditionalGeneration, LlavaProcessor
 
-# Global variables to store model and processor
-model: Optional[LlavaNextForConditionalGeneration] = None
-processor: Optional[LlavaNextProcessor] = None
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
+from models.config import ModelSelection  # noqa: E402
+
+models_cache: Dict[str, Any] = {}
+processors_cache: Dict[str, Any] = {}
+current_model_selection: Optional[ModelSelection] = None
 
 
-def load_model() -> Tuple[LlavaNextForConditionalGeneration, LlavaNextProcessor]:
-    """Load the LLaVA model and processor.
+def load_model(model_selection: ModelSelection) -> Tuple[Any, Any]:
+    """Load the specified VLM model and processor.
+
+    Args:
+        model_selection: The model to load from ModelSelection enum.
 
     Returns:
         Tuple containing the loaded model and processor.
+
+    Raises:
+        NotImplementedError: If model loading fails.
     """
-    global model, processor
+    global models_cache, processors_cache, current_model_selection
 
-    if model is None or processor is None:
-        print('Loading LLaVA-7B model...')
-        model_id = 'llava-hf/llava-v1.6-mistral-7b-hf'
+    model_key = model_selection.value
 
-        # Load processor and model
-        processor = LlavaNextProcessor.from_pretrained(model_id)
-        model = LlavaNextForConditionalGeneration.from_pretrained(
-            model_id,
-            torch_dtype=torch.float16,
-            low_cpu_mem_usage=True,
-            device_map='auto'
-        )
-        print('Model loaded successfully!')
+    # Check if model is already loaded
+    if model_key in models_cache and model_key in processors_cache:
+        current_model_selection = model_selection
+        return models_cache[model_key], processors_cache[model_key]
 
-    return model, processor
+    print(f'Loading {model_selection.value} model...')
+
+    try:
+        model_path, model_spec = get_model_info(model_selection)
+        print(f'Model path: {model_path}')
+        print(f'Model spec: {model_spec}')
+
+        if model_selection == ModelSelection.LLAVA:
+            # Load LLaVA model
+            processor = LlavaProcessor.from_pretrained(model_path)
+            model = LlavaForConditionalGeneration.from_pretrained(
+                model_path,
+                torch_dtype=torch.float16,
+                low_cpu_mem_usage=True,
+                device_map='auto'
+            )
+        else:
+            # For other models, raise NotImplementedError for now
+            raise NotImplementedError(f'Model {model_selection.value} is not yet implemented')
+
+        # Cache the loaded model and processor
+        models_cache[model_key] = model
+        processors_cache[model_key] = processor
+        current_model_selection = model_selection
+
+        print(f'{model_selection.value} model loaded successfully!')
+        return model, processor
+
+    except Exception as e:
+        print(f'Error loading model {model_selection.value}: {str(e)}')
+        raise
 
 
 def get_first_token_probabilities(
     instruction: str,
-    image: Image.Image
+    image: Image.Image,
+    model_selection: ModelSelection
 ) -> Tuple[List[str], np.ndarray]:
-    """Process the instruction and image through LLaVA and return first token probabilities.
+    """Process the instruction and image through the selected VLM and return first token probabilities.
 
     Args:
         instruction: Text instruction for the model.
         image: PIL Image to process.
+        model_selection: The VLM model to use.
 
     Returns:
         Tuple containing list of top tokens and their probabilities.
+
+    Raises:
+        NotImplementedError: If processing fails.
     """
     try:
-        # Load model if not already loaded
-        model, processor = load_model()
+        # Load model if not already loaded or if different model selected
+        model, processor = load_model(model_selection)
 
-        # Prepare the conversation format
-        conversation = [
-            {
-                'role': 'user',
-                'content': [
-                    {'type': 'text', 'text': instruction},
-                    {'type': 'image'},
-                ],
-            },
-        ]
+        if model_selection == ModelSelection.LLAVA:
+            # LLaVA-specific processing
+            prompt = f'USER: <image>\n{instruction}\nASSISTANT:'
+            inputs = processor(text=prompt, images=image, return_tensors='pt').to(model.device)
 
-        # Apply chat template and process inputs
-        prompt = processor.apply_chat_template(conversation, add_generation_prompt=True)
-        inputs = processor(images=image, text=prompt, return_tensors='pt').to(model.device)
-
-        # Generate with output_scores=True to get logits
-        with torch.no_grad():
-            outputs = model.generate(
-                **inputs,
-                max_new_tokens=1,  # Only generate first token
-                output_scores=True,
-                return_dict_in_generate=True,
-                do_sample=False
-            )
+            # Generate with output_scores=True to get logits
+            with torch.no_grad():
+                outputs = model.generate(
+                    **inputs,
+                    max_new_tokens=1,  # Only generate first token
+                    output_scores=True,
+                    return_dict_in_generate=True,
+                    do_sample=False
+                )
+        else:
+            raise NotImplementedError(f'Model {model_selection.value} processing not yet implemented')
 
         # Get the logits for the first generated token
         first_token_logits = outputs.scores[0][0]  # Shape: [vocab_size]
@@ -102,12 +134,17 @@ def get_first_token_probabilities(
         return [], np.array([])
 
 
-def create_probability_plot(tokens: List[str], probabilities: np.ndarray) -> Figure:
+def create_probability_plot(
+    tokens: List[str],
+    probabilities: np.ndarray,
+    model_name: str
+) -> Figure:
     """Create a matplotlib plot of token probabilities.
 
     Args:
         tokens: List of token strings.
         probabilities: Array of probability values.
+        model_name: Name of the model for the plot title.
 
     Returns:
         Matplotlib Figure object.
@@ -131,7 +168,7 @@ def create_probability_plot(tokens: List[str], probabilities: np.ndarray) -> Fig
     # Customize the plot
     ax.set_xlabel('Tokens', fontsize=12)
     ax.set_ylabel('Probability', fontsize=12)
-    ax.set_title('First Token Probability Distribution (LLaVA 7B)',
+    ax.set_title(f'First Token Probability Distribution ({model_name.upper()})',
                  fontsize=14, fontweight='bold')
 
     # Set x-axis labels
@@ -153,10 +190,15 @@ def create_probability_plot(tokens: List[str], probabilities: np.ndarray) -> Fig
     return fig
 
 
-def process_inputs(instruction: str, image: Optional[Image.Image]) -> Tuple[Optional[Figure], str]:
+def process_inputs(
+    model_choice: str,
+    instruction: str,
+    image: Optional[Image.Image]
+) -> Tuple[Optional[Figure], str]:
     """Main function to process inputs and return plot.
 
     Args:
+        model_choice: String name of the selected model.
         instruction: Text instruction for the model.
         image: PIL Image to process, can be None.
 
@@ -169,24 +211,48 @@ def process_inputs(instruction: str, image: Optional[Image.Image]) -> Tuple[Opti
     if not instruction.strip():
         return None, 'Please provide an instruction.'
 
+    if not model_choice:
+        return None, 'Please select a model.'
+
     try:
+        # Convert string choice to ModelSelection enum
+        model_selection = ModelSelection(model_choice.lower())
+
+        # Check if model is implemented
+        if model_selection != ModelSelection.LLAVA:
+            return None, f'Model {model_choice} is not yet implemented. Only LLaVA is currently supported.'
+
         # Get token probabilities
-        tokens, probabilities = get_first_token_probabilities(instruction, image)
+        tokens, probabilities = get_first_token_probabilities(instruction, image, model_selection)
 
         if len(tokens) == 0:
             return None, 'Error: Could not process the inputs. Please check the model loading.'
 
         # Create plot
-        plot = create_probability_plot(tokens, probabilities)
+        plot = create_probability_plot(tokens, probabilities, model_choice)
 
         # Create info text
-        info_text = f"Processed instruction: \'{instruction}\'\n"
+        info_text = f'Model: {model_choice.upper()}\n'
+        info_text += f"Instruction: \'{instruction}\'\n"
         info_text += f"Top token: \'{tokens[0]}\' (probability: {probabilities[0]:.4f})"
 
         return plot, info_text
 
+    except ValueError as e:
+        return None, f'Invalid model selection: {str(e)}'
     except Exception as e:
         return None, f'Error: {str(e)}'
+
+
+def get_available_models() -> List[str]:
+    """Get list of available model names for the dropdown.
+
+    Returns:
+        List of model names as strings.
+    """
+    # For now, only return implemented models
+    implemented_models = [ModelSelection.LLAVA.value]
+    return [model.capitalize() for model in implemented_models]
 
 
 def create_demo() -> gr.Blocks:
@@ -195,21 +261,30 @@ def create_demo() -> gr.Blocks:
     Returns:
         Configured Gradio Blocks interface.
     """
-    with gr.Blocks(title='LLaVA Token Probability Visualizer') as demo:
+    with gr.Blocks(title='VLM Token Probability Visualizer') as demo:
         gr.Markdown("""
-        # LLaVA First Token Probability Distribution
+        # Vision-Language Model First Token Probability Distribution
 
-        This demo processes an instruction and image through LLaVA-7B and visualizes the probability distribution
-        of the first token in the response.
+        This demo processes an instruction and image through various Vision-Language Models (VLMs)
+        and visualizes the probability distribution of the first token in the response.
 
         **Instructions:**
-        1. Upload an image
-        2. Enter your instruction/question about the image
-        3. Click "Analyze" to see the first token probability distribution
+        1. Select a VLM model from the dropdown
+        2. Upload an image
+        3. Enter your instruction/question about the image
+        4. Click "Analyze" to see the first token probability distribution
+
+        **Note:** Currently only LLaVA is implemented. Other models will be added soon.
         """)
 
         with gr.Row():
             with gr.Column():
+                model_dropdown = gr.Dropdown(
+                    choices=get_available_models(),
+                    label='Select VLM Model',
+                    value='Llava',
+                    interactive=True
+                )
                 instruction_input = gr.Textbox(
                     label='Instruction',
                     placeholder='Describe what you see in this image...',
@@ -225,25 +300,25 @@ def create_demo() -> gr.Blocks:
                 plot_output = gr.Plot(label='First Token Probability Distribution')
                 info_output = gr.Textbox(
                     label='Analysis Info',
-                    lines=3,
+                    lines=4,
                     interactive=False
                 )
 
         # Set up the event handler
         analyze_btn.click(
             fn=process_inputs,
-            inputs=[instruction_input, image_input],
+            inputs=[model_dropdown, instruction_input, image_input],
             outputs=[plot_output, info_output]
         )
 
         # Add examples
         gr.Examples(
             examples=[
-                ['What is in this image? Describe in one word.', None],
-                ['Describe the main object in the picture in one word..', None],
-                ['What color is the dominant object? Describe in one word.', None],
+                ['Llava', 'What is in this image?', None],
+                ['Llava', 'Describe the main object in the picture.', None],
+                ['Llava', 'What color is the dominant object?', None],
             ],
-            inputs=[instruction_input, image_input]
+            inputs=[model_dropdown, instruction_input, image_input]
         )
 
     return demo
