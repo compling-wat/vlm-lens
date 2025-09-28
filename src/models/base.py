@@ -136,7 +136,8 @@ class ModelBase(ABC):
 
             # It currently averages the output across the sequence length dimension, i.e., mean pooling
             # WARNING: When contributing new models, ensure that dim 1 is always the sequence length dimension
-            final_output = getattr(output, self.config.pooling_method)(dim=1) if hasattr(self.config, 'pooling_method') else output
+            final_output = getattr(output, self.config.pooling_method)(dim=1) if hasattr(
+                self.config, 'pooling_method') and hasattr(output, self.config.pooling_method) else output
             output_dim = final_output.shape[-1]
             torch.save(final_output, tensor_blob)
 

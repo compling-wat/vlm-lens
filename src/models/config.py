@@ -283,7 +283,10 @@ class Config:
         Returns:
             bool: Whether or not the input directory has images.
         """
-        return len(self.image_paths) > 0
+        if not self.dataset:
+            return len(self.image_paths) > 0
+        else:
+            return 'image' in self.dataset.column_names
 
     def matches_module(self, module_name: str) -> bool:
         """Returns whether the given module name matches one of the regexes.
