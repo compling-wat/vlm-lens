@@ -1,9 +1,9 @@
 architecture: qwen
-model_path: /model-weights/Qwen2-VL-7B-Instruct
+model_path: Qwen/Qwen2-VL-2B-Instruct
 dataset:
   - dataset_path: compling/CLEVR_categories
   - dataset_split: color
-output_db: output/qwen_clevr.db
+output_db: output/qwen-clevr.db
 pooling_method: mean
 modules:
   - model.layers.13.post_attention_layernorm
