@@ -16,9 +16,12 @@
 - [Example Usage: Extract Qwen2-VL-2B Embeddings with VLM-Lens](#example-usage-extract-qwen2-vl-2b-embeddings-with-vlm-lens)
   - [General Command-Line Demo](#general-command-line-demo)
   - [Run Qwen2-VL-2B Embeddings Extraction](#run-qwen2-vl-2b-embeddings-extraction)
-- [Retrieving a Model's Named Modules](#retrieving-a-models-named-modules)
-- [Feature Extraction using Datasets](#feature-extraction-using-datasets)
+- [Layers of Interest in a VLM](#layers-of-interest-in-a-vlm)
+  - [Retrieving All Named Modules](#retrieving-all-named-modules)
+  - [Matching Layers](#matching-layers)
+- [Feature Extraction using HuggingFace Datasets](#feature-extraction-using-huggingface-datasets)
 - [Output Database](#output-database)
+- [Demo: Principal Component Analysis over Primitive Concept](#principal-component-analysis-over-primitive-concept)
 - [Contributing to VLM-Lens](#contributing-to-vlm-lens)
 - [Miscellaneous](#miscellaneous)
 
@@ -225,7 +228,7 @@ pre-commit install
 ### Using a Cache
 To use a specific cache, one should set the `HF_HOME` environment variable as so:
 ```
-HF_HOME=./cache/ python src/main.py --config configs/models/clip/clip-base.yaml --debug
+HF_HOME=./cache/ python src/main.py --config configs/models/clip/clip.yaml --debug
 ```
 
 
