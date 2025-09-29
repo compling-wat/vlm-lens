@@ -440,7 +440,7 @@ class Probe(nn.Module):
 
         if metadata:
             try:
-                data_path = os.path.join(save_dir, 'probe_data.txt')
+                data_path = os.path.join(save_dir, 'probe_data.json')
                 with open(data_path, 'w') as f:
                     f.write(json.dumps(metadata, indent=2))
                 logging.debug(f'Probe metadata saved to {data_path}')
