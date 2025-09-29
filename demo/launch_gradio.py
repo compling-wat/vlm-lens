@@ -166,7 +166,8 @@ def get_first_token_probabilities_dual(
     image1: Image.Image,
     image2: Image.Image,
     model_selection: ModelSelection,
-    selected_layer: str
+    selected_layer: str,
+    top_k: int = 8
 ) -> Tuple[List[str], np.ndarray, List[str], np.ndarray]:
     """Process the instruction with both images and return first token probabilities for each.
 
@@ -176,6 +177,7 @@ def get_first_token_probabilities_dual(
         image2: Second PIL Image to process.
         model_selection: The VLM to use.
         selected_layer: The selected layer for analysis.
+        top_k: Number of top tokens to return.
 
     Returns:
         Tuple containing (tokens1, probs1, tokens2, probs2).
@@ -188,12 +190,12 @@ def get_first_token_probabilities_dual(
 
         # Process first image
         tokens1, probs1 = get_single_image_probabilities(
-            instruction, image1, model, processor, model_selection
+            instruction, image1, model, processor, model_selection, top_k
         )
 
         # Process second image
         tokens2, probs2 = get_single_image_probabilities(
-            instruction, image2, model, processor, model_selection
+            instruction, image2, model, processor, model_selection, top_k
         )
 
         return tokens1, probs1, tokens2, probs2
@@ -208,7 +210,8 @@ def get_single_image_probabilities(
     image: Image.Image,
     model: Any,
     processor: Any,
-    model_selection: ModelSelection
+    model_selection: ModelSelection,
+    top_k: int = 8
 ) -> Tuple[List[str], np.ndarray]:
     """Process a single image and return first token probabilities.
 
@@ -218,6 +221,7 @@ def get_single_image_probabilities(
         model: Loaded model.
         processor: Loaded processor.
         model_selection: The VLM being used.
+        top_k: Number of top tokens to return.
 
     Returns:
         Tuple containing list of top tokens and their probabilities.
@@ -258,7 +262,6 @@ def get_single_image_probabilities(
     probabilities = torch.softmax(first_token_logits, dim=-1)
 
     # Get top-k probabilities for visualization
-    top_k = 8
     top_probs, top_indices = torch.topk(probabilities, top_k)
 
     # Convert tokens back to text
@@ -293,8 +296,7 @@ def scale_figure_fonts(fig: Figure, factor: float = 1.5) -> None:
 
 def create_dual_probability_plot(
     tokens1: List[str], probabilities1: np.ndarray,
-    tokens2: List[str], probabilities2: np.ndarray,
-    model_name: str, layer_name: str
+    tokens2: List[str], probabilities2: np.ndarray
 ) -> Figure:
     """Create a matplotlib plot comparing token probabilities from two images.
 
@@ -303,8 +305,6 @@ def create_dual_probability_plot(
         probabilities1: Array of probability values from first image.
         tokens2: List of token strings from second image.
         probabilities2: Array of probability values from second image.
-        model_name: Name of the model for the plot title.
-        layer_name: Name of the selected layer.
 
     Returns:
         Matplotlib Figure object.
@@ -388,7 +388,8 @@ def process_dual_inputs(
     selected_layer: str,
     instruction: str,
     image1: Optional[Image.Image],
-    image2: Optional[Image.Image]
+    image2: Optional[Image.Image],
+    top_k: int = 8
 ) -> Tuple[Optional[Figure], str]:
     """Main function to process dual inputs and return comparison plot.
 
@@ -398,6 +399,7 @@ def process_dual_inputs(
         instruction: Text instruction for the model.
         image1: First PIL Image to process, can be None.
         image2: Second PIL Image to process, can be None.
+        top_k: Number of top tokens to display.
 
     Returns:
         Tuple containing the plot figure and info text.
@@ -423,18 +425,18 @@ def process_dual_inputs(
             image1 = image2
             tokens1, probs1 = [], np.array([])
             tokens2, probs2 = get_single_image_probabilities(
-                instruction, image2, *load_model(model_selection), model_selection
+                instruction, image2, *load_model(model_selection), model_selection, top_k
             )
         elif image2 is None:
             image2 = image1
             tokens1, probs1 = get_single_image_probabilities(
-                instruction, image1, *load_model(model_selection), model_selection
+                instruction, image1, *load_model(model_selection), model_selection, top_k
             )
             tokens2, probs2 = [], np.array([])
         else:
             # Get token probabilities for both images
             tokens1, probs1, tokens2, probs2 = get_first_token_probabilities_dual(
-                instruction, image1, image2, model_selection, selected_layer
+                instruction, image1, image2, model_selection, selected_layer, top_k
             )
 
         if len(tokens1) == 0 and len(tokens2) == 0:
@@ -442,13 +444,14 @@ def process_dual_inputs(
 
         # Create comparison plot
         plot = create_dual_probability_plot(
-            tokens1, probs1, tokens2, probs2, model_choice, selected_layer
+            tokens1, probs1, tokens2, probs2
         )
         scale_figure_fonts(plot, factor=1.25)
 
         # Create info text
         info_text = f'Model: {model_choice.upper()}\n'
         info_text += f'Layer: {selected_layer}\n'
+        info_text += f'Top-K: {top_k}\n'
         info_text += f"Instruction: '{instruction}'\n\n"
 
         if len(tokens1) > 0:
@@ -491,7 +494,7 @@ def create_demo() -> gr.Blocks:
     """
     with gr.Blocks(title='VLM-Lens Visualizer') as demo:
         gr.Markdown("""
-        # Vision-Language Model First Token Probability Distribution
+        # VLM-Lens Demo
 
         This VLM-Lens demo processes an instruction with up to two images through various Vision-Language Models (VLMs)
         and visualizes the probability distribution of the first token in the response for each image.
@@ -501,7 +504,8 @@ def create_demo() -> gr.Blocks:
         2. Select a layer from the available embedding layers
         3. Upload two images for comparison
         4. Enter your instruction/question about the images
-        5. Click "Analyze" to see the first token probability distributions side by side
+        5. Adjust the number of top tokens to display (1-20)
+        6. Click "Analyze" to see the first token probability distributions side by side
 
         **Note:** You can upload just one image if you prefer single image analysis.
         """)
@@ -528,6 +532,15 @@ def create_demo() -> gr.Blocks:
                     lines=3
                 )
 
+                top_k_slider = gr.Slider(
+                    minimum=1,
+                    maximum=20,
+                    value=8,
+                    step=1,
+                    label='Number of Top Tokens to Display',
+                    info='Select how many top probability tokens to show in the visualization'
+                )
+
                 with gr.Row():
                     image1_input = gr.Image(
                         label='Upload Image 1',
@@ -544,7 +557,7 @@ def create_demo() -> gr.Blocks:
                 plot_output = gr.Plot(label='First Token Probability Distribution Comparison')
                 info_output = gr.Textbox(
                     label='Analysis Info',
-                    lines=7,
+                    lines=8,
                     interactive=False
                 )
 
@@ -557,7 +570,7 @@ def create_demo() -> gr.Blocks:
 
         analyze_btn.click(
             fn=process_dual_inputs,
-            inputs=[model_dropdown, layer_dropdown, instruction_input, image1_input, image2_input],
+            inputs=[model_dropdown, layer_dropdown, instruction_input, image1_input, image2_input, top_k_slider],
             outputs=[plot_output, info_output]
         )
 
