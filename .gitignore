@@ -186,6 +186,9 @@ cython_debug/
 # Downloaded Data
 data/images/
 
+# Output files
+output/
+
 # Notebooks
 *.ipynb_checkpoints
 notebooks/debug.ipynb
