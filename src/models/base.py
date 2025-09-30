@@ -297,15 +297,18 @@ class ModelBase(ABC):
 
         return self.processor(**data)
 
-    def _generate_prompt(self, prompt: str, add_generation_prompt: bool = True) -> str:
+    def _generate_prompt(self, prompt: str, add_generation_prompt: bool = True, has_images: bool = False) -> str:
         """Generates the prompt string with the input messages.
 
         TODO: move `add_generation_prompt` to the config.
+        [Note from Martin] I'd argue that we should keep it as a parameter here
+        since in gradio we want to hack these parameters a bit.
 
         Args:
             prompt (str): The input prompt string.
             add_generation_prompt (bool): Whether to add a start token of a bot
                 response.
+            has_images (bool): Whether the model has images or not.
 
         Returns:
             str: The generated prompt with the input text and the image labels.
@@ -318,7 +321,7 @@ class ModelBase(ABC):
         }]
 
         # add the image if it exists
-        if self.config.has_images():
+        if self.config.has_images() or has_images:
             input_msgs_formatted[0]['content'].append({
                 'type': 'image'
             })

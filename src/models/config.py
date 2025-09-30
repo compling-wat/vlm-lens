@@ -42,8 +42,18 @@ class ModelSelection(str, Enum):
 class Config:
     """Config class for both yaml and cli arguments."""
 
-    def __init__(self) -> None:
+    def __init__(self,
+                 architecture: Optional[str] = None,
+                 model_path: Optional[str] = None,
+                 module: Optional[str] = None,
+                 prompt: Optional[str] = None) -> None:
         """Verifies the passed arguments while populating config fields.
+
+        Args:
+            architecture (Optional[str]): The model architecture to use.
+            model_path (Optional[str]): The specific model path to use.
+            module (Optional[str]): The specific module to extract embeddings from.
+            prompt (Optional[str]): The prompt to use for models that require it.
 
         Raises:
             ValueError: If any required argument is missing.
@@ -64,12 +74,14 @@ class Config:
             type=ModelSelection,
             choices=list(ModelSelection),
             metavar=f'{model_sel}',
+            default=architecture,
             help='The model architecture family to extract the embeddings from'
         )
         parser.add_argument(
             '-m',
             '--model-path',
             type=str,
+            default=model_path,
             help='The specific model path to extract the embeddings from'
         )
         parser.add_argument(
@@ -160,7 +172,10 @@ class Config:
             logging.getLogger().setLevel(logging.INFO)
 
         # require that the architecture and the model path to exist
-        assert hasattr(self, 'architecture') and hasattr(self, 'model_path'), (
+        assert all(
+            hasattr(self, attr) and getattr(self, attr) is not None
+            for attr in ('architecture', 'model_path')
+        ), (
             'Fields `architecture` and `model_path` in yaml config must exist, '
             'otherwise, --architecture and --model-path must be set'
         )
@@ -194,6 +209,9 @@ class Config:
         if self.log_named_modules:
             return
 
+        # override the modules if we have a module passed in
+        if module is not None:
+            self.modules = [module]
         assert hasattr(self, 'modules') and self.modules is not None, (
             'Must declare at least one module.'
         )
@@ -256,7 +274,9 @@ class Config:
             self.set_image_paths(self.input_dir
                                  if hasattr(self, 'input_dir') else
                                  None)
-
+        # override the modules if we have a module passed in
+        if prompt is not None:
+            self.prompt = prompt
         # check if there is no input data
         if not (self.dataset or self.has_images() or hasattr(self, 'prompt')):
             raise ValueError(
