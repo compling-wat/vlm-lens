@@ -6,6 +6,7 @@ import gradio as gr
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+import torch.nn.functional as F
 from matplotlib.figure import Figure
 from matplotlib.text import Text
 from PIL import Image
@@ -68,7 +69,7 @@ def update_layer_choices(model_choice: str) -> Tuple[gr.Dropdown, gr.Button]:
         return (
             gr.Dropdown(
                 choices=layers,
-                label=f'Select Layer for {model_choice}',
+                label=f'Select Module for {model_choice}',
                 value=layers[0] if layers else None,
                 visible=True,
                 interactive=True
@@ -80,7 +81,7 @@ def update_layer_choices(model_choice: str) -> Tuple[gr.Dropdown, gr.Button]:
         return (
             gr.Dropdown(
                 choices=['Model not implemented'],
-                label='Select Layer',
+                label='Select Module',
                 visible=True,
                 interactive=False
             ),
@@ -90,7 +91,7 @@ def update_layer_choices(model_choice: str) -> Tuple[gr.Dropdown, gr.Button]:
         return (
             gr.Dropdown(
                 choices=[f'Error: {str(e)}'],
-                label='Select Layer',
+                label='Select Module',
                 visible=True,
                 interactive=False
             ),
@@ -156,27 +157,19 @@ def get_single_image_probabilities(
 
     Returns:
         Tuple containing list of top tokens and their probabilities.
-
-    Raises:
-        NotImplementedError: If the model processing is not implemented.
     """
-    if model_selection in [ModelSelection.LLAVA, ModelSelection.QWEN]:
+    # Generate prompt and process inputs
+    text = vlm._generate_prompt(instruction, has_images=True)
+    inputs = vlm._generate_processor_output(text, image)
 
-        # Generate prompt and process inputs
-        text = vlm._generate_prompt(instruction, has_images=True)
-        inputs = vlm._generate_processor_output(text, image)
-
-        with torch.no_grad():
-            outputs = vlm.model.generate(
-                **inputs,
-                max_new_tokens=1,  # Only generate first token
-                output_scores=True,
-                return_dict_in_generate=True,
-                do_sample=False
-            )
-
-    else:
-        raise NotImplementedError(f'Model {model_selection.value} processing not yet implemented')
+    with torch.no_grad():
+        outputs = vlm.model.generate(
+            **inputs,
+            max_new_tokens=1,  # Only generate first token
+            output_scores=True,
+            return_dict_in_generate=True,
+            do_sample=False
+        )
 
     # Get the logits for the first generated token
     first_token_logits = outputs.scores[0][0]  # Shape: [vocab_size]
@@ -306,6 +299,136 @@ def create_dual_probability_plot(
     return fig
 
 
+def get_module_similarity_pooled(
+        vlm: ModelBase,
+        module_name: str,
+        image1: Image.Image,
+        image2: Image.Image,
+        instruction: str,
+        pooling: str = 'mean'
+) -> float:
+    """Compute cosine similarity with optional pooling strategies.
+
+    Args:
+        vlm: The loaded VLM (ModelBase instance).
+        module_name: The layer/module name to extract features from.
+        image1: First PIL Image.
+        image2: Second PIL Image.
+        instruction: Text instruction for the model.
+        pooling: Pooling strategy - 'mean', 'max', 'cls', or 'none'.
+
+    Returns:
+        Cosine similarity value between the two embeddings.
+
+    Raises:
+        ValueError: If feature extraction fails or module not found.
+    """
+    embeddings = {}
+    target_module = None
+
+    def hook_fn(
+        module: torch.nn.Module,
+        input: Any,
+        output: Any
+    ) -> None:
+        """Forward hook to capture module output.
+
+        Args:
+            module: The module being hooked.
+            input: The input to the module.
+            output: The output from the module.
+        """
+        if isinstance(output, tuple):
+            embeddings['activation'] = output[0].detach()
+        else:
+            embeddings['activation'] = output.detach()
+
+    # Find and register hook
+    for name, module in vlm.model.named_modules():
+        if name == module_name:
+            target_module = module
+            hook_handle = module.register_forward_hook(hook_fn)
+            break
+
+    if target_module is None:
+        raise ValueError(f"Module '{module_name}' not found in model")
+
+    try:
+        # Extract embedding for image1
+        text = vlm._generate_prompt(instruction, has_images=True)
+        inputs1 = vlm._generate_processor_output(text, image1)
+
+        embeddings.clear()
+        with torch.no_grad():
+            _ = vlm.model(**inputs1)
+
+        if 'activation' not in embeddings:
+            raise ValueError('Failed to extract features for image1')
+
+        embedding1 = embeddings['activation']
+
+        # Extract embedding for image2
+        inputs2 = vlm._generate_processor_output(text, image2)
+
+        embeddings.clear()
+        with torch.no_grad():
+            _ = vlm.model(**inputs2)
+
+        if 'activation' not in embeddings:
+            raise ValueError('Failed to extract features for image2')
+
+        embedding2 = embeddings['activation']
+
+        # Apply pooling strategy
+        if pooling == 'mean':
+            # Mean pooling across sequence dimension
+            if embedding1.dim() >= 2:
+                embedding1_pooled = embedding1.mean(dim=1)
+                embedding2_pooled = embedding2.mean(dim=1)
+            else:
+                embedding1_pooled = embedding1
+                embedding2_pooled = embedding2
+
+        elif pooling == 'max':
+            # Max pooling across sequence dimension
+            if embedding1.dim() >= 2:
+                embedding1_pooled = embedding1.max(dim=1)[0]
+                embedding2_pooled = embedding2.max(dim=1)[0]
+            else:
+                embedding1_pooled = embedding1
+                embedding2_pooled = embedding2
+
+        elif pooling == 'cls':
+            # Use first token (CLS token)
+            if embedding1.dim() >= 2:
+                embedding1_pooled = embedding1[:, 0, :]
+                embedding2_pooled = embedding2[:, 0, :]
+            else:
+                embedding1_pooled = embedding1
+                embedding2_pooled = embedding2
+
+        elif pooling == 'none':
+            # Flatten without pooling
+            embedding1_pooled = embedding1.reshape(embedding1.shape[0], -1)
+            embedding2_pooled = embedding2.reshape(embedding2.shape[0], -1)
+        else:
+            raise ValueError(f'Unknown pooling strategy: {pooling}')
+
+        # Ensure 2D shape [batch, features]
+        if embedding1_pooled.dim() == 1:
+            embedding1_pooled = embedding1_pooled.unsqueeze(0)
+            embedding2_pooled = embedding2_pooled.unsqueeze(0)
+
+        # Compute cosine similarity
+        similarity = F.cosine_similarity(embedding1_pooled, embedding2_pooled, dim=1)
+        similarity_value = float(similarity.mean().cpu().item())
+
+        return similarity_value
+
+    finally:
+        hook_handle.remove()
+
+
 def process_dual_inputs(
     model_choice: str,
     selected_layer: str,
@@ -385,7 +508,6 @@ def process_dual_inputs(
 
         # Create info text
         info_text = f'Model: {model_choice.upper()}\n'
-        info_text += f'Layer: {selected_layer}\n'
         info_text += f'Top-K: {top_k}\n'
         info_text += f"Instruction: '{instruction}'\n\n"
 
@@ -399,26 +521,17 @@ def process_dual_inputs(
         else:
             info_text += 'Image 2 - No data\n'
 
+        if len(tokens1) > 0 and len(tokens2) > 0:
+            info_text += f'\nLayer: {selected_layer}\n'
+            similarity = get_module_similarity_pooled(model, selected_layer, image1, image2, instruction)
+            info_text += f'Cosine similarity between Image 1 and 2: {similarity:.3f}\n'
+
         return plot, info_text
 
     except ValueError as e:
         return None, f'Invalid model selection: {str(e)}'
     except Exception as e:
         return None, f'Error: {str(e)}'
-
-
-def get_available_models() -> List[str]:
-    """Get list of available model names for the dropdown.
-
-    Returns:
-        List of model names as strings.
-    """
-    # For now, only return implemented models
-    implemented_models = [
-        ModelVariants.LLAVA_15_7B.value,
-        ModelVariants.QWENVL_20_2B.value
-    ]
-    return [model.capitalize() for model in implemented_models]
 
 
 def create_demo() -> gr.Blocks:
@@ -448,7 +561,7 @@ def create_demo() -> gr.Blocks:
         with gr.Row():
             with gr.Column():
                 model_dropdown = gr.Dropdown(
-                    choices=get_available_models(),
+                    choices=[v.value.capitalize() for v in ModelVariants],
                     label='Select VLM',
                     value=None,
                     interactive=True
@@ -456,7 +569,7 @@ def create_demo() -> gr.Blocks:
 
                 layer_dropdown = gr.Dropdown(
                     choices=[],
-                    label='Select Layer',
+                    label='Select Module',
                     visible=False,
                     interactive=True
                 )
