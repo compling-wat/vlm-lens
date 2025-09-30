@@ -9,14 +9,13 @@ import torch
 from matplotlib.figure import Figure
 from matplotlib.text import Text
 from PIL import Image
-from transformers import (AutoProcessor, LlavaForConditionalGeneration,
-                          Qwen2VLForConditionalGeneration)
 
-from demo.lookup import get_model_info
-from src.models.config import ModelSelection  # noqa: E402
+from demo.lookup import ModelVariants, get_model_info  # noqa: E402
+from src.main import get_model  # noqa: E402
+from src.models.base import ModelBase  # noqa: E402
+from src.models.config import Config, ModelSelection  # noqa: E402
 
 models_cache: Dict[str, Any] = {}
-processors_cache: Dict[str, Any] = {}
 current_model_selection: Optional[ModelSelection] = None
 
 
@@ -58,11 +57,11 @@ def update_layer_choices(model_choice: str) -> Tuple[gr.Dropdown, gr.Button]:
         return gr.Dropdown(choices=[], visible=False), gr.Button(visible=False)
 
     try:
-        # Convert string choice to ModelSelection enum
-        model_selection = ModelSelection(model_choice.lower())
+        # Convert string choice to ModelVariants enum
+        model_var = ModelVariants(model_choice.lower())
 
         # Get model info and read layer spec
-        model_path, model_spec_path = get_model_info(model_selection)
+        _, _, model_spec_path = get_model_info(model_var)
         layers = read_layer_spec(model_spec_path)
 
         # Return updated dropdown with layer choices and make button visible
@@ -99,117 +98,50 @@ def update_layer_choices(model_choice: str) -> Tuple[gr.Dropdown, gr.Button]:
         )
 
 
-def load_model(model_selection: ModelSelection) -> Tuple[Any, Any]:
-    """Load the specified VLM model and processor.
+def load_model(model_var: ModelVariants, config: Config) -> ModelBase:
+    """Load the specified VLM and processor.
 
     Args:
-        model_selection: The model to load from ModelSelection enum.
+        model_var: The model to load from ModelVariants enum.
+        config: The configuration object with model parameters.
 
     Returns:
-        Tuple containing the loaded model and processor.
+        The loaded model instance.
 
     Raises:
-        NotImplementedError: If the model is not implemented.
+        Exception: If model loading fails.
     """
-    global models_cache, processors_cache, current_model_selection
+    global models_cache, current_model_selection
 
-    model_key = model_selection.value
+    model_key = model_var.value
 
     # Check if model is already loaded
-    if model_key in models_cache and model_key in processors_cache:
-        current_model_selection = model_selection
-        return models_cache[model_key], processors_cache[model_key]
+    if model_key in models_cache:
+        current_model_selection = model_var
+        return models_cache[model_key]
 
-    print(f'Loading {model_selection.value} model...')
+    print(f'Loading {model_var.value} model...')
 
     try:
-        model_path, model_spec = get_model_info(model_selection)
-        print(f'Model path: {model_path}')
-        print(f'Model spec: {model_spec}')
-
-        if model_selection == ModelSelection.LLAVA:
-            # Load LLaVA model
-            processor = AutoProcessor.from_pretrained(model_path)
-            model = LlavaForConditionalGeneration.from_pretrained(
-                model_path,
-                torch_dtype=torch.float16,
-                low_cpu_mem_usage=True,
-                device_map='auto'
-            )
-        elif model_selection == ModelSelection.QWEN:
-            processor = AutoProcessor.from_pretrained(model_path)
-            model = Qwen2VLForConditionalGeneration.from_pretrained(
-                model_path,
-                torch_dtype=torch.float16,
-                low_cpu_mem_usage=True,
-                device_map='auto'
-            )
-        else:
-            # For other models, raise NotImplementedError for now
-            raise NotImplementedError(f'Model {model_selection.value} is not yet implemented')
+        model_selection = config.architecture
+        model = get_model(config.architecture, config)
 
         # Cache the loaded model and processor
         models_cache[model_key] = model
-        processors_cache[model_key] = processor
         current_model_selection = model_selection
 
         print(f'{model_selection.value} model loaded successfully!')
-        return model, processor
+        return model
 
     except Exception as e:
         print(f'Error loading model {model_selection.value}: {str(e)}')
         raise
 
 
-def get_first_token_probabilities_dual(
-    instruction: str,
-    image1: Image.Image,
-    image2: Image.Image,
-    model_selection: ModelSelection,
-    selected_layer: str,
-    top_k: int = 8
-) -> Tuple[List[str], np.ndarray, List[str], np.ndarray]:
-    """Process the instruction with both images and return first token probabilities for each.
-
-    Args:
-        instruction: Text instruction for the model.
-        image1: First PIL Image to process.
-        image2: Second PIL Image to process.
-        model_selection: The VLM to use.
-        selected_layer: The selected layer for analysis.
-        top_k: Number of top tokens to return.
-
-    Returns:
-        Tuple containing (tokens1, probs1, tokens2, probs2).
-    """
-    try:
-        # Load model if not already loaded or if different model selected
-        model, processor = load_model(model_selection)
-
-        print(f'Using layer: {selected_layer}')
-
-        # Process first image
-        tokens1, probs1 = get_single_image_probabilities(
-            instruction, image1, model, processor, model_selection, top_k
-        )
-
-        # Process second image
-        tokens2, probs2 = get_single_image_probabilities(
-            instruction, image2, model, processor, model_selection, top_k
-        )
-
-        return tokens1, probs1, tokens2, probs2
-
-    except Exception as e:
-        print(f'Error in processing: {str(e)}')
-        return [], np.array([]), [], np.array([])
-
-
 def get_single_image_probabilities(
     instruction: str,
     image: Image.Image,
-    model: Any,
-    processor: Any,
+    vlm: ModelBase,
     model_selection: ModelSelection,
     top_k: int = 8
 ) -> Tuple[List[str], np.ndarray]:
@@ -218,8 +150,7 @@ def get_single_image_probabilities(
     Args:
         instruction: Text instruction for the model.
         image: PIL Image to process.
-        model: Loaded model.
-        processor: Loaded processor.
+        vlm: Loaded model.
         model_selection: The VLM being used.
         top_k: Number of top tokens to return.
 
@@ -230,28 +161,20 @@ def get_single_image_probabilities(
         NotImplementedError: If the model processing is not implemented.
     """
     if model_selection in [ModelSelection.LLAVA, ModelSelection.QWEN]:
-        messages = [{
-            'role': 'user',
-            'content': [{'type': 'image'}, {'type': 'text', 'text': instruction}],
-        }]
-        text = processor.apply_chat_template(
-            messages, tokenize=False, add_generation_prompt=True
-        )
-        inputs = processor(
-            text=[text],
-            images=[image],
-            return_tensors='pt',
-            padding=True,
-        ).to(model.device)
+
+        # Generate prompt and process inputs
+        text = vlm._generate_prompt(instruction, has_images=True)
+        inputs = vlm._generate_processor_output(text, image)
 
         with torch.no_grad():
-            outputs = model.generate(
+            outputs = vlm.model.generate(
                 **inputs,
                 max_new_tokens=1,  # Only generate first token
                 output_scores=True,
                 return_dict_in_generate=True,
                 do_sample=False
             )
+
     else:
         raise NotImplementedError(f'Model {model_selection.value} processing not yet implemented')
 
@@ -265,7 +188,7 @@ def get_single_image_probabilities(
     top_probs, top_indices = torch.topk(probabilities, top_k)
 
     # Convert tokens back to text
-    top_tokens = [processor.tokenizer.decode([idx.item()]) for idx in top_indices]
+    top_tokens = [vlm.processor.tokenizer.decode([idx.item()]) for idx in top_indices]
 
     return top_tokens, top_probs.cpu().numpy()
 
@@ -417,26 +340,38 @@ def process_dual_inputs(
         return None, 'Please select a layer.'
 
     try:
-        # Convert string choice to ModelSelection enum
-        model_selection = ModelSelection(model_choice.lower())
+        # Initialize a config
+        model_var = ModelVariants(model_choice.lower())
+        model_selection, model_path, _ = get_model_info(model_var)
+        config = Config(model_selection, model_path, selected_layer, instruction)
+        config.model = {
+            'torch_dtype': torch.float16,
+            'low_cpu_mem_usage': True,
+            'device_map': 'auto'
+        }
+
+        # Load the model
+        model = load_model(model_var, config)
 
         # Handle cases where only one image is provided
         if image1 is None:
             image1 = image2
             tokens1, probs1 = [], np.array([])
             tokens2, probs2 = get_single_image_probabilities(
-                instruction, image2, *load_model(model_selection), model_selection, top_k
+                instruction, image2, model, model_selection, top_k
             )
         elif image2 is None:
             image2 = image1
             tokens1, probs1 = get_single_image_probabilities(
-                instruction, image1, *load_model(model_selection), model_selection, top_k
+                instruction, image1, model, model_selection, top_k
             )
             tokens2, probs2 = [], np.array([])
         else:
-            # Get token probabilities for both images
-            tokens1, probs1, tokens2, probs2 = get_first_token_probabilities_dual(
-                instruction, image1, image2, model_selection, selected_layer, top_k
+            tokens1, probs1 = get_single_image_probabilities(
+                instruction, image1, model, model_selection, top_k
+            )
+            tokens2, probs2 = get_single_image_probabilities(
+                instruction, image2, model, model_selection, top_k
             )
 
         if len(tokens1) == 0 and len(tokens2) == 0:
@@ -480,8 +415,8 @@ def get_available_models() -> List[str]:
     """
     # For now, only return implemented models
     implemented_models = [
-        ModelSelection.LLAVA.value,
-        ModelSelection.QWEN.value
+        ModelVariants.LLAVA_15_7B.value,
+        ModelVariants.QWENVL_20_2B.value
     ]
     return [model.capitalize() for model in implemented_models]
 
