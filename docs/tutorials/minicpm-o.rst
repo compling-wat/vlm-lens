@@ -47,7 +47,7 @@ To extract hidden representations on a CUDA-enabled device, execute:
 
 .. code-block:: bash
 
-   python src/main.py --config configs/minicpm-o.yaml --device cuda --debug
+   python -m src.main --config configs/minicpm-o.yaml --device cuda --debug
 
 Results
 -------------------------------

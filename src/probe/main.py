@@ -1,6 +1,6 @@
 """Probe classes for information analysis in models.
 
-Example command: python src/probe/probe.py -c configs/probe.yaml
+Example command: python -m src.probe.probe -c configs/probe/qwen/clevr-boolean-l13-example.yaml
 """
 
 import argparse

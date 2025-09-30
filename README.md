@@ -52,7 +52,7 @@ All the model-specific environments are independent of the base environment, and
 
 The general command to run the quick command-line demo is:
 ```bash
-python src/main.py \
+python -m src.main \
   --config <config-file-path> \
   --debug
 ```
@@ -80,19 +80,19 @@ modules:  # List of modules to extract embeddings from
 
 To run the extraction on available GPU, use the following command:
 ```bash
-python src/main.py --config configs/models/qwen/qwen-2b.yaml --debug
+python -m src.main --config configs/models/qwen/qwen-2b.yaml --debug
 ```
 
 If there is no GPU available, you can run it on CPU with:
 ```bash
-python src/main.py --config configs/models/qwen/qwen-2b.yaml --device cpu --debug
+python -m src.main --config configs/models/qwen/qwen-2b.yaml --device cpu --debug
 ```
 
 ## Layers of Interest in a VLM
 ### Retrieving All Named Modules
 Unfortunately there is no way to find which layers to potentially match to without loading the model. This can take quite a bit of system time figuring out.
 
-Instead, we offer some cached results under `logs/` for each model, which were generated through including the `-l` or `--log-named-modules` flag when running `python src/main.py`.
+Instead, we offer some cached results under `logs/` for each model, which were generated through including the `-l` or `--log-named-modules` flag when running `python -m src.main`.
 
 When running this flag, it is not necessary to set modules or anything besides the architecture and HuggingFace model path.
 
@@ -184,7 +184,7 @@ Download license-free images for primitive concepts (e.g., colors):
 
 ```bash
 pip install -r data/concepts/requirements.txt
-python data/concepts/download.py --config configs/concepts/colors.yaml
+python -m data.concepts.download --config configs/concepts/colors.yaml
 ```
 
 ### Embedding Extraction
@@ -192,13 +192,13 @@ python data/concepts/download.py --config configs/concepts/colors.yaml
 Run the LLaVA model to obtain embeddings of the concept images:
 
 ```bash
-python src/main.py --config configs/models/llava-7b/llava-7b-concepts-colors.yaml --device cuda
+python -m src.main --config configs/models/llava-7b/llava-7b-concepts-colors.yaml --device cuda
 ```
 
 Also, run the LLaVA model to obtain embeddings of the test images:
 
 ```bash
-python src/main.py --config configs/models/llava-7b/llava-7b.yaml --device cuda
+python -m src.main --config configs/models/llava-7b/llava-7b.yaml --device cuda
 ```
 
 ### Run PCA
@@ -206,9 +206,9 @@ python src/main.py --config configs/models/llava-7b/llava-7b.yaml --device cuda
 Several PCA-based analysis scripts are provided:
 ```bash
 pip install -r src/concepts/requirements.txt
-python src/concepts/pca.py
-python src/concepts/pca_knn.py
-python src/concepts/pca_separation.py
+python -m src.concepts.pca
+python -m src.concepts.pca_knn
+python -m src.concepts.pca_separation
 ```
 
 ## Contributing to VLM-Lens
@@ -228,7 +228,7 @@ pre-commit install
 ### Using a Cache
 To use a specific cache, one should set the `HF_HOME` environment variable as so:
 ```
-HF_HOME=./cache/ python src/main.py --config configs/models/clip/clip.yaml --debug
+HF_HOME=./cache/ python -m src.main --config configs/models/clip/clip.yaml --debug
 ```
 
 

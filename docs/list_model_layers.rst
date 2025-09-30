@@ -12,7 +12,7 @@ To run the script, use the following command:
 
 .. code-block:: bash
 
-    python src/main.py -a <architecture> -m <model_path> -l
+    python -m src.main -a <architecture> -m <model_path> -l
 
 Here, ``<architecture>`` is the architecture name, and ``<model_path>`` is the HuggingFace model identifier.
 

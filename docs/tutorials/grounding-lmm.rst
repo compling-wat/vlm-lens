@@ -71,7 +71,7 @@ To extract hidden representations on a CUDA-enabled device, execute:
 
 .. code-block:: bash
 
-   python src/main.py --config configs/glamm.yaml --device cuda --debug
+   python -m src.main --config configs/glamm.yaml --device cuda --debug
 
 Results
 -------------------------------

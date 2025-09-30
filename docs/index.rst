@@ -77,4 +77,4 @@ Usage
 
 .. code-block:: bash
 
-   python src/main.py --architecture <architecture> --model-path <model-path> --debug --config <config-file-path> --input-dir <input-dir> --output-db <output-db>
+   python -m src.main --architecture <architecture> --model-path <model-path> --debug --config <config-file-path> --input-dir <input-dir> --output-db <output-db>

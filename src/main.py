@@ -3,16 +3,9 @@
 This module here is the entrypoint to the VLM Lens toolkit.
 """
 import logging
-import os
-import sys
 
-from models.base import ModelBase
-from models.config import Config, ModelSelection
-
-# add on the src directory to the PythonPath
-EXC_DIR = os.path.dirname(os.path.dirname(__file__))
-sys.path.append(EXC_DIR)
-sys.path.append(os.path.join(EXC_DIR, 'src/'))
+from src.models.base import ModelBase
+from src.models.config import Config, ModelSelection
 
 
 def get_model(
@@ -29,49 +22,49 @@ def get_model(
         ModelBase: A model of type ModelBase which implements the runtime
     """
     if model_arch == ModelSelection.LLAVA:
-        from models.llava import LlavaModel
+        from src.models.llava import LlavaModel
         return LlavaModel(config)
     elif model_arch == ModelSelection.QWEN:
-        from models.qwen import QwenModel
+        from src.models.qwen import QwenModel
         return QwenModel(config)
     elif model_arch == ModelSelection.CLIP:
-        from models.clip import ClipModel
+        from src.models.clip import ClipModel
         return ClipModel(config)
     elif model_arch == ModelSelection.GLAMM:
-        from models.glamm import GlammModel
+        from src.models.glamm import GlammModel
         return GlammModel(config)
     elif model_arch == ModelSelection.JANUS:
-        from models.janus import JanusModel
+        from src.models.janus import JanusModel
         return JanusModel(config)
     elif model_arch == ModelSelection.BLIP2:
-        from models.blip2 import Blip2Model
+        from src.models.blip2 import Blip2Model
         return Blip2Model(config)
     elif model_arch == ModelSelection.MOLMO:
-        from models.molmo import MolmoModel
+        from src.models.molmo import MolmoModel
         return MolmoModel(config)
     elif model_arch == ModelSelection.PALIGEMMA:
-        from models.paligemma import PaligemmaModel
+        from src.models.paligemma import PaligemmaModel
         return PaligemmaModel(config)
     elif model_arch == ModelSelection.INTERNLM_XC:
-        from models.internlm_xc import InternLMXComposerModel
+        from src.models.internlm_xc import InternLMXComposerModel
         return InternLMXComposerModel(config)
     elif model_arch == ModelSelection.INTERNVL:
-        from models.internvl import InternVLModel
+        from src.models.internvl import InternVLModel
         return InternVLModel(config)
     elif model_arch == ModelSelection.MINICPM:
-        from models.minicpm import MiniCPMModel
+        from src.models.minicpm import MiniCPMModel
         return MiniCPMModel(config)
     elif model_arch == ModelSelection.COGVLM:
-        from models.cogvlm import CogVLMModel
+        from src.models.cogvlm import CogVLMModel
         return CogVLMModel(config)
     elif model_arch == ModelSelection.PIXTRAL:
-        from models.pixtral import PixtralModel
+        from src.models.pixtral import PixtralModel
         return PixtralModel(config)
     elif model_arch == ModelSelection.AYA_VISION:
-        from models.aya_vision import AyaVisionModel
+        from src.models.aya_vision import AyaVisionModel
         return AyaVisionModel(config)
     elif model_arch == ModelSelection.PLM:
-        from models.plm import PlmModel
+        from src.models.plm import PlmModel
         return PlmModel(config)
 
 

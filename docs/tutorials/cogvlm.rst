@@ -45,7 +45,7 @@ run the following:
 
 .. code-block:: bash
 
-   python src/main.py --config configs/cogvlm-chat.yaml --device cuda --debug
+   python -m src.main --config configs/cogvlm-chat.yaml --device cuda --debug
 
 .. Note::
 

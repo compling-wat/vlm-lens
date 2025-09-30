@@ -54,4 +54,4 @@ From: nvidia/cuda:11.7.1-cudnn8-devel-ubuntu22.04
 %runscript
     echo "Running vlm-lens with Python 3.10 and CUDA 11.7"
     cd /opt/vlm-lens
-    python src/main.py --config envs/glamm/apptainer/glamm_apptainer.yaml --debug --device cuda
+    python -m src.main --config envs/glamm/apptainer/glamm_apptainer.yaml --debug --device cuda
