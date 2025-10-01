@@ -40,17 +40,19 @@ class MolmoModel(ModelBase):
     def _init_processor(self) -> None:
         """Initializes the processor."""
         self.processor = AutoProcessor.from_pretrained(
-            self.config.model_path,
-            trust_remote_code=True,
-            torch_dtype='auto',
-            device_map='auto'
+            self.config.model_path, **getattr(self.config, 'model', {})
         )
 
-    def _generate_prompt(self, prompt: str) -> str:
+    def _generate_prompt(self, prompt: str, add_generation_prompt: bool = True, has_images: bool = False) -> str:
         """Generates the Molmo model prompt which will not use the chat template.
+
+        [Note from Martin] I'd hack these parameters a bit for gradio, follow Base.
 
         Args:
             prompt (str): The prompt to return, set by the config.
+            add_generation_prompt (bool): Whether to add a start token of a bot
+                response.
+            has_images (bool): Whether the model has images or not.
 
         Returns:
             str: The prompt to return, set by the config.
