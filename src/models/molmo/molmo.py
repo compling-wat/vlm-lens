@@ -27,20 +27,13 @@ class MolmoModel(ModelBase):
     def _load_specific_model(self) -> None:
         """Overridden function to populate self.model."""
         self.model = AutoModelForCausalLM.from_pretrained(
-            self.model_path,
-            **self.config.model,
-            trust_remote_code=True
-        ) if hasattr(self.config, 'model') else (
-            AutoModelForCausalLM.from_pretrained(
-                self.model_path,
-                trust_remote_code=True
-            )
+            self.model_path, **getattr(self.config, 'model', {}), trust_remote_code=True
         )
 
     def _init_processor(self) -> None:
         """Initializes the processor."""
         self.processor = AutoProcessor.from_pretrained(
-            self.config.model_path, **getattr(self.config, 'model', {})
+            self.config.model_path, **getattr(self.config, 'model', {}), trust_remote_code=True
         )
 
     def _generate_prompt(self, prompt: str, add_generation_prompt: bool = True, has_images: bool = False) -> str:
