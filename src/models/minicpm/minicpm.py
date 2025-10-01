@@ -32,11 +32,13 @@ class MiniCPMModel(ModelBase):
             self.model_path, **getattr(self.config, 'model', {})
         )
 
-    def _generate_prompt(self, prompt: str) -> str:
+    def _generate_prompt(self, prompt: str, add_generation_prompt: bool = True, has_images: bool = False) -> str:
         """Generates the MiniCPM model prompt which will not use the chat template.
 
         Args:
             prompt (str): The prompt content.
+            add_generation_prompt (bool): Whether to add a start token of a bot response.
+            has_images (bool): Whether the model has images or not.
 
         Returns:
             str: The prompt to return, set by the config.

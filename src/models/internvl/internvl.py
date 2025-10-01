@@ -36,11 +36,13 @@ class InternVLModel(ModelBase):
             )
         )
 
-    def _generate_prompt(self, prompt: str) -> str:
+    def _generate_prompt(self, prompt: str, add_generation_prompt: bool = True, has_images: bool = False) -> str:
         """Generates the InternVL model prompt which will not use the chat template.
 
         Args:
             prompt (str): The prompt to return, set by the config.
+            add_generation_prompt (bool): Whether to add a start token of a bot response.
+            has_images (bool): Whether the model has images or not.
 
         Returns:
             str: The prompt to return, set by the config.
@@ -65,7 +67,8 @@ class InternVLModel(ModelBase):
             dict: The corresponding processor output per image and prompt.
         """
         return {'prompt': prompt,
-                'pixel_values': None if img_path is None else self.img_processor(img_path, max_num=12).to(dtype=torch.bfloat16).to(self.config.device)}
+                'pixel_values': None if img_path is None else self.img_processor(
+                    img_path, max_num=12).to(dtype=torch.bfloat16).to(self.config.device)}
 
     def _forward(self, data: BatchFeature) -> None:
         """Given some input data, performs a single forward pass.

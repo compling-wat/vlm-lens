@@ -38,11 +38,13 @@ class JanusModel(ModelBase):
         """Initialize the Janus processor."""
         self.processor = JanusProcessor.from_pretrained(self.model_path)
 
-    def _generate_prompt(self, prompt: str) -> str:
+    def _generate_prompt(self, prompt: str, add_generation_prompt: bool = True, has_images: bool = False) -> str:
         """Generates the prompt string with the input messages.
 
         Args:
             prompt (str): prompt content.
+            add_generation_prompt (bool): Whether to add a start token of a bot response.
+            has_images (bool): Whether the model has images or not.
 
         Returns:
             str: Returns the prompt content as is.

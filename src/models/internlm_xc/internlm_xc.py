@@ -42,11 +42,13 @@ class InternLMXComposerModel(ModelBase):
             self.model_path, trust_remote_code=True)
         self.model.tokenizer = self.processor
 
-    def _generate_prompt(self, prompt: str) -> str:
+    def _generate_prompt(self, prompt: str, add_generation_prompt: bool = True, has_images: bool = False) -> str:
         """Overridden function to generate the prompt for the model.
 
         Args:
             prompt (str): The input prompt to be processed.
+            add_generation_prompt (bool): Whether to add a start token of a bot response.
+            has_images (bool): Whether the model has images or not.
 
         Returns:
             str: The formatted prompt ready for model input.
