@@ -72,7 +72,7 @@ propcache==0.3.2
 psutil==7.0.0
 ptyprocess==0.7.0
 pure_eval==0.2.3
-pyarrow=19.0.1
+pyarrow==19.0.1
 pycparser==2.22
 pygments==2.19.1
 pyparsing==3.2.1

@@ -73,7 +73,7 @@ protobuf==4.25.8
 psutil==6.1.1
 ptyprocess==0.7.0
 pure_eval==0.2.3
-pyarrow @ file:///tmp/ebuser/avx2/Arrow/19.0.1/GCCcore-12.3-gentoo/arrow/python
+pyarrow==19.0.1
 pygments==2.19.1
 pyparsing==3.2.1
 python_dateutil==2.9.0.post0
