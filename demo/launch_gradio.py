@@ -159,8 +159,12 @@ def get_single_image_probabilities(
         Tuple containing list of top tokens and their probabilities.
     """
     # Generate prompt and process inputs
+    vlm.model.eval()
     text = vlm._generate_prompt(instruction, has_images=True)
     inputs = vlm._generate_processor_output(text, image)
+    for key in inputs:
+        if isinstance(inputs[key], torch.Tensor):
+            inputs[key] = inputs[key].to(vlm.config.device)
 
     with torch.no_grad():
         outputs = vlm.model.generate(
@@ -354,9 +358,13 @@ def get_module_similarity_pooled(
         raise ValueError(f"Module '{module_name}' not found in model")
 
     try:
+        vlm.model.eval()
         # Extract embedding for image1
         text = vlm._generate_prompt(instruction, has_images=True)
         inputs1 = vlm._generate_processor_output(text, image1)
+        for key in inputs1:
+            if isinstance(inputs1[key], torch.Tensor):
+                inputs1[key] = inputs1[key].to(vlm.config.device)
 
         embeddings.clear()
         with torch.no_grad():
@@ -369,6 +377,9 @@ def get_module_similarity_pooled(
 
         # Extract embedding for image2
         inputs2 = vlm._generate_processor_output(text, image2)
+        for key in inputs2:
+            if isinstance(inputs2[key], torch.Tensor):
+                inputs2[key] = inputs2[key].to(vlm.config.device)
 
         embeddings.clear()
         with torch.no_grad():
