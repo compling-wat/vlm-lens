@@ -1,0 +1,7 @@
+architecture: llava
+model_path: llava-hf/bakLlava-v1-hf
+input_dir: ./data/test-images/
+prompt: "Describe the color in this image in one word."
+output_db: output/bakllava.db
+modules:
+  - language_model.*

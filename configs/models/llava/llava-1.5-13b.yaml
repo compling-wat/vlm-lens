@@ -1,0 +1,10 @@
+architecture: llava
+model_path: llava-hf/llava-1.5-13b-hf
+model:
+  - torch_dtype: auto
+  - device_map: auto
+input_dir: ./data/test-images/
+prompt: "Describe the color in this image in one word."
+output_db: output/llava-13b.db
+modules:
+  - .*language_model.*
