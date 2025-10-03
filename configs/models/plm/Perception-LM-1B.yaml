@@ -5,7 +5,7 @@ model:
   - trust_remote_code: True
 forward:
   - max_new_tokens: 1
-output_db: output/plm.db
+output_db: output/Perception-LM-1B.db
 input_dir: ./data/test-images/
 prompt: "Describe the color in this image in one word."
 modules:

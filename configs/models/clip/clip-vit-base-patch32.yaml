@@ -2,7 +2,7 @@ architecture: clip
 model_path: openai/clip-vit-base-patch32
 model:
   - torch_dtype: auto
-output_db: output/clip.db
+output_db: output/clip-vit-base-patch32.db
 input_dir: ./data/test-images/
 prompt: "Describe the color in this image in one word."
 modules:

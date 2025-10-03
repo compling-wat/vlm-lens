@@ -5,6 +5,6 @@ model:
   - device_map: auto
 input_dir: ./data/test-images/
 prompt: "Describe the color in this image in one word."
-output_db: output/llava-13b.db
+output_db: output/llava-13b-hf.db
 modules:
   - .*language_model.*

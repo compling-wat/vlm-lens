@@ -5,7 +5,7 @@ model:
 forward:
   - max_new_tokens: 1
   - stop_strings: <|endoftext|>
-output_db: output/molmo.db
+output_db: output/Molmo-7B-D-0924.db
 input_dir: ./data/test-images/
 prompt: "Describe the color in this image in one word."
 modules:

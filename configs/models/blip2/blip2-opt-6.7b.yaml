@@ -1,8 +1,8 @@
 architecture: blip2
-model_path: Salesforce/blip2-opt-2.7b
+model_path: Salesforce/blip2-opt-6.7b
 model:
   - torch_dtype: auto
-output_db: output/blip2.db
+output_db: output/blip2-opt-6.7b.db
 input_dir: ./data/test-images/
 prompt: "Describe the color in this image in one word."
 modules:

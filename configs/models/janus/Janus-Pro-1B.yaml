@@ -6,7 +6,7 @@ forward:
   - max_new_tokens: 1
   - do_sample: True
   - generation_mode: 'text'
-output_db: output/janus.db
+output_db: output/Janus-Pro-1B.db
 input_dir: ./data
 prompt: "Describe the color in this image in one word."
 modules:

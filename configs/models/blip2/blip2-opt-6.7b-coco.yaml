@@ -1,0 +1,10 @@
+architecture: blip2
+model_path: Salesforce/blip2-opt-6.7b-coco
+model:
+  - torch_dtype: auto
+output_db: output/blip2-opt-6.7b-coco.db
+input_dir: ./data/test-images/
+prompt: "Describe the color in this image in one word."
+modules:
+  - language_model.lm_head
+  - vision_model.post_layernorm

@@ -11,7 +11,7 @@ model:
 forward:
   - max_new_tokens: 1
 vis_save_path: "./vis_output"
-output_db: glamm.db
+output_db: GLaMM-FullScope.db
 input_dir: ./data/test-images/
 prompt: "Describe the color in this image in one word."
 modules:

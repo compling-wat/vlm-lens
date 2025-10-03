@@ -71,3 +71,4 @@ wcwidth==0.2.13
 wget==3.2
 xxhash==3.5.0
 yarl==1.20.1
+autoawq==0.2.7.post3

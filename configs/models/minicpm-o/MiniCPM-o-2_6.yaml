@@ -6,7 +6,7 @@ model:
   - attn_implementation: sdpa
 forward:
   - max_new_tokens: 1
-output_db: output/minicpm-o.db
+output_db: output/MiniCPM-o-2_6.db
 input_dir: ./data/test-images/
 prompt: "Describe the color in this image in one word."
 modules:

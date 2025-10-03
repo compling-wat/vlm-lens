@@ -9,7 +9,7 @@ model:
 forward:
   - max_new_tokens: 2048
   - do_sample: False
-output_db: output/cogvlm.db
+output_db: output/cogvlm-chat-hf.db
 input_dir: ./data/test-images/
 prompt: "Describe the color in this image in one word."
 modules:

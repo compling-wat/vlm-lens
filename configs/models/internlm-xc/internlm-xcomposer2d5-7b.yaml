@@ -5,7 +5,7 @@ model:
   - attn_implementation: eager
 forward:
   - max_new_tokens: 1
-output_db: output/internlm.db
+output_db: output/internlm-xcomposer2d5-7b.db
 input_dir: ./data/test-images/
 prompt: "Describe the color in this image in one word."
 modules:
