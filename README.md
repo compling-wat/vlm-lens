@@ -215,6 +215,15 @@ python -m src.concepts.pca_knn
 python -m src.concepts.pca_separation
 ```
 
+## Run Gradio Demo Locally
+
+Install additional dependencies and launch the app.
+
+```bash
+pip install -r demo/requirements.txt
+python -m demo.launch_gradio
+```
+
 ## Contributing to VLM-Lens
 
 We welcome contributions to VLM-Lens! If you have suggestions, improvements, or bug fixes, please consider submitting a pull request, and we are actively reviewing them.
@@ -247,3 +256,15 @@ git submodule update --recursive --init
 ```
 
 See [our document](https://compling-wat.github.io/vlm-lens/tutorials/grounding-lmm.html) for details on the installation.
+
+
+## Citation
+
+```bibtex
+@inproceedings{vlmlens,
+  title={From Behavioral Performance to Internal Competence: Interpreting Vision-Language Models with VLM-Lens},
+  author={Hala Sheta and Eric Huang and Shuyu Wu and Ilia Alenabi and Jiajun Hong and Ryker Lin and Ruoxi Ning and Daniel Wei and Jialin Yang and Jiawei Zhou and Ziqiao Ma and Freda Shi},
+  booktitle={Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing: System Demonstrations},
+  year={2025}
+}
+```
