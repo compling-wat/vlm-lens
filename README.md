@@ -2,9 +2,13 @@
 
 [![python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&style=flat-square)](https://www.python.org/downloads/release/python-31012/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](https://www.apache.org/licenses/LICENSE-2.0)
+[![arXiv](https://img.shields.io/badge/arXiv-2309.06156-red.svg?logo=arxiv&style=flat-square)](https://arxiv.org/abs/2510.02292)
 [![Documentation](https://img.shields.io/badge/Documentation-Online-green.svg?style=flat-square)](https://compling-wat.github.io/vlm-lens/)
+
 [![Jupyter Notebook](https://img.shields.io/badge/Jupyter-Notebook-orange.svg?logo=jupyter&style=flat-square)](tutorial-notebooks/guide.ipynb)
 [![Google Colab](https://img.shields.io/badge/Google-Colab-orange?logo=googlecolab&style=flat-square)](https://colab.research.google.com/drive/13WC4HA6syXFotmn7S8WsVz4OmoHsfHV9?usp=sharing)
+[![Gradio Demo](https://img.shields.io/badge/Gradio-Demo-yellow.svg?logo=gradio&style=flat-square)](https://huggingface.co/spaces/marstin/VLM-Lens)
+
 
 <p align="center">
   <img src="imgs/teaser.png" alt="VLM-Lens Teaser" width="100%" />
