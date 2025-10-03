@@ -11,6 +11,9 @@ from matplotlib.figure import Figure
 from matplotlib.text import Text
 from PIL import Image
 
+from demo.attn_utils import extract_attention_weights  # noqa: E402
+from demo.attn_utils import (visualize_attention_head_grid,
+                             visualize_image_to_text_attention)
 from demo.lookup import ModelVariants, get_model_info  # noqa: E402
 from src.main import get_model  # noqa: E402
 from src.models.base import ModelBase  # noqa: E402
@@ -545,110 +548,298 @@ def process_dual_inputs(
         return None, f'Error: {str(e)}'
 
 
-def create_demo() -> gr.Blocks:
-    """Create and configure the Gradio demo interface for dual image comparison.
+def process_with_attention(
+    model_choice: str,
+    selected_layer: str,
+    instruction: str,
+    image: Optional[Image.Image],
+    max_tokens: int = 10,
+    num_heads_display: int = 8,
+    aggregation_type: str = 'mean'
+) -> Tuple[Optional[Figure], Optional[Figure], str]:
+    """Process single image and return attention visualizations.
+
+    Args:
+        model_choice: String name of the selected model.
+        selected_layer: String name of the selected layer.
+        instruction: Text instruction for the model.
+        image: PIL Image to process.
+        max_tokens: Number of tokens to generate.
+        num_heads_display: Number of attention heads to show in detail.
+        aggregation_type: Aggregation method for head comparison.
 
     Returns:
-        Configured Gradio Blocks interface.
+        Tuple containing (attention_heatmap, aggregation_plot, info_text)
+    """
+    if image is None:
+        return None, None, 'Please upload an image.'
+
+    if not instruction.strip():
+        return None, None, 'Please provide an instruction.'
+
+    if not model_choice or not selected_layer:
+        return None, None, 'Please select both model and layer.'
+
+    try:
+        # Initialize config
+        model_var = ModelVariants(model_choice.lower())
+        model_selection, model_path, _ = get_model_info(model_var)
+        config = Config(model_selection, model_path, selected_layer, instruction)
+        config.model = {
+            'torch_dtype': torch.float16,
+            'low_cpu_mem_usage': True,
+            'device_map': 'auto'
+        }
+
+        # Load model
+        model = load_model(model_var, config)
+
+        # Extract attention weights
+        attention_tensor, generated_tokens, num_image_tokens = extract_attention_weights(
+            model, selected_layer, image, instruction, max_tokens
+        )
+
+        # Create visualizations
+        attention_fig = visualize_image_to_text_attention(
+            attention_tensor, generated_tokens, num_image_tokens, num_heads_display
+        )
+        scale_figure_fonts(attention_fig, factor=1.15)
+
+        aggregation_fig = visualize_attention_head_grid(
+            attention_tensor, generated_tokens, num_image_tokens, aggregation_type
+        )
+        scale_figure_fonts(aggregation_fig, factor=1.15)
+
+        # Create info text
+        full_response = ''.join(generated_tokens)
+        info_text = f'Model: {model_choice.upper()}\n'
+        info_text += f'Layer: {selected_layer}\n'
+        info_text += f"Instruction: '{instruction}'\n\n"
+        info_text += f'Generated Response: "{full_response}"\n\n'
+        info_text += f'Number of Attention Heads: {attention_tensor.shape[0] if attention_tensor.dim() >= 3 else "N/A"}\n'
+        info_text += f'Number of Image Tokens: {num_image_tokens}\n'
+        info_text += f'Number of Generated Tokens: {len(generated_tokens)}\n'
+        info_text += f'Attention Tensor Shape: {list(attention_tensor.shape)}\n'
+
+        return attention_fig, aggregation_fig, info_text
+
+    except ValueError as e:
+        return None, None, f'Invalid selection: {str(e)}'
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        return None, None, f'Error during attention extraction:\n{str(e)}\n\nDetails:\n{error_details}'
+
+
+def create_demos() -> gr.Blocks:
+    """Create enhanced Gradio demo with attention visualization tab.
+
+    Returns:
+        Configured Gradio Blocks interface with multiple tabs.
     """
     with gr.Blocks(title='VLM-Lens Visualizer') as demo:
         gr.Markdown("""
-        # VLM-Lens Demo
+        # VLM-Lens
 
-        This VLM-Lens demo processes an instruction with up to two images through various Vision-Language Models (VLMs)
-        and visualizes the probability distribution of the first token in the response for each image.
+        From Behavioral Performance to Internal Competence: Interpreting Vision-Language Models with VLM-Lens
 
-        **Instructions:**
-        1. Select a VLM from the dropdown
-        2. Select a layer from the available embedding layers
-        3. Upload two images for comparison
-        4. Enter your instruction/question about the images
-        5. Adjust the number of top tokens to display (1-20)
-        6. Click "Analyze" to see the first token probability distributions side by side
-
-        **Note:** You can upload just one image if you prefer single image analysis.
+        - 📄 [arXiv](https://arxiv.org/abs/2510.02292)
+        - 🧑‍💻 [GitHub](https://github.com/compling-wat/vlm-lens)
+        - 📅 [EMNLP 2025 System Demonstration](https://2025.emnlp.org)
         """)
 
-        with gr.Row():
-            with gr.Column():
-                model_dropdown = gr.Dropdown(
-                    choices=[v.value.capitalize() for v in ModelVariants],
-                    label='Select VLM',
-                    value=None,
-                    interactive=True
-                )
+        with gr.Tabs():
 
-                layer_dropdown = gr.Dropdown(
-                    choices=[],
-                    label='Select Module',
-                    visible=False,
-                    interactive=True
-                )
+            # Tab 1: Dual image comparison
+            with gr.TabItem('Token Distribution and Embedding Similairity'):
+                gr.Markdown("""
+                This demo processes an instruction with up to two images through various VLMs,
+                computes cosine similarity between their embeddings at a specified layer,
+                and visualizes the probability distribution of the first token in the response for each image.
 
-                instruction_input = gr.Textbox(
-                    label='Instruction',
-                    placeholder='Describe what you see in this image...',
-                    lines=3
-                )
+                **Instructions:**
+                1. Select a VLM from the dropdown
+                2. Select a layer from the available embedding layers
+                3. Upload two images for comparison
+                4. Enter your instruction/question about the images
+                5. Adjust the number of top tokens to display (1-20)
+                6. Click "Analyze" to see the first token probability distributions side by side
 
-                top_k_slider = gr.Slider(
-                    minimum=1,
-                    maximum=20,
-                    value=8,
-                    step=1,
-                    label='Number of Top Tokens to Display',
-                    info='Select how many top probability tokens to show in the visualization'
-                )
+                **Note:** You can upload just one image if you prefer single image analysis.
+                """)
 
                 with gr.Row():
-                    image1_input = gr.Image(
-                        label='Upload Image 1',
-                        type='pil'
-                    )
-                    image2_input = gr.Image(
-                        label='Upload Image 2',
-                        type='pil'
-                    )
+                    with gr.Column():
+                        model_dropdown1 = gr.Dropdown(
+                            choices=[v.value.capitalize() for v in ModelVariants],
+                            label='Select VLM',
+                            value=None,
+                            interactive=True
+                        )
 
-                analyze_btn = gr.Button('Analyze', variant='primary', visible=False)
+                        layer_dropdown1 = gr.Dropdown(
+                            choices=[],
+                            label='Select Module',
+                            visible=False,
+                            interactive=True
+                        )
 
-            with gr.Column():
-                plot_output = gr.Plot(label='First Token Probability Distribution Comparison')
-                info_output = gr.Textbox(
-                    label='Analysis Info',
-                    lines=8,
-                    interactive=False
+                        instruction_input1 = gr.Textbox(
+                            label='Instruction',
+                            placeholder='Describe what you see in this image...',
+                            lines=3
+                        )
+
+                        top_k_slider = gr.Slider(
+                            minimum=1,
+                            maximum=20,
+                            value=8,
+                            step=1,
+                            label='Number of Top Tokens to Display'
+                        )
+
+                        with gr.Row():
+                            image1_input = gr.Image(label='Upload Image 1', type='pil')
+                            image2_input = gr.Image(label='Upload Image 2', type='pil')
+
+                        analyze_btn1 = gr.Button('Analyze', variant='primary', visible=False)
+
+                    with gr.Column():
+                        plot_output1 = gr.Plot(label='Probability Distribution Comparison')
+                        info_output1 = gr.Textbox(
+                            label='Analysis Info',
+                            lines=8,
+                            interactive=False
+                        )
+
+                model_dropdown1.change(
+                    fn=update_layer_choices,
+                    inputs=[model_dropdown1],
+                    outputs=[layer_dropdown1, analyze_btn1]
                 )
 
-        # Set up event handlers
-        model_dropdown.change(
-            fn=update_layer_choices,
-            inputs=[model_dropdown],
-            outputs=[layer_dropdown, analyze_btn]
-        )
+                analyze_btn1.click(
+                    fn=process_dual_inputs,
+                    inputs=[model_dropdown1, layer_dropdown1, instruction_input1,
+                            image1_input, image2_input, top_k_slider],
+                    outputs=[plot_output1, info_output1]
+                )
 
-        analyze_btn.click(
-            fn=process_dual_inputs,
-            inputs=[model_dropdown, layer_dropdown, instruction_input, image1_input, image2_input, top_k_slider],
-            outputs=[plot_output, info_output]
-        )
+            # Tab 2: Attention visualization
+            with gr.TabItem('Attention Visualization'):
+                gr.Markdown("""
+                Visualize attention patterns from image tokens to generated text tokens.
 
-        # Add examples
-        gr.Examples(
-            examples=[
-                ['What is in this image? Describe in one word.', None, None],
-                ['Describe the main object in the picture in one word.', None, None],
-                ['What color is the dominant object? Describe in one word.', None, None],
-            ],
-            inputs=[instruction_input, image1_input, image2_input]
-        )
+                **Instructions:**
+                1. Select a VLM and attention layer
+                2. Upload an image
+                3. Enter your instruction
+                4. Configure visualization parameters
+                5. Click "Visualize Attention" to see attention patterns
+                """)
+
+                with gr.Row():
+                    with gr.Column():
+                        model_dropdown2 = gr.Dropdown(
+                            choices=[v.value.capitalize() for v in ModelVariants],
+                            label='Select VLM',
+                            value=None,
+                            interactive=True
+                        )
+
+                        layer_dropdown2 = gr.Dropdown(
+                            choices=[],
+                            label='Select Attention Module',
+                            visible=False,
+                            interactive=True
+                        )
+
+                        instruction_input2 = gr.Textbox(
+                            label='Instruction',
+                            placeholder='What is in this image?',
+                            lines=2
+                        )
+
+                        image_input2 = gr.Image(
+                            label='Upload Image',
+                            type='pil'
+                        )
+
+                        with gr.Row():
+                            max_tokens_slider = gr.Slider(
+                                minimum=1,
+                                maximum=50,
+                                value=10,
+                                step=1,
+                                label='Max Tokens to Generate',
+                                info='Number of tokens to generate for attention analysis'
+                            )
+
+                        with gr.Row():
+                            num_heads_slider = gr.Slider(
+                                minimum=1,
+                                maximum=32,
+                                value=8,
+                                step=1,
+                                label='Heads to Display',
+                                info='Number of attention heads to show in detail view'
+                            )
+
+                        aggregation_dropdown = gr.Dropdown(
+                            choices=['mean', 'max', 'sum'],
+                            value='mean',
+                            label='Aggregation Method',
+                            info='How to aggregate attention for head comparison'
+                        )
+
+                        analyze_btn2 = gr.Button(
+                            'Visualize Attention',
+                            variant='primary',
+                            visible=False
+                        )
+
+                    with gr.Column():
+                        attention_plot = gr.Plot(
+                            label='Attention Patterns by Head'
+                        )
+                        aggregation_plot = gr.Plot(
+                            label='Attention Aggregation Across Heads'
+                        )
+                        info_output2 = gr.Textbox(
+                            label='Attention Analysis Info',
+                            lines=10,
+                            interactive=False
+                        )
+
+                model_dropdown2.change(
+                    fn=update_layer_choices,
+                    inputs=[model_dropdown2],
+                    outputs=[layer_dropdown2, analyze_btn2]
+                )
+
+                analyze_btn2.click(
+                    fn=process_with_attention,
+                    inputs=[model_dropdown2, layer_dropdown2, instruction_input2,
+                            image_input2, max_tokens_slider, num_heads_slider,
+                            aggregation_dropdown],
+                    outputs=[attention_plot, aggregation_plot, info_output2]
+                )
+
+                gr.Examples(
+                    examples=[
+                        ['What is the main object? Answer in one word.'],
+                        ['Describe the scene briefly.'],
+                        ['What color is prominent in this image?'],
+                    ],
+                    inputs=[instruction_input2]
+                )
 
     return demo
 
 
 if __name__ == '__main__':
     # Create and launch the demo
-    demo = create_demo()
+    demo = create_demos()
     demo.launch(
         share=True,
         server_name='0.0.0.0',
