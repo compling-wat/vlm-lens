@@ -2,7 +2,7 @@
 
 [![python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&style=flat-square)](https://www.python.org/downloads/release/python-31012/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](https://www.apache.org/licenses/LICENSE-2.0)
-[![arXiv](https://img.shields.io/badge/arXiv-2309.06156-red.svg?logo=arxiv&style=flat-square)](https://arxiv.org/abs/2510.02292)
+[![arXiv](https://img.shields.io/badge/arXiv-2510.02292-red.svg?logo=arxiv&style=flat-square)](https://arxiv.org/abs/2510.02292)
 [![Documentation](https://img.shields.io/badge/Documentation-Online-green.svg?style=flat-square)](https://compling-wat.github.io/vlm-lens/)
 
 [![Jupyter Notebook](https://img.shields.io/badge/Jupyter-Notebook-orange.svg?logo=jupyter&style=flat-square)](tutorial-notebooks/guide.ipynb)
