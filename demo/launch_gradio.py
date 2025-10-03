@@ -13,6 +13,8 @@ from PIL import Image
 
 from demo.attn_utils import extract_attention_weights  # noqa: E402
 from demo.attn_utils import (visualize_attention_head_grid,
+                             visualize_attention_overlay_averaged,
+                             visualize_attention_overlay_grid,
                              visualize_image_to_text_attention)
 from demo.lookup import ModelVariants, get_model_info  # noqa: E402
 from src.main import get_model  # noqa: E402
@@ -555,9 +557,14 @@ def process_with_attention(
     image: Optional[Image.Image],
     max_tokens: int = 10,
     num_heads_display: int = 8,
-    aggregation_type: str = 'mean'
-) -> Tuple[Optional[Figure], Optional[Figure], str]:
-    """Process single image and return attention visualizations.
+    aggregation_type: str = 'mean',
+    patch_h: int = 24,
+    patch_w: int = 24,
+    overlay_alpha: float = 0.5,
+    colormap: str = 'jet',
+    num_token_overlays: int = 4
+) -> Tuple[Optional[Figure], Optional[Figure], Optional[Figure], Optional[Figure], str]:
+    """Process single image and return attention visualizations including overlays.
 
     Args:
         model_choice: String name of the selected model.
@@ -567,18 +574,23 @@ def process_with_attention(
         max_tokens: Number of tokens to generate.
         num_heads_display: Number of attention heads to show in detail.
         aggregation_type: Aggregation method for head comparison.
+        patch_h: Height of patch grid.
+        patch_w: Width of patch grid.
+        overlay_alpha: Transparency for attention overlay.
+        colormap: Colormap for attention visualization.
+        num_token_overlays: Number of token overlays to show.
 
     Returns:
-        Tuple containing (attention_heatmap, aggregation_plot, info_text)
+        Tuple containing (attention_heatmap, aggregation_plot, overlay_avg, overlay_grid, info_text)
     """
     if image is None:
-        return None, None, 'Please upload an image.'
+        return None, None, None, None, 'Please upload an image.'
 
     if not instruction.strip():
-        return None, None, 'Please provide an instruction.'
+        return None, None, None, None, 'Please provide an instruction.'
 
     if not model_choice or not selected_layer:
-        return None, None, 'Please select both model and layer.'
+        return None, None, None, None, 'Please select both model and layer.'
 
     try:
         # Initialize config
@@ -610,6 +622,21 @@ def process_with_attention(
         )
         scale_figure_fonts(aggregation_fig, factor=1.15)
 
+        # Create attention overlay visualizations
+        overlay_avg_fig = visualize_attention_overlay_averaged(
+            image, attention_tensor, generated_tokens, num_image_tokens,
+            patch_size=(patch_h, patch_w), alpha=overlay_alpha, colormap=colormap,
+            show_original=True
+        )
+        scale_figure_fonts(overlay_avg_fig, factor=1.15)
+
+        overlay_grid_fig = visualize_attention_overlay_grid(
+            image, attention_tensor, generated_tokens, num_image_tokens,
+            patch_size=(patch_h, patch_w), num_tokens_to_show=num_token_overlays,
+            alpha=overlay_alpha, colormap=colormap
+        )
+        scale_figure_fonts(overlay_grid_fig, factor=1.15)
+
         # Create info text
         full_response = ''.join(generated_tokens)
         info_text = f'Model: {model_choice.upper()}\n'
@@ -620,15 +647,16 @@ def process_with_attention(
         info_text += f'Number of Image Tokens: {num_image_tokens}\n'
         info_text += f'Number of Generated Tokens: {len(generated_tokens)}\n'
         info_text += f'Attention Tensor Shape: {list(attention_tensor.shape)}\n'
+        info_text += f'Patch Grid: {patch_h}x{patch_w}\n'
 
-        return attention_fig, aggregation_fig, info_text
+        return attention_fig, aggregation_fig, overlay_avg_fig, overlay_grid_fig, info_text
 
     except ValueError as e:
-        return None, None, f'Invalid selection: {str(e)}'
+        return None, None, None, None, f'Invalid selection: {str(e)}'
     except Exception as e:
         import traceback
         error_details = traceback.format_exc()
-        return None, None, f'Error during attention extraction:\n{str(e)}\n\nDetails:\n{error_details}'
+        return None, None, None, None, f'Error during attention extraction:\n{str(e)}\n\nDetails:\n{error_details}'
 
 
 def create_demos() -> gr.Blocks:
@@ -639,13 +667,11 @@ def create_demos() -> gr.Blocks:
     """
     with gr.Blocks(title='VLM-Lens Visualizer') as demo:
         gr.Markdown("""
-        # VLM-Lens
+        # VLM-Lens (EMNLP 2025 System Demonstration)
+
+        ## [arXiv](https://arxiv.org/abs/2510.02292) | [GitHub](https://github.com/compling-wat/vlm-lens)
 
         From Behavioral Performance to Internal Competence: Interpreting Vision-Language Models with VLM-Lens
-
-        - 📄 [arXiv](https://arxiv.org/abs/2510.02292)
-        - 🧑‍💻 [GitHub](https://github.com/compling-wat/vlm-lens)
-        - 📅 [EMNLP 2025 System Demonstration](https://2025.emnlp.org)
         """)
 
         with gr.Tabs():
@@ -725,6 +751,15 @@ def create_demos() -> gr.Blocks:
                     outputs=[plot_output1, info_output1]
                 )
 
+                gr.Examples(
+                    examples=[
+                        ['What is in this image? Describe in one word.', None, None],
+                        ['Describe the main object in the picture in one word.', None, None],
+                        ['What color is the dominant object? Describe in one word.', None, None],
+                    ],
+                    inputs=[instruction_input1, image1_input, image2_input]
+                )
+
             # Tab 2: Attention visualization
             with gr.TabItem('Attention Visualization'):
                 gr.Markdown("""
@@ -739,7 +774,7 @@ def create_demos() -> gr.Blocks:
                 """)
 
                 with gr.Row():
-                    with gr.Column():
+                    with gr.Column(scale=1):
                         model_dropdown2 = gr.Dropdown(
                             choices=[v.value.capitalize() for v in ModelVariants],
                             label='Select VLM',
@@ -765,32 +800,69 @@ def create_demos() -> gr.Blocks:
                             type='pil'
                         )
 
-                        with gr.Row():
+                        with gr.Accordion('Generation Settings', open=True):
                             max_tokens_slider = gr.Slider(
                                 minimum=1,
                                 maximum=50,
                                 value=10,
                                 step=1,
-                                label='Max Tokens to Generate',
-                                info='Number of tokens to generate for attention analysis'
+                                label='Max Tokens to Generate'
                             )
 
-                        with gr.Row():
                             num_heads_slider = gr.Slider(
                                 minimum=1,
                                 maximum=32,
                                 value=8,
                                 step=1,
-                                label='Heads to Display',
-                                info='Number of attention heads to show in detail view'
+                                label='Heads to Display in Detail View'
                             )
 
-                        aggregation_dropdown = gr.Dropdown(
-                            choices=['mean', 'max', 'sum'],
-                            value='mean',
-                            label='Aggregation Method',
-                            info='How to aggregate attention for head comparison'
-                        )
+                            aggregation_dropdown = gr.Dropdown(
+                                choices=['mean', 'max', 'sum'],
+                                value='mean',
+                                label='Aggregation Method'
+                            )
+
+                        with gr.Accordion('Overlay Settings', open=True):
+                            with gr.Row():
+                                patch_h_slider = gr.Slider(
+                                    minimum=8,
+                                    maximum=48,
+                                    value=24,
+                                    step=1,
+                                    label='Patch Grid Height'
+                                )
+
+                                patch_w_slider = gr.Slider(
+                                    minimum=8,
+                                    maximum=48,
+                                    value=24,
+                                    step=1,
+                                    label='Patch Grid Width'
+                                )
+
+                            overlay_alpha_slider = gr.Slider(
+                                minimum=0.0,
+                                maximum=1.0,
+                                value=0.5,
+                                step=0.05,
+                                label='Overlay Transparency',
+                                info='0=transparent, 1=opaque'
+                            )
+
+                            colormap_dropdown = gr.Dropdown(
+                                choices=['jet', 'hot', 'viridis', 'plasma', 'inferno', 'magma', 'turbo'],
+                                value='jet',
+                                label='Attention Colormap'
+                            )
+
+                            num_token_overlays_slider = gr.Slider(
+                                minimum=1,
+                                maximum=9,
+                                value=4,
+                                step=1,
+                                label='Number of Token Overlays'
+                            )
 
                         analyze_btn2 = gr.Button(
                             'Visualize Attention',
@@ -798,13 +870,26 @@ def create_demos() -> gr.Blocks:
                             visible=False
                         )
 
-                    with gr.Column():
-                        attention_plot = gr.Plot(
-                            label='Attention Patterns by Head'
-                        )
-                        aggregation_plot = gr.Plot(
-                            label='Attention Aggregation Across Heads'
-                        )
+                    with gr.Column(scale=2):
+                        with gr.Tabs():
+                            with gr.TabItem('Attention Matrices'):
+                                attention_plot = gr.Plot(
+                                    label='Attention Patterns by Head'
+                                )
+                                aggregation_plot = gr.Plot(
+                                    label='Attention Aggregation Across Heads'
+                                )
+
+                            with gr.TabItem('Attention Overlay - Averaged'):
+                                overlay_avg_plot = gr.Plot(
+                                    label='Average Attention Overlay on Image'
+                                )
+
+                            with gr.TabItem('Attention Overlay - Per Token'):
+                                overlay_grid_plot = gr.Plot(
+                                    label='Attention Overlay for Each Generated Token'
+                                )
+
                         info_output2 = gr.Textbox(
                             label='Attention Analysis Info',
                             lines=10,
@@ -819,10 +904,14 @@ def create_demos() -> gr.Blocks:
 
                 analyze_btn2.click(
                     fn=process_with_attention,
-                    inputs=[model_dropdown2, layer_dropdown2, instruction_input2,
-                            image_input2, max_tokens_slider, num_heads_slider,
-                            aggregation_dropdown],
-                    outputs=[attention_plot, aggregation_plot, info_output2]
+                    inputs=[
+                        model_dropdown2, layer_dropdown2, instruction_input2,
+                        image_input2, max_tokens_slider, num_heads_slider,
+                        aggregation_dropdown, patch_h_slider, patch_w_slider,
+                        overlay_alpha_slider, colormap_dropdown, num_token_overlays_slider
+                    ],
+                    outputs=[attention_plot, aggregation_plot, overlay_avg_plot,
+                             overlay_grid_plot, info_output2]
                 )
 
                 gr.Examples(

@@ -318,3 +318,270 @@ def visualize_attention_head_grid(
     fig.tight_layout()
 
     return fig
+
+
+def compute_spatial_attention_map(
+    attention_tensor: torch.Tensor,
+    generated_tokens: List[str],
+    num_image_tokens: int,
+    patch_size: Tuple[int, int] = (24, 24),
+    token_index: int = -1,
+    head_aggregation: str = 'mean'
+) -> np.ndarray:
+    """Compute spatial attention map for overlaying on image.
+
+    Args:
+        attention_tensor: Attention weights [num_heads, seq_len, seq_len]
+        generated_tokens: List of generated token strings
+        num_image_tokens: Number of image tokens in sequence
+        patch_size: Grid size of image patches (height, width)
+        token_index: Which output token to visualize (-1 for all tokens averaged)
+        head_aggregation: How to aggregate across heads ('mean', 'max', 'sum')
+
+    Returns:
+        2D numpy array representing spatial attention map
+    """
+    if attention_tensor.dim() == 4:
+        attention_tensor = attention_tensor[0]
+
+    num_heads = attention_tensor.shape[0]
+    num_output_tokens = len(generated_tokens)
+
+    # Extract image-to-text attention
+    attention_maps = []
+    for head_idx in range(num_heads):
+        head_attention = attention_tensor[head_idx].cpu().numpy()
+
+        if head_attention.shape[0] > num_output_tokens and num_image_tokens > 0:
+            img_to_text = head_attention[-num_output_tokens:, :num_image_tokens]
+        else:
+            img_to_text = head_attention[:num_output_tokens, :num_image_tokens]
+
+        attention_maps.append(img_to_text)
+
+    # Stack attention maps: [num_heads, num_output_tokens, num_image_tokens]
+    attention_maps = np.stack(attention_maps, axis=0)
+
+    # Select token(s) to visualize
+    if token_index == -1:
+        # Average across all output tokens
+        token_attention = attention_maps.mean(axis=1)  # [num_heads, num_image_tokens]
+    else:
+        token_index = min(token_index, attention_maps.shape[1] - 1)
+        token_attention = attention_maps[:, token_index, :]  # [num_heads, num_image_tokens]
+
+    # Aggregate across heads
+    if head_aggregation == 'mean':
+        spatial_attention = token_attention.mean(axis=0)
+    elif head_aggregation == 'max':
+        spatial_attention = token_attention.max(axis=0)
+    elif head_aggregation == 'sum':
+        spatial_attention = token_attention.sum(axis=0)
+    else:
+        spatial_attention = token_attention.mean(axis=0)
+
+    # Reshape to 2D spatial grid
+    # Handle case where num_image_tokens might include CLS token
+    grid_h, grid_w = patch_size
+    expected_tokens = grid_h * grid_w
+
+    if len(spatial_attention) == expected_tokens + 1:
+        # Remove CLS token (usually the first token)
+        spatial_attention = spatial_attention[1:]
+    elif len(spatial_attention) > expected_tokens:
+        # Truncate to expected size
+        spatial_attention = spatial_attention[:expected_tokens]
+    elif len(spatial_attention) < expected_tokens:
+        # Pad if necessary
+        padding = expected_tokens - len(spatial_attention)
+        spatial_attention = np.pad(spatial_attention, (0, padding), mode='constant')
+
+    # Reshape to 2D grid
+    attention_map_2d = spatial_attention.reshape(grid_h, grid_w)
+
+    return attention_map_2d
+
+
+def overlay_attention_on_image(
+    image: Image.Image,
+    attention_map: np.ndarray,
+    alpha: float = 0.6,
+    colormap: str = 'jet'
+) -> Image.Image:
+    """Overlay attention heatmap on original image.
+
+    Args:
+        image: Original PIL Image
+        attention_map: 2D numpy array of attention weights
+        alpha: Transparency of overlay (0=transparent, 1=opaque)
+        colormap: Matplotlib colormap name
+
+    Returns:
+        PIL Image with attention overlay
+    """
+    # Resize attention map to image size
+    img_array = np.array(image.convert('RGB'))
+    h, w = img_array.shape[:2]
+
+    # Ensure attention_map is float64 for scipy zoom
+    attention_map = attention_map.astype(np.float64)
+
+    # Upsample attention map to image resolution using PIL for better compatibility
+    # Create PIL Image from attention map for resizing
+    attention_normalized_temp = (attention_map - attention_map.min()) / (
+        attention_map.max() - attention_map.min() + 1e-8
+    )
+    attention_pil = Image.fromarray((attention_normalized_temp * 255).astype(np.uint8))
+    attention_resized = attention_pil.resize((w, h), Image.BILINEAR)
+    attention_upsampled = np.array(attention_resized).astype(np.float32) / 255.0
+
+    # Normalize attention map
+    attention_normalized = (attention_upsampled - attention_upsampled.min()) / (
+        attention_upsampled.max() - attention_upsampled.min() + 1e-8
+    )
+
+    # Apply colormap
+    cmap = plt.get_cmap(colormap)
+    attention_colored = cmap(attention_normalized)[:, :, :3]  # RGB only
+    attention_colored = (attention_colored * 255).astype(np.uint8)
+
+    # Blend with original image
+    blended = (alpha * attention_colored + (1 - alpha) * img_array).astype(np.uint8)
+
+    return Image.fromarray(blended)
+
+
+def visualize_attention_overlay_grid(
+    image: Image.Image,
+    attention_tensor: torch.Tensor,
+    generated_tokens: List[str],
+    num_image_tokens: int,
+    patch_size: Tuple[int, int] = (24, 24),
+    num_tokens_to_show: int = 4,
+    alpha: float = 0.5,
+    colormap: str = 'jet'
+) -> Figure:
+    """Create grid showing attention overlay for multiple generated tokens.
+
+    Args:
+        image: Original PIL Image
+        attention_tensor: Attention weights [num_heads, seq_len, seq_len]
+        generated_tokens: List of generated token strings
+        num_image_tokens: Number of image tokens in sequence
+        patch_size: Grid size of image patches
+        num_tokens_to_show: Number of generated tokens to visualize
+        alpha: Transparency of attention overlay
+        colormap: Matplotlib colormap name
+
+    Returns:
+        Matplotlib Figure with attention overlays
+    """
+    num_output_tokens = len(generated_tokens)
+    num_tokens_to_show = min(num_tokens_to_show, num_output_tokens)
+
+    # Calculate grid dimensions
+    cols = min(3, num_tokens_to_show)
+    rows = (num_tokens_to_show + cols - 1) // cols
+
+    fig, axes = plt.subplots(rows, cols, figsize=(6 * cols, 6 * rows))
+    if rows == 1 and cols == 1:
+        axes = np.array([[axes]])
+    elif rows == 1 or cols == 1:
+        axes = axes.reshape(rows, cols)
+
+    # Select token indices to display (evenly spaced)
+    if num_tokens_to_show < num_output_tokens:
+        token_indices = np.linspace(0, num_output_tokens - 1, num_tokens_to_show, dtype=int)
+    else:
+        token_indices = list(range(num_tokens_to_show))
+
+    for idx, token_idx in enumerate(token_indices):
+        row = idx // cols
+        col = idx % cols
+        ax = axes[row, col]
+
+        # Compute attention map for this token
+        attention_map = compute_spatial_attention_map(
+            attention_tensor, generated_tokens, num_image_tokens,
+            patch_size, token_idx, head_aggregation='mean'
+        )
+
+        # Create overlay
+        overlay_img = overlay_attention_on_image(image, attention_map, alpha, colormap)
+
+        # Display
+        ax.imshow(overlay_img)
+        ax.set_title(f'Token {token_idx}: "{generated_tokens[token_idx]}"',
+                     fontsize=11, fontweight='bold')
+        ax.axis('off')
+
+    # Hide empty subplots
+    for idx in range(num_tokens_to_show, rows * cols):
+        row = idx // cols
+        col = idx % cols
+        axes[row, col].axis('off')
+
+    fig.suptitle('Attention Overlay on Image by Generated Token',
+                 fontsize=14, fontweight='bold', y=0.98)
+    fig.tight_layout()
+
+    return fig
+
+
+def visualize_attention_overlay_averaged(
+    image: Image.Image,
+    attention_tensor: torch.Tensor,
+    generated_tokens: List[str],
+    num_image_tokens: int,
+    patch_size: Tuple[int, int] = (24, 24),
+    alpha: float = 0.5,
+    colormap: str = 'jet',
+    show_original: bool = True
+) -> Figure:
+    """Create side-by-side comparison with averaged attention overlay.
+
+    Args:
+        image: Original PIL Image
+        attention_tensor: Attention weights
+        generated_tokens: List of generated token strings
+        num_image_tokens: Number of image tokens in sequence
+        patch_size: Grid size of image patches
+        alpha: Transparency of attention overlay
+        colormap: Matplotlib colormap name
+        show_original: Whether to show original image alongside
+
+    Returns:
+        Matplotlib Figure with attention overlay
+    """
+    # Compute averaged attention map across all tokens
+    attention_map = compute_spatial_attention_map(
+        attention_tensor, generated_tokens, num_image_tokens,
+        patch_size, token_index=-1, head_aggregation='mean'
+    )
+
+    # Create overlay
+    overlay_img = overlay_attention_on_image(image, attention_map, alpha, colormap)
+
+    # Create figure
+    if show_original:
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 8))
+
+        ax1.imshow(image)
+        ax1.set_title('Original Image', fontsize=12, fontweight='bold')
+        ax1.axis('off')
+
+        ax2.imshow(overlay_img)
+        ax2.set_title('Attention Overlay (Averaged)', fontsize=12, fontweight='bold')
+        ax2.axis('off')
+    else:
+        fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+        ax.imshow(overlay_img)
+        ax.set_title('Attention Overlay (Averaged)', fontsize=12, fontweight='bold')
+        ax.axis('off')
+
+    full_response = ''.join(generated_tokens)
+    fig.suptitle(f'Generated: "{full_response}"',
+                 fontsize=11, style='italic', y=0.02)
+    fig.tight_layout()
+
+    return fig
