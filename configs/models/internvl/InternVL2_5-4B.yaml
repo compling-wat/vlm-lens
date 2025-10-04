@@ -1,12 +1,12 @@
 architecture: internvl
-model_path: OpenGVLab/InternVL2_5-8B
+model_path: OpenGVLab/InternVL2_5-4B
 model:
   - torch_dtype: bfloat16
   - trust_remote_code: True
 forward:
   - max_new_tokens: 1
   - do_sample: True
-output_db: output/InternVL2_5-8B.db
+output_db: output/InternVL2_5-4B.db
 input_dir: ./data/test-images/
 prompt: "Describe the color in this image in one word."
 modules:

@@ -1,0 +1,13 @@
+architecture: plm
+model_path: facebook/Perception-LM-8B
+model:
+  - torch_dtype: auto
+  - trust_remote_code: True
+forward:
+  - max_new_tokens: 1
+output_db: output/Perception-LM-8B.db
+input_dir: ./data/test-images/
+prompt: "Describe the color in this image in one word."
+modules:
+  - model.language_model.layers.7.post_attention_layernorm
+  - model.language_model.layers.15.post_attention_layernorm
