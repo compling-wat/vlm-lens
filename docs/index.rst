@@ -21,20 +21,69 @@ Supported Models
 We currently support extracting hidden states from the following vision-language models.
 The architecture name (used for model selection) is shown in square brackets:
 
-- **BLIP-2** [blip2]
-- **CLIP** [clip]
-- **CogVLM** [cogvlm]
-- **Glamm** [glamm]
-- **InternLM-XComposer** [internlm-xcomposer]
-- **InternVL** [internvl]
-- **Janus** [janus]
-- **LLaVa** [llava]
-- **MiniCPM-V2** [minicpm]
-- **MiniCPM-o** [minicpm]
-- **Molmo** [molmo]
-- **OMG-LLaVa** [//PENDING//]
-- **PaliGemma** [paligemma]
-- **Qwen** [qwen]
++-----------------------------------------------+----------------------+
+| Model (HuggingFace Identifier)                | Architecture Name    |
++===============================================+======================+
+| CohereLabs/aya-vision-8b                      | aya-vision           |
++-----------------------------------------------+----------------------+
+| Salesforce/blip2-opt-2.7b                     | blip2                |
++-----------------------------------------------+----------------------+
+| Salesforce/blip2-opt-6.7b                     | blip2                |
++-----------------------------------------------+----------------------+
+| Salesforce/blip2-opt-6.7b-coco                | blip2                |
++-----------------------------------------------+----------------------+
+| openai/clip-vit-base-patch32                  | clip                 |
++-----------------------------------------------+----------------------+
+| openai/clip-vit-large-patch14                 | clip                 |
++-----------------------------------------------+----------------------+
+| THUDM/cogvlm-chat-hf                          | cogvlm               |
++-----------------------------------------------+----------------------+
+| MBZUAI/GLaMM-FullScope                        | glamm                |
++-----------------------------------------------+----------------------+
+| internlm/internlm-xcomposer2d5-7b             | internlm-xcomposer   |
++-----------------------------------------------+----------------------+
+| OpenGVLab/InternVL2_5-1B                      | internvl             |
++-----------------------------------------------+----------------------+
+| OpenGVLab/InternVL2_5-2B                      | internvl             |
++-----------------------------------------------+----------------------+
+| OpenGVLab/InternVL2_5-4B                      | internvl             |
++-----------------------------------------------+----------------------+
+| OpenGVLab/InternVL2_5-8B                      | internvl             |
++-----------------------------------------------+----------------------+
+| deepseek-community/Janus-Pro-1B               | janus                |
++-----------------------------------------------+----------------------+
+| deepseek-community/Janus-Pro-7B               | janus                |
++-----------------------------------------------+----------------------+
+| llava-hf/bakLlava-v1-hf                       | llava                |
++-----------------------------------------------+----------------------+
+| llava-hf/llava-1.5-7b-hf                      | llava                |
++-----------------------------------------------+----------------------+
+| llava-hf/llava-1.5-13b-hf                     | llava                |
++-----------------------------------------------+----------------------+
+| openbmb/MiniCPM-o-2_6                         | minicpm              |
++-----------------------------------------------+----------------------+
+| compling/MiniCPM-V-2                          | minicpm              |
++-----------------------------------------------+----------------------+
+| allenai/Molmo-7B-D-0924                       | molmo                |
++-----------------------------------------------+----------------------+
+| allenai/MolmoE-1B-0924                        | molmo                |
++-----------------------------------------------+----------------------+
+| google/paligemma-3b-mix-224                   | paligemma            |
++-----------------------------------------------+----------------------+
+| mistralai/Pixtral-12B-2409                    | pixtral              |
++-----------------------------------------------+----------------------+
+| mistralai/Pixtral-12B-Base-2409               | pixtral              |
++-----------------------------------------------+----------------------+
+| facebook/Perception-LM-1B                     | plm                  |
++-----------------------------------------------+----------------------+
+| facebook/Perception-LM-3B                     | plm                  |
++-----------------------------------------------+----------------------+
+| facebook/Perception-LM-8B                     | plm                  |
++-----------------------------------------------+----------------------+
+| Qwen/Qwen2-VL-2B-Instruct                     | qwen                 |
++-----------------------------------------------+----------------------+
+| Qwen/Qwen2-VL-7B-Instruct                     | qwen                 |
++-----------------------------------------------+----------------------+
 
 Setup
 -----
@@ -43,8 +92,8 @@ First, clone the repository:
 
 .. code-block:: bash
 
-   git clone https://github.com/repo/repo.git
-   cd repo
+   git clone https://github.com/compling-wat/vlm-lens.git
+   cd vlm-lens
 
 Because each model may have different dependencies,
 it is recommended to use a separate virtual environment for each model you run.
@@ -64,11 +113,11 @@ Or, using native ``python venv``:
    source <env_name>/bin/activate
 
 After activating your environment, install dependencies for your desired model architecture.
-Replace ``<architecture>`` with the appropriate value (e.g., ``blip2``, ``llava``):
+Replace ``<architecture>`` with the appropriate value (e.g., ``base``, ``cogvlm``):
 
 .. code-block:: bash
 
-   pip install -r envs/<architecture>.requirements.txt
+   pip install -r envs/<architecture>/requirements.txt
 
 
 
@@ -77,4 +126,4 @@ Usage
 
 .. code-block:: bash
 
-   python -m src.main --architecture <architecture> --model-path <model-path> --debug --config <config-file-path> --input-dir <input-dir> --output-db <output-db>
+   python -m src.main --config <config-file-path>
