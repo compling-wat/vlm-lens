@@ -1,0 +1,8 @@
+architecture: llavanext
+model_path: llava-hf/llava-v1.6-vicuna-13b-hf
+input_dir: ./data/test-images/
+prompt: "Describe the color in this image in one word."
+output_db: output/llava-v1.6-vicuna-13b-hf.db
+pooling_method: mean
+modules:
+  - language_model.*

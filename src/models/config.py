@@ -22,21 +22,22 @@ sys.path.append(str(PROJECT_ROOT))
 
 class ModelSelection(str, Enum):
     """Enum that contains all possible model choices."""
-    LLAVA = 'llava'
-    QWEN = 'qwen'
-    CLIP = 'clip'
-    GLAMM = 'glamm'
-    JANUS = 'janus'
+    AYA_VISION = 'aya-vision'
     BLIP2 = 'blip2'
-    MOLMO = 'molmo'
-    PALIGEMMA = 'paligemma'
+    CLIP = 'clip'
+    COGVLM = 'cogvlm'
+    GLAMM = 'glamm'
     INTERNLM_XC = 'internlm-xcomposer'
     INTERNVL = 'internvl'
+    JANUS = 'janus'
+    LLAVA = 'llava'
+    LLAVA_NEXT = 'llavanext'
     MINICPM = 'minicpm'
-    COGVLM = 'cogvlm'
+    MOLMO = 'molmo'
+    PALIGEMMA = 'paligemma'
     PIXTRAL = 'pixtral'
-    AYA_VISION = 'aya-vision'
     PLM = 'plm'
+    QWEN = 'qwen'
 
 
 class Config:

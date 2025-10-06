@@ -5,4 +5,5 @@ This environment supports the following models:
 - Blip2
 - CLIP
 - LLAVA
+- LLAVA-Next
 - Qwen2

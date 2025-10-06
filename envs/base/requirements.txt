@@ -32,3 +32,6 @@ typing_extensions==4.12.2
 urllib3==2.3.0
 virtualenv==20.29.1
 wget==3.2
+accelerate==1.10.1
+sentencepiece==0.2.0
+protobuf==6.32.1

@@ -195,3 +195,6 @@ notebooks/debug.ipynb
 
 # Gradio
 **/.gradio/
+
+# Debug files
+**/debug.yaml
