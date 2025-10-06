@@ -15,7 +15,7 @@ from demo.attn_utils import extract_attention_weights  # noqa: E402
 from demo.attn_utils import (visualize_attention_head_grid,
                              visualize_attention_overlay_averaged,
                              visualize_attention_overlay_grid,
-                             visualize_image_to_text_attention)
+                             visualize_text_to_image_attention)
 from demo.lookup import ModelVariants, get_model_info  # noqa: E402
 from src.main import get_model  # noqa: E402
 from src.models.base import ModelBase  # noqa: E402
@@ -607,43 +607,42 @@ def process_with_attention(
         model = load_model(model_var, config)
 
         # Extract attention weights
-        attention_tensor, generated_tokens, num_image_tokens = extract_attention_weights(
+        attention_tensor, generated_tokens, num_image_tokens, img_start = extract_attention_weights(
             model, selected_layer, image, instruction, max_tokens
         )
 
         # Create visualizations
-        attention_fig = visualize_image_to_text_attention(
-            attention_tensor, generated_tokens, num_image_tokens, num_heads_display
+        attention_fig = visualize_text_to_image_attention(
+            attention_tensor, generated_tokens, num_image_tokens, img_start, num_heads_display, colormap
         )
         scale_figure_fonts(attention_fig, factor=1.15)
 
         aggregation_fig = visualize_attention_head_grid(
-            attention_tensor, generated_tokens, num_image_tokens, aggregation_type
+            attention_tensor, generated_tokens, num_image_tokens, img_start, aggregation_type
         )
         scale_figure_fonts(aggregation_fig, factor=1.15)
 
         # Create attention overlay visualizations
         overlay_avg_fig = visualize_attention_overlay_averaged(
-            image, attention_tensor, generated_tokens, num_image_tokens,
+            image, attention_tensor, generated_tokens, num_image_tokens, img_start,
             patch_size=(patch_h, patch_w), alpha=overlay_alpha, colormap=colormap,
             show_original=True
         )
         scale_figure_fonts(overlay_avg_fig, factor=1.15)
 
         overlay_grid_fig = visualize_attention_overlay_grid(
-            image, attention_tensor, generated_tokens, num_image_tokens,
+            image, attention_tensor, generated_tokens, num_image_tokens, img_start,
             patch_size=(patch_h, patch_w), num_tokens_to_show=num_token_overlays,
             alpha=overlay_alpha, colormap=colormap
         )
         scale_figure_fonts(overlay_grid_fig, factor=1.15)
 
         # Create info text
-        full_response = ''.join(generated_tokens)
+        full_response = ' '.join(generated_tokens)
         info_text = f'Model: {model_choice.upper()}\n'
         info_text += f'Layer: {selected_layer}\n'
         info_text += f"Instruction: '{instruction}'\n\n"
         info_text += f'Generated Response: "{full_response}"\n\n'
-        info_text += f'Number of Attention Heads: {attention_tensor.shape[0] if attention_tensor.dim() >= 3 else "N/A"}\n'
         info_text += f'Number of Image Tokens: {num_image_tokens}\n'
         info_text += f'Number of Generated Tokens: {len(generated_tokens)}\n'
         info_text += f'Attention Tensor Shape: {list(attention_tensor.shape)}\n'

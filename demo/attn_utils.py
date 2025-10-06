@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from matplotlib.figure import Figure
-from PIL import Image
+from PIL import Image, ImageFilter
 
 from src.models.base import ModelBase  # noqa: E402
 
@@ -29,115 +29,89 @@ def extract_attention_weights(
 
     Returns:
         Tuple of (attention_tensor, generated_tokens, num_image_tokens)
-        - attention_tensor: Shape [num_heads, seq_len, seq_len] or similar
+        - attention_tensor: Shape [num_heads, seq_len, seq_len]
         - generated_tokens: List of decoded output tokens
         - num_image_tokens: Number of image tokens in the sequence
+        - img_start: Length of the input prompt tokens
 
     Raises:
         ValueError: If module not found or attention extraction fails.
     """
-    attention_weights = {}
-    target_module = None
+    vlm.model.eval()
 
-    def attention_hook_fn(
-        module: torch.nn.Module,
-        input: Any,
-        output: Any
-    ) -> None:
-        """Hook to capture attention weights from attention layers.
+    # Prepare inputs
+    text = vlm._generate_prompt(instruction, has_images=True)
+    inputs = vlm._generate_processor_output(text, image)
+    for key in inputs:
+        if isinstance(inputs[key], torch.Tensor):
+            inputs[key] = inputs[key].to(vlm.config.device)
 
-        Args:
-            module: The module being hooked.
-            input: Input to the module.
-            output: Output from the module.
-        """
-        # Handle different attention output formats
-        if isinstance(output, tuple):
-            # Many transformers return (output, attention_weights, ...)
-            # Try to find attention weights in the tuple
-            for item in output:
-                if isinstance(item, torch.Tensor):
-                    # Check if this looks like attention weights
-                    # Typically shape: [batch, num_heads, seq_len, seq_len]
-                    if item.dim() == 4:
-                        attention_weights['weights'] = item.detach()
-                        break
-        # Some models store attention in output.attentions
-        elif hasattr(output, 'attentions') and output.attentions is not None:
-            if isinstance(output.attentions, tuple):
-                attention_weights['weights'] = output.attentions[-1].detach()
-            else:
-                attention_weights['weights'] = output.attentions.detach()
+    # Hardcoded for debug: Number of image tokens
+    if 'pixel_values' in inputs:
+        # Default estimate for LLaVA1.5-7B
+        # Common for CLIP ViT-based encoders (e.g., 24x24 patches)
+        num_image_tokens = 576
+    else:
+        num_image_tokens = -1
 
-    # Find and register hook on the target module
-    for name, module in vlm.model.named_modules():
-        if name == module_name:
-            target_module = module
-            hook_handle = module.register_forward_hook(attention_hook_fn)
-            break
-
-    if target_module is None:
-        raise ValueError(f"Module '{module_name}' not found in model")
-
+    # Find the first <image> token
+    decoded_tokens = vlm.processor.tokenizer.batch_decode(
+        inputs['input_ids'][0],
+        skip_special_tokens=False
+    )
     try:
-        vlm.model.eval()
+        img_start = decoded_tokens.index('<image>')
+    except ValueError:
+        img_start = None
+        num_image_tokens = -1
 
-        # Prepare inputs
-        text = vlm._generate_prompt(instruction, has_images=True)
-        inputs = vlm._generate_processor_output(text, image)
-        for key in inputs:
-            if isinstance(inputs[key], torch.Tensor):
-                inputs[key] = inputs[key].to(vlm.config.device)
+    # Try to extract layer index from module name
+    layer_idx = extract_layer_index(module_name)
 
-        # Count image tokens (approximate - depends on model architecture)
-        # This is a simplified approach; adjust based on your model's specifics
-        if 'pixel_values' in inputs:
-            # Estimate based on vision encoder output
-            num_image_tokens = 576  # Common for ViT-based encoders (24x24 patches)
-        else:
-            num_image_tokens = 0
+    # Generate with attention output
+    with torch.no_grad():
+        outputs = vlm.model.generate(
+            **inputs,
+            max_new_tokens=max_new_tokens,
+            output_attentions=True,
+            return_dict_in_generate=True,
+            do_sample=False
+        )
 
-        # Generate with attention output
-        with torch.no_grad():
-            outputs = vlm.model.generate(
-                **inputs,
-                max_new_tokens=max_new_tokens,
-                output_attentions=True,
-                return_dict_in_generate=True,
-                do_sample=False
-            )
+    # Decode generated tokens
+    generated_ids = outputs.sequences[0][inputs['input_ids'].shape[1]:]
+    generated_tokens = [
+        vlm.processor.tokenizer.decode([token_id.item()])
+        for token_id in generated_ids
+    ]
 
-        # Decode generated tokens
-        generated_ids = outputs.sequences[0][inputs['input_ids'].shape[1]:]
-        generated_tokens = [
-            vlm.processor.tokenizer.decode([token_id.item()])
-            for token_id in generated_ids
-        ]
+    # Extract attention weights
+    # outputs.attentions structure for generate():
+    # - Tuple of length = number of generation steps
+    # - Each element is a tuple of layer attentions
+    # - Each layer attention has shape [batch, num_heads, seq_len, seq_len]
+    attention_tensor = None
 
-        # Extract attention weights
-        if 'weights' not in attention_weights:
-            # Try to get from outputs.attentions if available
-            if hasattr(outputs, 'attentions') and outputs.attentions is not None:
-                # outputs.attentions is typically a tuple of tuples
-                # (one tuple per generation step, each containing layer attentions)
-                if len(outputs.attentions) > 0:
-                    # Get attention from first generation step
-                    step_attentions = outputs.attentions[0]
-                    if len(step_attentions) > 0:
-                        # Find the layer index from module_name
-                        layer_idx = extract_layer_index(module_name)
-                        if layer_idx >= 0 and layer_idx < len(step_attentions):
-                            attention_weights['weights'] = step_attentions[layer_idx].detach()
+    if hasattr(outputs, 'attentions') and outputs.attentions is not None:
+        if len(outputs.attentions) > 0:
+            # Get attention from the first generation step
+            step_attentions = outputs.attentions[0]
 
-        if 'weights' not in attention_weights:
-            raise ValueError(f"Failed to extract attention weights from module '{module_name}'")
+            if layer_idx >= 0 and layer_idx < len(step_attentions):
+                # Use the specific layer
+                attention_tensor = step_attentions[layer_idx].detach()
+            else:
+                # Fallback: use the last layer
+                attention_tensor = step_attentions[-1].detach()
 
-        attention_tensor = attention_weights['weights']
+    if attention_tensor is None:
+        raise ValueError(
+            f'Failed to extract attention weights. '
+            f"Module '{module_name}' (layer {layer_idx}) may not be an attention layer. "
+            f"Available layers: {len(step_attentions) if 'step_attentions' in locals() else 'unknown'}"
+        )
 
-        return attention_tensor, generated_tokens, num_image_tokens
-
-    finally:
-        hook_handle.remove()
+    return attention_tensor, generated_tokens, num_image_tokens, img_start
 
 
 def extract_layer_index(module_name: str) -> int:
@@ -156,19 +130,23 @@ def extract_layer_index(module_name: str) -> int:
     return -1
 
 
-def visualize_image_to_text_attention(
+def visualize_text_to_image_attention(
     attention_tensor: torch.Tensor,
     generated_tokens: List[str],
     num_image_tokens: int,
-    num_heads_to_show: int = 8
+    img_start: int,
+    num_heads_to_show: int = 8,
+    colormap: Any = 'viridis'
 ) -> Figure:
-    """Create visualization of image-to-text attention patterns.
+    """Create visualization of text-to-image attention patterns.
 
     Args:
         attention_tensor: Attention weights [batch, num_heads, seq_len, seq_len]
         generated_tokens: List of generated token strings
         num_image_tokens: Number of image tokens in sequence
+        img_start: Starting index of image tokens in the sequence
         num_heads_to_show: Number of attention heads to display
+        colormap: Matplotlib colormap name
 
     Returns:
         Matplotlib Figure with attention heatmaps
@@ -180,66 +158,55 @@ def visualize_image_to_text_attention(
     num_heads = attention_tensor.shape[0]
     num_heads_to_show = min(num_heads_to_show, num_heads)
 
-    # Calculate grid dimensions
+    # Calculate grid
     cols = min(4, num_heads_to_show)
     rows = (num_heads_to_show + cols - 1) // cols
-
     fig, axes = plt.subplots(rows, cols, figsize=(5 * cols, 4 * rows))
+
     if rows == 1 and cols == 1:
         axes = np.array([[axes]])
     elif rows == 1 or cols == 1:
         axes = axes.reshape(rows, cols)
 
-    # Select which heads to display (evenly spaced if not showing all)
+    # Head indices to visualize
     if num_heads_to_show < num_heads:
         head_indices = np.linspace(0, num_heads - 1, num_heads_to_show, dtype=int)
     else:
         head_indices = list(range(num_heads_to_show))
 
+    # Index ranges
+    gen_start = attention_tensor.shape[-1] - len(generated_tokens)
+    gen_end = attention_tensor.shape[-1]
+    img_end = img_start + num_image_tokens
+
     for idx, head_idx in enumerate(head_indices):
-        row = idx // cols
-        col = idx % cols
-        ax = axes[row, col]
+        ax = axes[idx // cols, idx % cols]
+        att = attention_tensor[head_idx].cpu().numpy()
 
-        # Get attention for this head
-        head_attention = attention_tensor[head_idx].cpu().numpy()
-
-        # Extract image-to-text attention
-        # Assuming image tokens come first in the sequence
-        num_output_tokens = len(generated_tokens)
-
-        # Get attention from output tokens to image tokens
-        # Shape: [num_output_tokens, num_image_tokens]
-        if head_attention.shape[0] > num_output_tokens and num_image_tokens > 0:
-            # Take the last num_output_tokens rows (generated tokens)
-            # and first num_image_tokens columns (image tokens)
-            img_to_text_attention = head_attention[-num_output_tokens:, :num_image_tokens]
+        # FROM generated tokens (rows) → TO image tokens (cols)
+        if gen_end <= att.shape[0] and img_end <= att.shape[1]:
+            text_to_image = att[gen_start:gen_end, img_start:img_end]
         else:
-            # Fallback: show full attention pattern
-            img_to_text_attention = head_attention
+            print(f'[WARN] Invalid slice on head {head_idx}, using full attention.')
+            text_to_image = att
 
-        # Create heatmap
-        im = ax.imshow(img_to_text_attention, cmap='viridis', aspect='auto')
+        im = ax.imshow(text_to_image, cmap=colormap, aspect='auto')
 
-        # Set labels
         ax.set_title(f'Head {head_idx}', fontsize=10, fontweight='bold')
-        ax.set_xlabel('Image Tokens', fontsize=9)
-        ax.set_ylabel('Generated Tokens', fontsize=9)
+        ax.set_xlabel('Generated Tokens', fontsize=9)
+        ax.set_ylabel('Image Tokens', fontsize=9)
 
-        # Set y-axis labels to show generated tokens
         if len(generated_tokens) <= 20:
-            ax.set_yticks(range(len(generated_tokens)))
-            ax.set_yticklabels(generated_tokens, fontsize=8)
+            ax.set_xticks(range(len(generated_tokens)))
+            ax.set_xticklabels(generated_tokens, fontsize=8, rotation=90)
         else:
-            # Show fewer labels if too many tokens
-            step = len(generated_tokens) // 10
-            ax.set_yticks(range(0, len(generated_tokens), step))
-            ax.set_yticklabels(generated_tokens[::step], fontsize=8)
+            step = max(1, len(generated_tokens) // 10)
+            ax.set_xticks(range(0, len(generated_tokens), step))
+            ax.set_xticklabels(generated_tokens[::step], fontsize=8, rotation=90)
 
-        # Add colorbar
         plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
 
-    # Hide empty subplots
+    # Hide unused axes
     for idx in range(num_heads_to_show, rows * cols):
         row = idx // cols
         col = idx % cols
@@ -256,6 +223,7 @@ def visualize_attention_head_grid(
     attention_tensor: torch.Tensor,
     generated_tokens: List[str],
     num_image_tokens: int,
+    img_start: int,
     aggregation: str = 'mean'
 ) -> Figure:
     """Create aggregated visualization showing average attention per head.
@@ -264,28 +232,32 @@ def visualize_attention_head_grid(
         attention_tensor: Attention weights [batch, num_heads, seq_len, seq_len]
         generated_tokens: List of generated token strings
         num_image_tokens: Number of image tokens in sequence
+        img_start: Starting index of image tokens in the sequence
         aggregation: How to aggregate attention ('mean', 'max', 'sum')
 
     Returns:
         Matplotlib Figure showing aggregated attention per head
+
+    Raises:
+        ValueError: If invalid aggregation method is provided.
     """
     if attention_tensor.dim() == 4:
         attention_tensor = attention_tensor[0]
 
     num_heads = attention_tensor.shape[0]
-    num_output_tokens = len(generated_tokens)
+    gen_start = attention_tensor.shape[-1] - len(generated_tokens)
+    gen_end = attention_tensor.shape[-1]
+    img_end = img_start + num_image_tokens
 
-    # Extract image-to-text attention for each head
     head_attentions = []
     for head_idx in range(num_heads):
         head_attention = attention_tensor[head_idx].cpu().numpy()
 
-        if head_attention.shape[0] > num_output_tokens and num_image_tokens > 0:
-            img_to_text = head_attention[-num_output_tokens:, :num_image_tokens]
+        if img_end <= head_attention.shape[0] and gen_end <= head_attention.shape[1]:
+            img_to_text = head_attention[img_start:img_end, gen_start:gen_end]
         else:
             img_to_text = head_attention
 
-        # Aggregate attention values
         if aggregation == 'mean':
             aggregated = img_to_text.mean()
         elif aggregation == 'max':
@@ -293,13 +265,12 @@ def visualize_attention_head_grid(
         elif aggregation == 'sum':
             aggregated = img_to_text.sum()
         else:
-            aggregated = img_to_text.mean()
+            raise ValueError(f'Invalid aggregation: {aggregation}')
 
         head_attentions.append(aggregated)
 
-    # Create bar plot
+    # Bar plot
     fig, ax = plt.subplots(figsize=(14, 6))
-
     bars = ax.bar(range(num_heads), head_attentions, color='steelblue', edgecolor='navy', alpha=0.7)
 
     ax.set_xlabel('Attention Head', fontsize=12)
@@ -309,14 +280,12 @@ def visualize_attention_head_grid(
     ax.set_xticks(range(num_heads))
     ax.grid(axis='y', alpha=0.3)
 
-    # Add value labels on bars
     for bar, val in zip(bars, head_attentions):
         height = bar.get_height()
         ax.text(bar.get_x() + bar.get_width()/2., height,
                 f'{val:.3f}', ha='center', va='bottom', fontsize=8)
 
     fig.tight_layout()
-
     return fig
 
 
@@ -324,51 +293,101 @@ def compute_spatial_attention_map(
     attention_tensor: torch.Tensor,
     generated_tokens: List[str],
     num_image_tokens: int,
+    img_start: int,
     patch_size: Tuple[int, int] = (24, 24),
     token_index: int = -1,
-    head_aggregation: str = 'mean'
+    head_aggregation: str = 'mean',
+    debug: bool = True
 ) -> np.ndarray:
     """Compute spatial attention map for overlaying on image.
 
+    This extracts attention FROM generated tokens TO image patches.
+
     Args:
-        attention_tensor: Attention weights [num_heads, seq_len, seq_len]
+        attention_tensor: Attention weights [num_heads, seq_len, seq_len] or [batch, ...]
         generated_tokens: List of generated token strings
-        num_image_tokens: Number of image tokens in sequence
+        num_image_tokens: Number of image patch tokens in sequence
+        img_start: Starting index of image tokens in the sequence
         patch_size: Grid size of image patches (height, width)
-        token_index: Which output token to visualize (-1 for all tokens averaged)
+        token_index: Which generated token to visualize (-1 for all tokens averaged)
         head_aggregation: How to aggregate across heads ('mean', 'max', 'sum')
+        debug: Print debugging information
 
     Returns:
-        2D numpy array representing spatial attention map
+        2D numpy array [patch_h, patch_w] representing spatial attention map
+
+    Raises:
+        ValueError: If invalid head aggregation method is provided.
     """
+    # Remove batch dimension if present
     if attention_tensor.dim() == 4:
         attention_tensor = attention_tensor[0]
 
-    num_heads = attention_tensor.shape[0]
-    num_output_tokens = len(generated_tokens)
+    num_heads, seq_len, _ = attention_tensor.shape
+    num_gen_tokens = len(generated_tokens)
 
-    # Extract image-to-text attention
+    if debug:
+        print('\n=== compute_spatial_attention_map DEBUG ===')
+        print(f'Attention shape: {attention_tensor.shape}')
+        print(f'Sequence length: {seq_len}')
+        print(f'Generated tokens: {num_gen_tokens}')
+        print(f'Image tokens: {num_image_tokens}')
+        print(f'Patch grid: {patch_size}')
+
+    # Determine sequence structure
+    img_end = img_start + num_image_tokens
+    gen_start = seq_len - num_gen_tokens
+    gen_end = seq_len
+
+    if debug:
+        print('\nSequence positions:')
+        print(f'  Image patches: {img_start} to {img_end-1}')
+        print(f'  Generated tokens: {gen_start} to {gen_end-1}')
+
+    # Validate indices
+    if gen_start < 0:
+        raise ValueError(
+            f'Invalid sequence: {num_gen_tokens} generated tokens but sequence length is {seq_len}'
+        )
+
+    # Extract attention from image → generated
     attention_maps = []
     for head_idx in range(num_heads):
+        # [seq_len, seq_len] attention for one head
         head_attention = attention_tensor[head_idx].cpu().numpy()
 
-        if head_attention.shape[0] > num_output_tokens and num_image_tokens > 0:
-            img_to_text = head_attention[-num_output_tokens:, :num_image_tokens]
-        else:
-            img_to_text = head_attention[:num_output_tokens, :num_image_tokens]
+        # Compute indices safely
+        img_end = img_start + num_image_tokens
+        gen_end = gen_start + num_gen_tokens
 
-        attention_maps.append(img_to_text)
+        # Sanity checks
+        if img_end > seq_len or gen_end > seq_len:
+            raise ValueError(
+                f'Invalid slice: seq_len={seq_len}, img_range=({img_start},{img_end}), '
+                f'gen_range=({gen_start},{gen_end})'
+            )
 
-    # Stack attention maps: [num_heads, num_output_tokens, num_image_tokens]
+        # FROM generated tokens (rows) → TO image tokens (cols)
+        text_to_image = head_attention[gen_start:gen_end, img_start:img_end]
+        attention_maps.append(text_to_image)
+
+    # Stack: [num_heads, num_image_tokens, num_gen_tokens]
     attention_maps = np.stack(attention_maps, axis=0)
+    if debug:
+        print(f'Number of zero elements in attention_maps: {(attention_maps == 0).sum()} out of {attention_maps.size}')
 
-    # Select token(s) to visualize
+    if debug:
+        print(f'\nStacked attention shape: {attention_maps.shape} [num_heads, num_image_tokens, num_gen_tokens]')
+
+    # Select generated token(s)
     if token_index == -1:
-        # Average across all output tokens
-        token_attention = attention_maps.mean(axis=1)  # [num_heads, num_image_tokens]
+        # mean over generated tokens → shape [heads, img]
+        token_attention = attention_maps.mean(axis=1)
     else:
         token_index = min(token_index, attention_maps.shape[1] - 1)
-        token_attention = attention_maps[:, token_index, :]  # [num_heads, num_image_tokens]
+        token_attention = attention_maps[:, token_index, :]  # [heads, img]
+        if debug:
+            print(f"[DEBUG] visualizing token {token_index}: '{generated_tokens[token_index]}'")
 
     # Aggregate across heads
     if head_aggregation == 'mean':
@@ -378,26 +397,35 @@ def compute_spatial_attention_map(
     elif head_aggregation == 'sum':
         spatial_attention = token_attention.sum(axis=0)
     else:
-        spatial_attention = token_attention.mean(axis=0)
+        raise ValueError(f'Unsupported head_aggregation: {head_aggregation}')
 
-    # Reshape to 2D spatial grid
-    # Handle case where num_image_tokens might include CLS token
+    # Reshape to patch grid
     grid_h, grid_w = patch_size
-    expected_tokens = grid_h * grid_w
+    expected_patches = grid_h * grid_w
+    actual_patches = len(spatial_attention)
 
-    if len(spatial_attention) == expected_tokens + 1:
-        # Remove CLS token (usually the first token)
-        spatial_attention = spatial_attention[1:]
-    elif len(spatial_attention) > expected_tokens:
-        # Truncate to expected size
-        spatial_attention = spatial_attention[:expected_tokens]
-    elif len(spatial_attention) < expected_tokens:
-        # Pad if necessary
-        padding = expected_tokens - len(spatial_attention)
+    if debug:
+        print(f'\nReshaping {actual_patches} values to {grid_h}x{grid_w} = {expected_patches}')
+
+    if actual_patches > expected_patches:
+        if debug:
+            print(f'WARNING: Truncating {actual_patches - expected_patches} extra patches')
+        spatial_attention = spatial_attention[:expected_patches]
+    elif actual_patches < expected_patches:
+        if debug:
+            print(f'WARNING: Padding {expected_patches - actual_patches} missing patches with zeros')
+        padding = expected_patches - actual_patches
         spatial_attention = np.pad(spatial_attention, (0, padding), mode='constant')
 
-    # Reshape to 2D grid
-    attention_map_2d = spatial_attention.reshape(grid_h, grid_w)
+    try:
+        attention_map_2d = spatial_attention.reshape(grid_h, grid_w)
+    except ValueError:
+        import math
+        side = int(math.sqrt(len(spatial_attention)))
+        spatial_attention_trimmed = spatial_attention[:side * side]
+        attention_map_2d = spatial_attention_trimmed.reshape(side, side)
+        if debug:
+            print(f'ERROR: Cannot reshape to {grid_h}x{grid_w}, falling back to {side}x{side}')
 
     return attention_map_2d
 
@@ -406,49 +434,60 @@ def overlay_attention_on_image(
     image: Image.Image,
     attention_map: np.ndarray,
     alpha: float = 0.6,
-    colormap: str = 'jet'
+    colormap: str = 'jet',
+    smooth: bool = False
 ) -> Image.Image:
-    """Overlay attention heatmap on original image.
+    """Overlay attention heatmap on original image with proper patch alignment.
+
+    The key fix: Use Image.NEAREST for resizing to preserve patch boundaries,
+    so each patch in the attention map corresponds to the correct region in the image.
 
     Args:
         image: Original PIL Image
-        attention_map: 2D numpy array of attention weights
+        attention_map: 2D numpy array of attention weights [patch_h, patch_w]
         alpha: Transparency of overlay (0=transparent, 1=opaque)
         colormap: Matplotlib colormap name
+        smooth: If False (default), use nearest neighbor to preserve patch boundaries.
+                If True, use bilinear interpolation for smooth gradients.
 
     Returns:
-        PIL Image with attention overlay
+        PIL Image with attention overlay properly aligned to patches
     """
-    # Resize attention map to image size
-    img_array = np.array(image.convert('RGB'))
-    h, w = img_array.shape[:2]
+    # Convert to RGB array
+    img_array = np.array(image.convert('RGB'), dtype=np.float32) / 255.0
+    img_h, img_w = img_array.shape[:2]
 
-    # Ensure attention_map is float64 for scipy zoom
-    attention_map = attention_map.astype(np.float64)
+    # Normalize attention map to [0, 1]
+    att_min, att_max = attention_map.min(), attention_map.max()
+    if att_max - att_min > 1e-8:
+        att_norm = (attention_map - att_min) / (att_max - att_min)
+    else:
+        att_norm = np.zeros_like(attention_map, dtype=np.float32)
 
-    # Upsample attention map to image resolution using PIL for better compatibility
-    # Create PIL Image from attention map for resizing
-    attention_normalized_temp = (attention_map - attention_map.min()) / (
-        attention_map.max() - attention_map.min() + 1e-8
-    )
-    attention_pil = Image.fromarray((attention_normalized_temp * 255).astype(np.uint8))
-    attention_resized = attention_pil.resize((w, h), Image.BILINEAR)
-    attention_upsampled = np.array(attention_resized).astype(np.float32) / 255.0
+    # Convert to PIL and resize to image resolution
+    att_img = Image.fromarray((att_norm * 255).astype(np.uint8), mode='L')
+    resample_mode = Image.BILINEAR if smooth else Image.NEAREST
+    att_img = att_img.resize((img_w, img_h), resample=resample_mode)
 
-    # Normalize attention map
-    attention_normalized = (attention_upsampled - attention_upsampled.min()) / (
-        attention_upsampled.max() - attention_upsampled.min() + 1e-8
-    )
+    # Optional Gaussian blur for extra smoothness
+    if smooth:
+        patch_size = min(img_h // attention_map.shape[0],
+                         img_w // attention_map.shape[1])
+        blur_radius = max(1, patch_size / 2)
+        att_img = att_img.filter(ImageFilter.GaussianBlur(radius=blur_radius))
+
+    # Convert back to normalized float array
+    att_resized = np.array(att_img, dtype=np.float32) / 255.0
 
     # Apply colormap
     cmap = plt.get_cmap(colormap)
-    attention_colored = cmap(attention_normalized)[:, :, :3]  # RGB only
-    attention_colored = (attention_colored * 255).astype(np.uint8)
+    att_color = cmap(att_resized)[..., :3]  # RGB only
 
-    # Blend with original image
-    blended = (alpha * attention_colored + (1 - alpha) * img_array).astype(np.uint8)
+    # Blend overlay with original
+    blended = (1 - alpha) * img_array + alpha * att_color
+    blended_uint8 = (blended * 255).astype(np.uint8)
 
-    return Image.fromarray(blended)
+    return Image.fromarray(blended_uint8)
 
 
 def visualize_attention_overlay_grid(
@@ -456,6 +495,7 @@ def visualize_attention_overlay_grid(
     attention_tensor: torch.Tensor,
     generated_tokens: List[str],
     num_image_tokens: int,
+    img_start: int,
     patch_size: Tuple[int, int] = (24, 24),
     num_tokens_to_show: int = 4,
     alpha: float = 0.5,
@@ -468,6 +508,7 @@ def visualize_attention_overlay_grid(
         attention_tensor: Attention weights [num_heads, seq_len, seq_len]
         generated_tokens: List of generated token strings
         num_image_tokens: Number of image tokens in sequence
+        img_start: Starting index of image tokens in the sequence
         patch_size: Grid size of image patches
         num_tokens_to_show: Number of generated tokens to visualize
         alpha: Transparency of attention overlay
@@ -502,7 +543,7 @@ def visualize_attention_overlay_grid(
 
         # Compute attention map for this token
         attention_map = compute_spatial_attention_map(
-            attention_tensor, generated_tokens, num_image_tokens,
+            attention_tensor, generated_tokens, num_image_tokens, img_start,
             patch_size, token_idx, head_aggregation='mean'
         )
 
@@ -533,6 +574,7 @@ def visualize_attention_overlay_averaged(
     attention_tensor: torch.Tensor,
     generated_tokens: List[str],
     num_image_tokens: int,
+    img_start: int,
     patch_size: Tuple[int, int] = (24, 24),
     alpha: float = 0.5,
     colormap: str = 'jet',
@@ -545,6 +587,7 @@ def visualize_attention_overlay_averaged(
         attention_tensor: Attention weights
         generated_tokens: List of generated token strings
         num_image_tokens: Number of image tokens in sequence
+        img_start: Starting index of image tokens in the sequence
         patch_size: Grid size of image patches
         alpha: Transparency of attention overlay
         colormap: Matplotlib colormap name
@@ -555,7 +598,7 @@ def visualize_attention_overlay_averaged(
     """
     # Compute averaged attention map across all tokens
     attention_map = compute_spatial_attention_map(
-        attention_tensor, generated_tokens, num_image_tokens,
+        attention_tensor, generated_tokens, num_image_tokens, img_start,
         patch_size, token_index=-1, head_aggregation='mean'
     )
 
