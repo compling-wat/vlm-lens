@@ -108,7 +108,7 @@ def extract_attention_weights(
     Raises:
         ValueError: If module not found or attention extraction fails.
     """
-    vlm.model.to(torch.device('cuda'))
+    vlm.model.to(vlm.config.device)
     vlm.model.eval()
 
     # Prepare inputs
@@ -116,7 +116,7 @@ def extract_attention_weights(
     inputs = vlm._generate_processor_output(text, image)
     for key in inputs:
         if isinstance(inputs[key], torch.Tensor):
-            inputs[key] = inputs[key].to(torch.device('cuda'))
+            inputs[key] = inputs[key].to(vlm.config.device)
 
     # Hardcoded for debug: Number of image tokens
     if 'pixel_values' in inputs:
