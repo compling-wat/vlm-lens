@@ -11,6 +11,77 @@ from PIL import Image, ImageFilter
 from src.models.base import ModelBase  # noqa: E402
 
 
+def build_final_attn(attn_list: List[torch.Tensor]) -> torch.Tensor:
+    """Combine cached attention matrices into a full attention tensor.
+
+    This function merges a list of attention matrices from an autoregressive
+    transformer that uses a key-value (KV) cache. It reconstructs the complete
+    attention matrix at the final decoding step, including both the initial
+    prefix attention and the newly generated token attentions.
+
+    Args:
+        attn_list (List[torch.Tensor]):
+            A list of attention tensors.
+            - attn_list[0]: Tensor of shape [B, H, seq, seq] representing
+              attention among the initial prefix tokens.
+            - attn_list[1:]: For t = 1..n, tensors of shape [B, H, 1, seq+t]
+              representing attention from the newly generated token at position
+              seq+t-1 to all keys 0..(seq+t-1), including itself.
+
+    Returns:
+        torch.Tensor:
+            The full attention tensor of shape [B, H, seq+n, seq+n] that
+            represents the attention at the final decoding step.
+
+    Raises:
+        ValueError: If the input list is empty, has inconsistent shapes, or
+            does not match the expected dimensions.
+    """
+    if not attn_list:
+        raise ValueError('attn_list must be non-empty')
+
+    base = attn_list[0]
+    if base.ndim != 4:
+        raise ValueError(f'attn_list[0] must be [B,H,seq,seq], got {base.shape}')
+
+    B, H, seq, seq2 = base.shape
+    if seq != seq2:
+        raise ValueError(f'attn_list[0] last two dims must match (got {seq} vs {seq2})')
+
+    n = len(attn_list) - 1
+    if n == 0:
+        # Nothing was generated; return the prefix attention as-is.
+        return base
+
+    # Validate incremental slices and infer total length (seq + n)
+    for i, sl in enumerate(attn_list[1:], start=1):
+        if sl.shape[:2] != (B, H) or sl.shape[2] != 1 or sl.shape[3] != (seq + i):
+            raise ValueError(
+                f'attn_list[{i}] must be [B,H,1,seq+{i}], got {sl.shape} '
+                f'(expected last dim {seq+i})'
+            )
+
+    device = base.device
+    dtype = base.dtype
+    total = seq + n
+
+    # Allocate the final attention matrix (lower-triangular; future columns stay 0)
+    full = torch.zeros((B, H, total, total), device=device, dtype=dtype)
+
+    # Top-left block: the original prefix attention
+    full[:, :, :seq, :seq] = base
+
+    # Append each new row: position r = seq + t (t from 0..n-1),
+    # coming from attn_list[t+1] which has [B,H,1, seq + (t+1)].
+    # This row attends to keys 0..r (inclusive). Future columns remain 0 by construction.
+    for t in range(n):
+        r = seq + t
+        row_slice = attn_list[t + 1]  # [B,H,1, seq + t + 1]
+        full[:, :, r:r+1, :r+1] = row_slice  # fill exactly the causal span
+
+    return full
+
+
 def extract_attention_weights(
     vlm: ModelBase,
     module_name: str,
@@ -37,6 +108,7 @@ def extract_attention_weights(
     Raises:
         ValueError: If module not found or attention extraction fails.
     """
+    vlm.model.to(torch.device('cuda'))
     vlm.model.eval()
 
     # Prepare inputs
@@ -44,7 +116,7 @@ def extract_attention_weights(
     inputs = vlm._generate_processor_output(text, image)
     for key in inputs:
         if isinstance(inputs[key], torch.Tensor):
-            inputs[key] = inputs[key].to(vlm.config.device)
+            inputs[key] = inputs[key].to(torch.device('cuda'))
 
     # Hardcoded for debug: Number of image tokens
     if 'pixel_values' in inputs:
@@ -93,16 +165,21 @@ def extract_attention_weights(
     attention_tensor = None
 
     if hasattr(outputs, 'attentions') and outputs.attentions is not None:
-        if len(outputs.attentions) > 0:
+        generated_len = len(outputs.attentions)
+        if generated_len > 0:
             # Get attention from the first generation step
+
             step_attentions = outputs.attentions[0]
 
             if layer_idx >= 0 and layer_idx < len(step_attentions):
                 # Use the specific layer
-                attention_tensor = step_attentions[layer_idx].detach()
+                # attention_tensor = step_attentions[layer_idx].detach()
+                all_attn_frags = [outputs.attentions[i][layer_idx].detach() for i in range(generated_len)]
+                attention_tensor = build_final_attn(all_attn_frags)
             else:
                 # Fallback: use the last layer
-                attention_tensor = step_attentions[-1].detach()
+                all_attn_frags = [outputs.attentions[i][-1].detach() for i in range(generated_len)]
+                attention_tensor = build_final_attn(all_attn_frags)
 
     if attention_tensor is None:
         raise ValueError(
@@ -254,7 +331,7 @@ def visualize_attention_head_grid(
         head_attention = attention_tensor[head_idx].cpu().numpy()
 
         if img_end <= head_attention.shape[0] and gen_end <= head_attention.shape[1]:
-            img_to_text = head_attention[img_start:img_end, gen_start:gen_end]
+            img_to_text = head_attention[gen_start:gen_end, img_start:img_end]
         else:
             img_to_text = head_attention
 
