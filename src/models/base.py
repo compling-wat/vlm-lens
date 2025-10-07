@@ -87,6 +87,48 @@ class ModelBase(ABC):
         """Initialize the self.processor by loading from the path."""
         self.processor = AutoProcessor.from_pretrained(self.model_path)
 
+    def _generate_ablation_hook(self, head_list: List[int]) -> Callable[[torch.nn.Module, tuple, torch.Tensor | tuple], torch.Tensor | tuple]:
+        """Generates the hook for ablation.
+
+        Args:
+            head_list (List[int]): The list of head to be ablated. If -1 is presented, select all heads.
+
+        Returns:
+            hook function: The hook function to return.
+
+        """
+
+        def generate_ablation_hook(module: torch.nn.Module, input: tuple, output: torch.Tensor | tuple) -> torch.Tensor | tuple:
+            """Hook handle function that perform the ablation.
+
+            The returned tensor will automatically replace the intermediate result used in the forward process.
+
+            Args:
+                module (torch.nn.Module): The module that save its hook on.
+                input (tuple): The input used.
+                output (torch.Tensor): The output embeddings to be modified.
+
+            Returns:
+                the updated output after ablation
+
+            """
+            if isinstance(output, torch.Tensor):
+                attn_output = output.clone()
+                if -1 in head_list:
+                    attn_output[:, :, :, :] = 0.0
+                else:
+                    attn_output[:, head_list, :, :] = 0.0
+                return attn_output
+            else:
+                attn_output, attn_weights, *rest = output
+                attn_output = attn_output.clone()
+                if -1 in head_list:
+                    attn_output[:, :, :, :] = 0.0
+                else:
+                    attn_output[:, head_list, :, :] = 0.0
+                return (attn_output, attn_weights, *rest)
+        return generate_ablation_hook
+
     def _generate_state_hook(self,
                              name: str,
                              model_input: ModelInput
@@ -197,6 +239,12 @@ class ModelBase(ABC):
 
         # for each module, register the state hook and save the output to database
         for name, module in self.model.named_modules():
+            if self.config.matches_ablation_module(name):  # ablation is earlier
+                hooks.append(module.register_forward_hook(
+                    self._generate_ablation_hook(self.config.ablations[name])
+                ))
+                logging.debug(f'Registered ablation hook to {name}')
+
             if self.config.matches_module(name):
                 hooks.append(module.register_forward_hook(
                     self._generate_state_hook(name, model_input)
