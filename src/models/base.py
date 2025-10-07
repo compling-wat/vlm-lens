@@ -97,11 +97,12 @@ class ModelBase(ABC):
             hook function: The hook function to return.
 
         """
+        hidden_size = self.model.language_model.config.hidden_size
+        num_heads = self.model.language_model.config.num_attention_heads
+        head_dim = hidden_size // num_heads
 
         def generate_ablation_hook(module: torch.nn.Module, input: tuple, output: torch.Tensor | tuple) -> torch.Tensor | tuple:
             """Hook handle function that perform the ablation.
-
-            The returned tensor will automatically replace the intermediate result used in the forward process.
 
             Args:
                 module (torch.nn.Module): The module that save its hook on.
@@ -115,17 +116,24 @@ class ModelBase(ABC):
             if isinstance(output, torch.Tensor):
                 attn_output = output.clone()
                 if -1 in head_list:
-                    attn_output[:, :, :, :] = 0.0
+                    attn_output[:, :, :] = 0.0
                 else:
-                    attn_output[:, head_list, :, :] = 0.0
+                    for h in head_list:
+                        start = h * head_dim
+                        end = (h + 1) * head_dim
+                        attn_output[..., start:end] = 0.0  # zero those feature channels
                 return attn_output
             else:
                 attn_output, attn_weights, *rest = output
                 attn_output = attn_output.clone()
+
                 if -1 in head_list:
-                    attn_output[:, :, :, :] = 0.0
+                    attn_output[:, :, :] = 0.0
                 else:
-                    attn_output[:, head_list, :, :] = 0.0
+                    for h in head_list:
+                        start = h * head_dim
+                        end = (h + 1) * head_dim
+                        attn_output[..., start:end] = 0.0  # zero those feature channels
                 return (attn_output, attn_weights, *rest)
         return generate_ablation_hook
 
@@ -239,11 +247,12 @@ class ModelBase(ABC):
 
         # for each module, register the state hook and save the output to database
         for name, module in self.model.named_modules():
-            if self.config.matches_ablation_module(name):  # ablation is earlier
-                hooks.append(module.register_forward_hook(
-                    self._generate_ablation_hook(self.config.ablations[name])
-                ))
-                logging.debug(f'Registered ablation hook to {name}')
+            if hasattr(self.config, 'ablations'):
+                if self.config.matches_ablation_module(name):  # ablation is earlier
+                    hooks.append(module.register_forward_hook(
+                        self._generate_ablation_hook(self.config.ablations[name])
+                    ))
+                    logging.debug(f'Registered ablation hook to {name}')
 
             if self.config.matches_module(name):
                 hooks.append(module.register_forward_hook(
