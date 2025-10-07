@@ -1,12 +1,12 @@
 architecture: llava
 model_path: llava-hf/llava-1.5-7b-hf
-input_dir: ./data/test-images/
+input_dir: ./data/test-images/sample
 prompt: "Describe the color in this image in one word."
 output_db: output/llava-1.5-7b-hf.db
 ablations:
   - language_model.model.layers.26.self_attn: [2, 5]  # head list (0-indexed) to be ablated. Remember to only apply ablation on attn modules, which do not block residuals
   - language_model.model.layers.28.self_attn: [-1]  # a -1 in the head list means ablating all
 modules:  # ablation is done prior to logging hidden layers, so they will be affected
-  - vision_tower.vision_model
-  - vision_tower.vision_model.encoder.layers.23.layer_norm2
+  - language_model.model.layers.20.post_attention_layernorm
+  - language_model.model.layers.28.post_attention_layernorm
   - language_model.model.layers.31.post_attention_layernorm
