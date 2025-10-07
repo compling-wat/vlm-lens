@@ -333,17 +333,17 @@ class Config:
         return False
 
     def matches_ablation_module(self, module_name: str) -> bool:
-        """Returns whether the given module name matches one of the module to be ablated.
+        """Returns whether the given module name is one of the module to be ablated.
 
         Args:
             module_name (str): The module name to match.
 
         Returns:
-            bool: Whether the given module name matches the config's ablated module
+            bool: Whether the given module name is in the config's ablated module
             regexes.
         """
         for module in self.ablations:
-            if module.fullmatch(module_name):
+            if module == module_name:
                 return True
         return False
 
