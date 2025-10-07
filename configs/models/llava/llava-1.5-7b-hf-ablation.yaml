@@ -1,0 +1,13 @@
+architecture: llava
+model_path: llava-hf/llava-1.5-7b-hf
+input_dir: ./data/test-images/
+prompt: "Describe the color in this image in one word."
+output_db: output/llava-1.5-7b-hf.db
+modules:
+  - vision_tower.vision_model
+  - vision_tower.vision_model.encoder.layers.23.layer_norm2
+  - language_model.model.layers.31.post_attention_layernorm
+ablations:
+  - language_model.model.layers.26.self_attn: [2, 5]
+  - language_model.model.layers.28.self_attn: [-1]
+  - language_model.model.layers.31.post_attention_layernorm: []

@@ -144,6 +144,7 @@ class Config:
         config_keys.append('prompt')
         config_keys.append('modules')
         config_keys.append('forward')
+        config_keys.append('ablations')
         config_keys.append('dataset')
 
         # first read the config file and set the current attributes to it
@@ -202,6 +203,13 @@ class Config:
             for mapping in self.forward:
                 forward_mapping = {**forward_mapping, **mapping}
             self.forward = forward_mapping
+
+        # if ablations is set, make sure that it is a mapping
+        if hasattr(self, 'ablations'):
+            ablations_mapping = {}
+            for mapping in self.ablations:
+                ablations_mapping = {**ablations_mapping, **mapping}
+            self.ablations = ablations_mapping
 
         # do an early return if we don't need the modules
         self.log_named_modules = (
