@@ -26,6 +26,7 @@ class ModelSelection(str, Enum):
     BLIP2 = 'blip2'
     CLIP = 'clip'
     COGVLM = 'cogvlm'
+    DINO = 'dino'
     GLAMM = 'glamm'
     INTERNLM_XC = 'internlm-xcomposer'
     INTERNVL = 'internvl'
