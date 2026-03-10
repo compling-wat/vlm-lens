@@ -33,6 +33,9 @@ def get_model(
     elif model_arch == ModelSelection.COGVLM:
         from src.models.cogvlm import CogVLMModel
         return CogVLMModel(config)
+    elif model_arch == ModelSelection.DINO:
+        from src.models.dino import DinoModel
+        return DinoModel(config)
     elif model_arch == ModelSelection.GLAMM:
         from src.models.glamm import GlammModel
         return GlammModel(config)
