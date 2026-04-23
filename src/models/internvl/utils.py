@@ -60,8 +60,8 @@ def find_closest_aspect_ratio(
 
 
 def dynamic_preprocess(
-        image: Image, min_num: Optional[int] = 1, max_num: Optional[int] = 12,
-        image_size: Optional[int] = 448, use_thumbnail: Optional[bool] = False) -> List[Image]:
+        image: 'Image.Image', min_num: Optional[int] = 1, max_num: Optional[int] = 12,
+        image_size: Optional[int] = 448, use_thumbnail: Optional[bool] = False) -> List['Image.Image']:
     """Helper function.
 
     Args:
