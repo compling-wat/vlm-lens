@@ -103,29 +103,37 @@ First, clone the repository:
    git clone https://github.com/compling-wat/vlm-lens.git
    cd vlm-lens
 
-Because each model may have different dependencies,
-it is recommended to use a separate virtual environment for each model you run.
-
-For example, using ``conda``:
+Environments are managed with `uv <https://docs.astral.sh/uv/>`_. Install it once:
 
 .. code-block:: bash
 
-   conda create -n <env_name> python=3.10
-   conda activate <env_name>
+   curl -LsSf https://astral.sh/uv/install.sh | sh
 
-Or, using native ``python venv``:
-
-.. code-block:: bash
-
-   python -m venv <env_name>
-   source <env_name>/bin/activate
-
-After activating your environment, install dependencies for your desired model architecture.
-Replace ``<architecture>`` with the appropriate value (e.g., ``base``, ``cogvlm``):
+Because each model pins a different ``torch`` / ``transformers`` combination,
+each model architecture is exposed as a separate optional extra (declared in
+``pyproject.toml``) and gets its own dedicated virtual environment. Use the
+bundled switcher script to create and activate one — replace ``<architecture>``
+with the appropriate value (e.g., ``base``, ``cogvlm``, ``internvl``, ``molmo``):
 
 .. code-block:: bash
 
-   pip install -r envs/<architecture>/requirements.txt
+   source scripts/use.sh <architecture>
+
+The first invocation for an architecture creates a venv under
+``.venvs/<architecture>/`` and installs its dependencies from the locked
+``uv.lock``. Subsequent invocations simply reactivate the existing venv. To
+switch models, re-source the script with a different extra.
+
+.. note::
+
+   A small number of models (``glamm``, ``minicpm-o``, ``minicpm-v``,
+   ``pixtral``) require ``flash-attn``, which must be built from source
+   against the resolved ``torch``. After ``uv sync``, run::
+
+       uv pip install flash-attn==<version> --no-build-isolation
+
+   using the version appropriate to the model (see ``pyproject.toml``).
+   A matching CUDA toolchain is required on the host.
 
 
 

@@ -1,5 +1,6 @@
 # Ignore any specific bash scripts
 *.sh
+!scripts/*.sh
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -137,6 +138,7 @@ celerybeat.pid
 # Environments
 .env
 .venv
+.venvs/
 env/
 venv/
 ENV/
@@ -198,3 +200,9 @@ notebooks/debug.ipynb
 
 # Debug files
 **/debug.yaml
+
+# Claude Code personal settings
+.claude
+
+# Development notes
+.dev_notes/

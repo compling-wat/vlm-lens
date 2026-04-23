@@ -5,18 +5,15 @@ This tutorial guides you through extracting hidden representations for CogVLM.
 
 Dependencies
 -------------------------------
-Create a virtual environment using ``conda``:
+Environments are managed with `uv <https://docs.astral.sh/uv/>`_.
+Create and activate the dedicated CogVLM venv with the bundled switcher script:
 
 .. code-block:: bash
 
-    conda create -n <env_name> python=3.11
-    conda activate <env_name>
+   source scripts/use.sh cogvlm
 
-Install the required dependencies via ``pip``:
-
-.. code-block:: bash
-
-   pip install -r envs/cogvlm/requirements.txt
+This creates ``.venvs/cogvlm/`` on first use and installs the ``cogvlm`` extra
+declared in ``pyproject.toml`` from the locked ``uv.lock``.
 
 Configurations
 -------------------------------

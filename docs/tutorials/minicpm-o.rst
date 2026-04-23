@@ -7,24 +7,25 @@ This tutorial guides you through extracting hidden representations for MiniCPM-o
 
 Dependency
 -------------------------------
-First, create and activate a virtual environment using ``conda``:
+Environments are managed with `uv <https://docs.astral.sh/uv/>`_.
+Create and activate the dedicated MiniCPM-o venv with the bundled switcher script:
 
 .. code-block:: bash
 
-   conda create -n <env_name> python=3.10
-   conda activate <env_name>
+   source scripts/use.sh minicpm-o
 
-Next, install the required dependencies via pip:
-
-.. code-block:: bash
-
-   pip install -r envs/minicpm/requirements.txt
+This creates ``.venvs/minicpm-o/`` on first use and installs the ``minicpm-o``
+extra declared in ``pyproject.toml`` from the locked ``uv.lock``.
 
 .. Note::
 
    MiniCPM-o supports two attention methods: ``sdpa`` and ``flash_attention_2`` (default).
-   The default config uses ``sdpa``, so ``requirements.txt`` does not include ``flash-attn``.
-   If you want to use ``flash_attention_2``, be sure to install the corresponding package separately.
+   The default config uses ``sdpa``, so the ``minicpm-o`` extra does not include ``flash-attn``.
+   If you want to use ``flash_attention_2``, install it separately after the sync, e.g.::
+
+       uv pip install flash-attn==2.7.3 --no-build-isolation
+
+   (see the inline comment in ``pyproject.toml`` for the pinned version).
 
 Configuration
 -------------------------------

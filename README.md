@@ -30,25 +30,34 @@
 - [Miscellaneous](#miscellaneous)
 
 ## Environment Setup
-We recommend using a virtual environment to manage your dependencies. You can create one using the following command to create a virtual environment under
+We use [uv](https://docs.astral.sh/uv/) to manage dependencies. Install it once:
 ```bash
-virtualenv --no-download "venv/vlm-lens-base" --prompt "vlm-lens-base"  # Or "python3.10 -m venv venv/vlm-lens-base"
-source venv/vlm-lens-base/bin/activate
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-Then, install the required dependencies:
+Each supported model is exposed as an optional extra in `pyproject.toml`
+(e.g., `base`, `cogvlm`, `glamm`, `internvl`, `molmo`, ...). Because different
+models pin incompatible `torch`/`transformers` versions, each model gets its
+own dedicated virtual environment. Use the bundled switcher script to create
+and activate one:
 ```bash
-pip install --upgrade pip
-pip install -r envs/base/requirements.txt
+source scripts/use.sh base       # or cogvlm, glamm, internvl, molmo, ...
 ```
+The first invocation for an extra creates a venv under `.venvs/<extra>/` and
+installs the model's dependencies from the locked `uv.lock`. Subsequent
+invocations just reactivate the existing venv. To switch models, simply
+re-source the script with a different extra.
 
-There are some models that require different dependencies, and we recommend creating a separate virtual environment for each of them to avoid conflicts.
-For such models, we have offered a separate `requirements.txt` file under `envs/<model_name>/requirements.txt`, which can be installed in the same way as above.
-All the model-specific environments are independent of the base environment, and can be installed individually.
+Other available extras: `demo` (Gradio app), `concepts` (PCA / probing tools),
+`docs` (Sphinx build).
+
+To add or update a dependency, edit `pyproject.toml` and run `uv lock` to
+regenerate the lockfile.
 
 **Notes**:
 1. There may be local constraints (e.g., issues caused by cluster regulations) that cause failure of the above commands. In such cases, you are encouraged to modify it whenever fit. We welcome issues and pull requests to help us keep the dependencies up to date.
 2. Some models, due to the resources available at the development time, may not be fully supported on modern GPUs. While our released environments are tested on L40s GPUs, we recommend following the error messages to adjust the environment setups for your specific hardware.
+3. Some models (`glamm`, `minicpm-o`, `minicpm-v`, `pixtral`) need `flash-attn`, which must be built from source against the resolved `torch` and is not bundled in the extra. After the initial `uv sync`, install it with the version pinned in the inline comment in `pyproject.toml`, e.g. `uv pip install flash-attn==<version> --no-build-isolation`. A matching CUDA toolchain is required on the host.
 
 ## Example Usage: Extract Qwen2-VL-2B Embeddings with VLM-Lens
 
@@ -187,7 +196,7 @@ where each column contains:
 Download license-free images for primitive concepts (e.g., colors):
 
 ```bash
-pip install -r data/concepts/requirements.txt
+source scripts/use.sh concepts
 python -m data.concepts.download --config configs/concepts/colors.yaml
 ```
 
@@ -209,7 +218,7 @@ python -m src.main --config configs/models/llava-7b/llava-7b.yaml --device cuda
 
 Several PCA-based analysis scripts are provided:
 ```bash
-pip install -r src/concepts/requirements.txt
+source scripts/use.sh concepts
 python -m src.concepts.pca
 python -m src.concepts.pca_knn
 python -m src.concepts.pca_separation
@@ -220,7 +229,7 @@ python -m src.concepts.pca_separation
 Install additional dependencies and launch the app.
 
 ```bash
-pip install -r demo/requirements.txt
+source scripts/use.sh demo
 python -m demo.launch_gradio
 ```
 
