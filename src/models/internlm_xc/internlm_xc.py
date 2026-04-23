@@ -87,6 +87,29 @@ class InternLMXComposerModel(ModelBase):
 
         return inputs
 
+    def _tensor_from_hook_output(self, name, output):
+        """Select the activation tensor from a tuple-returning module's output.
+
+        Both supported module families pack the post-residual hidden state at
+        index [0]:
+
+        * `model.layers.{i}` (and its `attention` sub-block) — InternLM2DecoderLayer
+          returns (hidden_states, [self_attn_weights], [present_key_value]).
+        * `vit.vision_tower.vision_model.encoder.layers.{i}` — CLIPEncoderLayer
+          returns (hidden_states, [attn_weights]).
+
+        Anything else returning a non-tensor is skipped rather than guessed at.
+        """
+        if isinstance(output, torch.Tensor):
+            return output
+        if not (isinstance(output, tuple) and len(output) >= 1 and
+                isinstance(output[0], torch.Tensor)):
+            return None
+        if (name.startswith('model.layers.') or
+                name.startswith('vit.vision_tower.vision_model.encoder.layers.')):
+            return output[0]
+        return None
+
     def _forward(self, data: dict) -> None:
         """Overridden function to run the model forward pass.
 
