@@ -23,6 +23,9 @@ jobs:
       - name: Install doc dependencies
         run: uv sync --extra docs
 
+      - name: Render model cards from JSON
+        run: uv run --active python scripts/build_model_cards.py
+
       - name: Build HTML
         run: uv run --active make html
         working-directory: docs

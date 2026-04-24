@@ -9,12 +9,20 @@ from src.models.config import Config
 
 
 def _strip_placeholder_token(model_cfg: dict) -> dict:
-    """Return a copy of ``model_cfg`` without the example-YAML placeholder
-    token. A bare ``<HUGGINGFACE_TOKEN>`` string is not a real credential — if
-    left in place, ``from_pretrained`` authenticates with the literal string
-    and returns 401 on gated repos. Dropping the key lets HF fall back to its
+    """Return a copy of ``model_cfg`` without the example-YAML placeholder token.
+
+    A bare ``<HUGGINGFACE_TOKEN>`` string is not a real credential — if left in
+    place, ``from_pretrained`` authenticates with the literal string and
+    returns 401 on gated repos. Dropping the key lets HF fall back to its
     standard token resolution (``HF_TOKEN`` env var, ``huggingface-cli login``
     cache).
+
+    Args:
+        model_cfg: The ``model:`` block from the parsed YAML config.
+
+    Returns:
+        A shallow copy of ``model_cfg`` with a placeholder ``token`` removed,
+        or an empty dict if ``model_cfg`` is not a dict.
     """
     if not isinstance(model_cfg, dict):
         return {}
@@ -49,8 +57,10 @@ class PaligemmaModel(ModelBase):
         )
 
     def _init_processor(self) -> None:
-        """Initialize the Paligemma processor. See ``_load_specific_model`` for
-        token-resolution rules."""
+        """Initialize the Paligemma processor.
+
+        See ``_load_specific_model`` for token-resolution rules.
+        """
         kwargs = _strip_placeholder_token(self.config.model)
         token = kwargs.get('token')
         self.processor = (

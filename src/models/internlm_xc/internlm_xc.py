@@ -3,6 +3,7 @@
 File for providing the InternLM-XComposer model implementation.
 """
 import logging
+from typing import Any, Optional
 
 import torch
 from transformers import AutoModel, AutoProcessor
@@ -87,7 +88,9 @@ class InternLMXComposerModel(ModelBase):
 
         return inputs
 
-    def _tensor_from_hook_output(self, name, output):
+    def _tensor_from_hook_output(
+        self, name: str, output: Any
+    ) -> Optional[torch.Tensor]:
         """Select the activation tensor from a tuple-returning module's output.
 
         Both supported module families pack the post-residual hidden state at
@@ -99,6 +102,14 @@ class InternLMXComposerModel(ModelBase):
           returns (hidden_states, [attn_weights]).
 
         Anything else returning a non-tensor is skipped rather than guessed at.
+
+        Args:
+            name: Fully qualified module name.
+            output: Raw forward-hook output (tensor or tuple).
+
+        Returns:
+            The selected activation tensor, or ``None`` when the output shape
+            isn't one of the handled cases.
         """
         if isinstance(output, torch.Tensor):
             return output

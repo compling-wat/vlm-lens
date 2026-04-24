@@ -9,7 +9,7 @@ import os
 import sqlite3
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
-from typing import Callable, List, Optional, TypedDict
+from typing import Any, Callable, List, Optional, TypedDict
 
 import torch
 import tqdm
@@ -56,27 +56,39 @@ class ModelBase(ABC):
         self._init_processor()
 
     def _log_named_modules(self) -> None:
-        """Logs the named modules based on the loaded model."""
-        file_path = 'logs/' + self.model_path + '.txt'
-        directory_path = os.path.dirname(file_path)
+        """Run the model-card probe.
 
-        # if the path exists to the file, don't load the model again
-        if os.path.isfile(file_path):
-            logging.debug(f'Named modules are cached in {file_path}')
+        Loads the model + processor, does one forward pass with a bundled
+        fixture, captures per-module shapes, and writes both the legacy
+        ``logs/<model_path>.txt`` and a structured
+        ``docs/_data/cards/<model_path>.json`` artifact.
+        """
+        from src.model_card import CARDS_DIR, run_probe
+
+        card_path = CARDS_DIR / f'{self.model_path}.json'
+        if card_path.exists():
+            logging.info(f'Model card already cached at {card_path}; skipping probe.')
             return
 
-        # in which case, we first load the model, then output its modules
+        # Nudge loads toward low-memory defaults when the user hasn't set
+        # them. Bigger checkpoints in fp32 on CPU blow past tight memory
+        # cgroups (seen at 32 GB on watgpu508), and the probe only cares
+        # about shapes, not numerics — so bf16 on GPU is fine by default.
+        # device_map='auto' needs `accelerate`; skip silently if unavailable.
+        merged: dict = {}
+        if hasattr(self.config, 'model') and isinstance(self.config.model, dict):
+            merged.update(self.config.model)
+        merged.setdefault('torch_dtype', 'auto')
+        try:
+            import accelerate  # noqa: F401
+            merged.setdefault('device_map', 'auto')
+        except ImportError:
+            pass
+        self.config.model = merged
+
         self._load_specific_model()
-
-        # otherwise, we log the output to that file, and creating directories
-        # as needed
-        if not os.path.exists(directory_path):
-            os.makedirs(directory_path)
-
-        with open(file_path, 'w') as output_file:
-            output_file.writelines(
-                [f'{name}\n' for name, _ in self.model.named_modules()]
-            )
+        self._init_processor()
+        run_probe(self)
 
     @abstractmethod
     def _load_specific_model(self) -> None:
@@ -86,6 +98,26 @@ class ModelBase(ABC):
     def _init_processor(self) -> None:
         """Initialize the self.processor by loading from the path."""
         self.processor = AutoProcessor.from_pretrained(self.model_path)
+
+    def _tensor_from_hook_output(self, name: str, output: Any) -> Optional[torch.Tensor]:
+        """Coerce a forward-hook output into the tensor to be pooled and stored.
+
+        Default: pass torch.Tensor through unchanged; otherwise return None,
+        which signals the hook to skip with a warning. Subclasses whose matched
+        modules return tuples (e.g. decoder blocks yielding
+        (hidden_states, ...)) MUST override this to dispatch on `name` and
+        select the correct element. Returning None at any branch keeps the
+        "skip with warning" behavior.
+
+        Args:
+            name (str): The matched module name (the same string the hook is
+                registered against in `_register_module_hooks`).
+            output (Any): Raw value produced by the module's forward pass.
+
+        Returns:
+            Optional[torch.Tensor]: Tensor to store, or None to skip.
+        """
+        return output if isinstance(output, torch.Tensor) else None
 
     def _generate_state_hook(self,
                              name: str,
@@ -125,9 +157,14 @@ class ModelBase(ABC):
                 input (tuple): The input used.
                 output (torch.Tensor): The embeddings to save.
             """
-            if not isinstance(output, torch.Tensor):
-                logging.warning(f'Output type of {str(type(module))} is not a tensor, skipped.')
+            tensor = self._tensor_from_hook_output(name, output)
+            if not isinstance(tensor, torch.Tensor):
+                logging.warning(
+                    f'Output of module {name} ({type(module).__name__}) was not '
+                    f'reduced to a tensor by {type(self).__name__}._tensor_from_hook_output; skipped.'
+                )
                 return
+            output = tensor
 
             cursor = self.connection.cursor()
 

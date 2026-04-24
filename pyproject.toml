@@ -159,7 +159,12 @@ minicpm-o = [
     "openpyxl==3.1.2",
     "pillow==10.1.0",
     "pandas==2.2.3",
-    # flash-attn==2.7.3 installed separately: `uv pip install flash-attn==2.7.3 --no-build-isolation`
+    # librosa 0.9 does `from pkg_resources import resource_filename` at import.
+    "setuptools>=68,<81",  # <81 keeps pkg_resources available (librosa 0.9 imports it)
+    # Prebuilt flash-attn wheel matching torch 2.3 + CUDA 12 + Python 3.10 on Linux.
+    # Pinning the wheel URL directly avoids the `nvcc`/build-from-source path,
+    # which the project's CI runners and most user machines lack.
+    "flash-attn @ https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.3/flash_attn-2.7.3+cu12torch2.3cxx11abiFALSE-cp310-cp310-linux_x86_64.whl ; sys_platform == 'linux' and python_version == '3.10'",
 ]
 
 minicpm-v = [
@@ -168,8 +173,10 @@ minicpm-v = [
     "torchaudio==2.3.1",
     "transformers==4.44.2",
     "accelerate==1.8.1",
-    "datasets==2.14.4",
-    "huggingface-hub==0.33.0",
+    # datasets 2.14.4 was incompatible with modern pyarrow (>=17) because it
+    # referenced the removed `pa.PyExtensionType`. Align with minicpm-o.
+    "datasets==4.0.0",
+    "huggingface-hub==0.34.3",
     "timm==0.9.10",
     "einops==0.8.1",
     "einx==0.3.0",
@@ -219,37 +226,17 @@ paligemma = [
 pixtral = [
     "torch==2.3.1",
     "torchvision==0.18.1",
-    "torchaudio==2.3.1",
     "transformers==4.53.2",
     "accelerate==1.9.0",
     "datasets==4.0.0",
     "huggingface-hub==0.33.4",
-    "xformers==0.0.27",
-    "mistral-inference==1.6.0",
-    "mistral-common==1.7.0",
-    "peft==0.10.0",
-    "tiktoken==0.9.0",
     "sentencepiece==0.2.0",
-    "scikit-learn==1.6.1",
-    "scipy==1.13.1",
-    "matplotlib==3.9.0",
-    "pandas==2.2.1",
-    "librosa==0.11.0",
-    "soundfile==0.13.1",
-    "vector-quantize-pytorch==1.18.5",
-    "vocos==0.1.0",
-    "encodec==0.1.1",
-    "simple-parsing==0.1.7",
-    "fire==0.7.0",
-    "einops==0.8.1",
-    "einx==0.3.0",
-    "ninja==1.11.1",
-    "opencv-python==4.8.1.78",
-    "opencv-contrib-python==4.8.1.78",
-    "opencv-python-headless==4.8.1.78",
-    "opencv-contrib-python-headless==4.8.1.78",
     "pillow==10.3.0",
-    # flash-attn==2.7.3 installed separately: `uv pip install flash-attn==2.7.3 --no-build-isolation`
+    # transformers 4.53 pixtral code path imports `setuptools` at runtime via
+    # distutils-shim; uv doesn't install it by default.
+    "setuptools>=68,<81",
+    # See minicpm-o extras for the rationale behind the URL-pinned wheel.
+    "flash-attn @ https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.3/flash_attn-2.7.3+cu12torch2.3cxx11abiFALSE-cp310-cp310-linux_x86_64.whl ; sys_platform == 'linux' and python_version == '3.10'",
 ]
 
 plm = [
@@ -322,4 +309,3 @@ conflicts = [
         { extra = "docs" },
     ],
 ]
-

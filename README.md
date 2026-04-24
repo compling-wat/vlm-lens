@@ -105,9 +105,11 @@ python -m src.main --config configs/models/qwen/qwen-2b.yaml --device cpu --debu
 ### Retrieving All Named Modules
 Unfortunately there is no way to find which layers to potentially match to without loading the model. This can take quite a bit of system time figuring out.
 
-Instead, we offer some cached results under `logs/` for each model, which were generated through including the `-l` or `--log-named-modules` flag when running `python -m src.main`.
+Instead, we publish a browsable **[Model Cards site](https://compling-wat.github.io/vlm-lens/models/index.html)** with one card per supported checkpoint. Each card shows the full module tree, parameter counts, and the **output shape each module produces during a real forward pass** — paste the qualified module name straight into the `modules:` field of your config.
 
-When running this flag, it is not necessary to set modules or anything besides the architecture and HuggingFace model path.
+To regenerate a card locally (e.g. after a `transformers` upgrade or for a new checkpoint), pass the `-l` / `--log-named-modules` flag when running `python -m src.main`; it writes a structured JSON to `docs/_data/cards/<namespace>/<model_name>.json` that feeds the docs build. The legacy flat `logs/<namespace>/<model_name>.txt` listings remain in place as a backup during the card-site rollout and will be removed in a follow-up.
+
+When running with `-l`, it is not necessary to set `modules:` or anything besides the architecture and HuggingFace model path.
 
 ### Matching Layers
 To automatically set up which layers to find/use, one should use the Unix style strings, where you can use `*` to denote wildcards.
